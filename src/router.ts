@@ -14,7 +14,12 @@ export type Route =
 export function parseRoute(hash: string): Route {
   const raw = hash.replace(/^#/, '')
   const [path, query = ''] = raw.split('?')
-  const parts = path.split('/').filter(Boolean).map(decodeURIComponent)
+  let parts: string[]
+  try {
+    parts = path.split('/').filter(Boolean).map(decodeURIComponent)
+  } catch {
+    return { name: 'notFound' }
+  }
   const [a, b, c] = parts
 
   if (parts.length === 0) return { name: 'today' }
@@ -62,6 +67,7 @@ export function useRoute(): Route {
   const [hash, setHash] = useState(() => window.location.hash)
   useEffect(() => {
     const onChange = () => setHash(window.location.hash)
+    onChange()
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)
   }, [])

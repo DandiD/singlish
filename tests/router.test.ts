@@ -10,6 +10,11 @@ test('parseRoute maps hashes', () => {
   expect(parseRoute('#/nope')).toEqual({ name: 'notFound' })
 })
 
+test('parseRoute falls back to notFound on malformed hash', () => {
+  expect(parseRoute('#/songs/%')).toEqual({ name: 'notFound' })
+  expect(parseRoute('#/songs/%E0')).toEqual({ name: 'notFound' })
+})
+
 test('href round-trips', () => {
   const r = { name: 'analyzing', songId: 'z' } as const
   expect(parseRoute(href(r))).toEqual(r)

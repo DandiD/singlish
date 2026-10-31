@@ -2,7 +2,8 @@ import { href, type Route } from '../../router'
 
 export function BottomNav({ route }: { route: Route }) {
   const onToday = route.name === 'today'
-  const onSongs = ['songs', 'addSong', 'analyzing', 'study', 'triage'].includes(route.name)
+  const songRoutes: Route['name'][] = ['songs', 'addSong', 'analyzing', 'study', 'triage']
+  const onSongs = songRoutes.includes(route.name)
   return (
     <nav class="bottom-nav" aria-label="Navigazione principale">
       <a href={href({ name: 'today' })} aria-current={onToday ? 'page' : undefined}>Oggi</a>
