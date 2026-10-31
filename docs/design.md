@@ -1,0 +1,172 @@
+# Singlish — design
+
+Canvas: https://claude.ai/artifact/6wE9aRMt77EJmgR2gFwgZx (pagine: Schermate · scuro, Schermate · chiaro, Interazioni UML, Casi d'uso).
+Look: "studio serale". Fondo scuro di default, un accento arancio, colori per tipo di espressione. Tema: Automatico (segue il sistema), Chiaro, Scuro.
+
+## Tipografia
+- Titoli: Bricolage Grotesque 700 (opsz 12..96).
+- Testo: Inter Tight 400/500/600.
+- Timer e numeri tecnici: JetBrains Mono 500.
+Caricate da Google Fonts con `display=swap`; la PWA le mette in precache.
+
+## Colori dei tipi di espressione
+phrasal verb `--blue` · idioma `--accent` · collocazione `--green` · slang `--violet` · parola singola: sottolineatura `--text-2` · parlato connesso: sottolineatura puntinata `--muted`.
+Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore 2 px del colore pieno.
+
+## Token (copiare in `src/styles/tokens.css`)
+```css
+:root, [data-theme="dark"] {
+  --bg: #111317;
+  --scrim: #0B0C0F;
+  --surface: #1B1E25;
+  --surface-2: #15181D;
+  --chip: #2A2F39;
+  --divider: #22262E;
+  --line: #2E333D;
+  --line-strong: #3A404C;
+  --line-strong-2: #5A606C;
+  --ghost-text: #4A4F59;
+  --muted-2: #6B717C;
+  --muted: #A3A8B3;
+  --text-2: #C9CDD4;
+  --text: #F2F1EC;
+  --accent: #FF8A4C;
+  --accent-text: #FF8A4C;
+  --accent-text-2: #FFB08A;
+  --accent-tint: #2A1E17;
+  --on-accent: #1A0E06;
+  --on-tint-text: #E7D3C7;
+  --blue: #7DB0FF;
+  --blue-text: #9CC4FF;
+  --blue-tint: #1A2433;
+  --blue-tint-text: #C9D8EE;
+  --green: #5FD3B3;
+  --green-text: #8BE3CA;
+  --violet: #C9A2FF;
+  --danger-text: #FF9C9C;
+  --danger-line: #5A3A3A;
+  --overlay: rgba(11,12,15,.94);
+  --diagram-line: #8C93A0;
+}
+[data-theme="light"] {
+  --bg: #F5F6F8;
+  --scrim: #D5D9DF;
+  --surface: #FFFFFF;
+  --surface-2: #EDEFF2;
+  --chip: #E5E8ED;
+  --divider: #E3E6EB;
+  --line: #DADDE3;
+  --line-strong: #C2C7CF;
+  --line-strong-2: #A9AFB9;
+  --ghost-text: #9AA0AA;
+  --muted-2: #8A909A;
+  --muted: #5B6270;
+  --text-2: #3A404A;
+  --text: #14171C;
+  --accent: #F47A32;
+  --accent-text: #B0460E;
+  --accent-text-2: #9E3F0C;
+  --accent-tint: #FFE7D8;
+  --on-accent: #1A0E06;
+  --on-tint-text: #5A3422;
+  --blue: #2F6FD6;
+  --blue-text: #1F57B0;
+  --blue-tint: #E3EDFB;
+  --blue-tint-text: #23406B;
+  --green: #1F9E7C;
+  --green-text: #12735A;
+  --violet: #7D4CCB;
+  --danger-text: #B3261E;
+  --danger-line: #E5B2AE;
+  --overlay: rgba(245,246,248,.96);
+  --diagram-line: #7A818C;
+}
+@media (prefers-color-scheme: light) {
+  [data-theme="auto"] {
+    --bg: #F5F6F8;
+    --scrim: #D5D9DF;
+    --surface: #FFFFFF;
+    --surface-2: #EDEFF2;
+    --chip: #E5E8ED;
+    --divider: #E3E6EB;
+    --line: #DADDE3;
+    --line-strong: #C2C7CF;
+    --line-strong-2: #A9AFB9;
+    --ghost-text: #9AA0AA;
+    --muted-2: #8A909A;
+    --muted: #5B6270;
+    --text-2: #3A404A;
+    --text: #14171C;
+    --accent: #F47A32;
+    --accent-text: #B0460E;
+    --accent-text-2: #9E3F0C;
+    --accent-tint: #FFE7D8;
+    --on-accent: #1A0E06;
+    --on-tint-text: #5A3422;
+    --blue: #2F6FD6;
+    --blue-text: #1F57B0;
+    --blue-tint: #E3EDFB;
+    --blue-tint-text: #23406B;
+    --green: #1F9E7C;
+    --green-text: #12735A;
+    --violet: #7D4CCB;
+    --danger-text: #B3261E;
+    --danger-line: #E5B2AE;
+    --overlay: rgba(245,246,248,.96);
+    --diagram-line: #7A818C;
+  }
+}
+```
+
+| Token | Scuro | Chiaro |
+| --- | --- | --- |
+| `--bg` | `#111317` | `#F5F6F8` |
+| `--scrim` | `#0B0C0F` | `#D5D9DF` |
+| `--surface` | `#1B1E25` | `#FFFFFF` |
+| `--surface-2` | `#15181D` | `#EDEFF2` |
+| `--chip` | `#2A2F39` | `#E5E8ED` |
+| `--divider` | `#22262E` | `#E3E6EB` |
+| `--line` | `#2E333D` | `#DADDE3` |
+| `--line-strong` | `#3A404C` | `#C2C7CF` |
+| `--line-strong-2` | `#5A606C` | `#A9AFB9` |
+| `--ghost-text` | `#4A4F59` | `#9AA0AA` |
+| `--muted-2` | `#6B717C` | `#8A909A` |
+| `--muted` | `#A3A8B3` | `#5B6270` |
+| `--text-2` | `#C9CDD4` | `#3A404A` |
+| `--text` | `#F2F1EC` | `#14171C` |
+| `--accent` | `#FF8A4C` | `#F47A32` |
+| `--accent-text` | `#FF8A4C` | `#B0460E` |
+| `--accent-text-2` | `#FFB08A` | `#9E3F0C` |
+| `--accent-tint` | `#2A1E17` | `#FFE7D8` |
+| `--on-accent` | `#1A0E06` | `#1A0E06` |
+| `--on-tint-text` | `#E7D3C7` | `#5A3422` |
+| `--blue` | `#7DB0FF` | `#2F6FD6` |
+| `--blue-text` | `#9CC4FF` | `#1F57B0` |
+| `--blue-tint` | `#1A2433` | `#E3EDFB` |
+| `--blue-tint-text` | `#C9D8EE` | `#23406B` |
+| `--green` | `#5FD3B3` | `#1F9E7C` |
+| `--green-text` | `#8BE3CA` | `#12735A` |
+| `--violet` | `#C9A2FF` | `#7D4CCB` |
+| `--danger-text` | `#FF9C9C` | `#B3261E` |
+| `--danger-line` | `#5A3A3A` | `#E5B2AE` |
+| `--overlay` | `rgba(11,12,15,.94)` | `rgba(245,246,248,.96)` |
+| `--diagram-line` | `#8C93A0` | `#7A818C` |
+
+Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--accent-text`; superfici `--surface`, bordi `--line` / `--line-strong`; raggi 12–16 px per card e pulsanti, 24 px per i fogli dal basso.
+
+## Schermate dell'MVP (numeri del canvas)
+| N. | Schermata | Route |
+| --- | --- | --- |
+| 01 | Oggi | `#/` |
+| 02 | Canzoni | `#/songs` |
+| 03 | Aggiungi canzone | `#/songs/new` |
+| 04 | Analisi in corso | `#/songs/:id/analyzing` |
+| 05 | Studio canzone | `#/songs/:id` |
+| 06 | Scheda chunk/parola | foglio dal basso su `#/songs/:id?item=:itemId` |
+| 19 | Smista parole | `#/songs/:id/triage` |
+| 10 | Card Riconosci | `#/session` |
+| 11 | Card Completa | `#/session` |
+| 14 | Timer scaduto | foglio su `#/session` |
+| 18 | Impostazioni | `#/settings` |
+
+Navigazione in basso: Oggi, Canzoni, Lessico (Lessico disabilitato nell'MVP con etichetta "Presto"). Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
