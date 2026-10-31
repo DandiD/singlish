@@ -36,13 +36,21 @@ export function Analyzing({ songId }: { songId: string }) {
           if (alive) setState({ kind: 'analyzed', song: before, pending })
           return
         }
-        const ranks = await loadRanks(fetch)
+        let ranks = new Map<string, number>()
+        let online = navigator.onLine
+        if (online) {
+          try {
+            ranks = await loadRanks(fetch)
+          } catch {
+            online = false // senza frequenze non si può analizzare: la canzone va in coda
+          }
+        }
         const outcome = await analyzeSong(db, songId, {
           fetch,
           sleep,
           now: now(),
           ranks,
-          online: navigator.onLine,
+          online,
         })
         if (!alive) return
         if (outcome === 'queued') {
@@ -106,11 +114,14 @@ export function Analyzing({ songId }: { songId: string }) {
             <h2>Analisi completata</h2>
             {state.song.difficultyKnownPct !== null && state.song.difficultyKnownPct < 60 && (
               <div class="outcome">
-                <p><strong>Capiresti il {state.song.difficultyKnownPct}%</strong></p>
-                <p>Puoi studiarla lo stesso o tenerla per più avanti.</p>
+                <p>
+                  {`Capiresti il ${state.song.difficultyKnownPct}%: puoi studiarla lo stesso o tenerla per più avanti`}
+                </p>
               </div>
             )}
-            <button type="button" class="btn primary cta" onClick={studyNow}>Studiala ora</button>
+            {state.song.status !== 'done' && (
+              <button type="button" class="btn primary cta" onClick={studyNow}>Studiala ora</button>
+            )}
             <a class="btn outline" href={href({ name: 'songs' })}>Tienila per più avanti</a>
           </>
         )}
@@ -137,7 +148,7 @@ export function Analyzing({ songId }: { songId: string }) {
                 <button type="button" class="btn outline" onClick={() => setAttempt((n) => n + 1)}>Riprova</button>
               </>
             )}
-            <a class="btn outline" href={href({ name: 'songs' })}>Lascia in coda</a>
+            <a class="btn outline" href={href({ name: 'songs' })}>Torna alle canzoni</a>
           </div>
         )}
       </section>

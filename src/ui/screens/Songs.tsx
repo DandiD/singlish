@@ -58,7 +58,7 @@ export function Songs() {
             </p>
             {s.comprehensionBefore !== null && <p class="mono">{s.comprehensionBefore}% prima</p>}
             <div class="song-actions">
-              {s.status === 'queued' && (
+              {(s.status === 'queued' || s.status === 'draft') && (
                 <a class="btn outline" href={href({ name: 'analyzing', songId: s.id })}>Analizza ora</a>
               )}
               {(s.status === 'analyzed' || s.status === 'studying') && (

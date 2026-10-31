@@ -38,7 +38,7 @@ export function AddSong() {
     const h = (e: Event) => void onLinkBlur(e)
     el.addEventListener('blur', h)
     return () => el.removeEventListener('blur', h)
-  }, [fetch])
+  })
 
   const submit = async (e: Event) => {
     e.preventDefault()
@@ -46,6 +46,10 @@ export function AddSong() {
     setBusy(true)
     setError('')
     try {
+      if ((await openSongCount(db)) >= MAX_OPEN) {
+        setBusy(false)
+        return
+      }
       const song = await createSong(
         db,
         {

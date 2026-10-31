@@ -94,6 +94,13 @@ describe('Songs', () => {
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
+  test('draft song shows Analizza ora', async () => {
+    const s = await createSong(db, { ...input, title: 'Draft one' }, now)
+    mount(<Songs />)
+    await screen.findByText('Draft one')
+    expect(screen.getByRole('link', { name: 'Analizza ora' }).getAttribute('href')).toBe(`#/songs/${s.id}/analyzing`)
+  })
+
   test('shows status labels and percent before, queued has Analizza ora', async () => {
     const s = await createSong(db, { ...input, title: 'Queued one' }, now)
     await db.songs.update(s.id, { status: 'queued' })
