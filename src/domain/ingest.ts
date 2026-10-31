@@ -1,10 +1,10 @@
 import type { SinglishDB } from '../db/db'
-import type { CardRow, Chunk, Context, Song, Word } from '../db/types'
+import type { Chunk, Context, Song, Word } from '../db/types'
 import { filterWordsByBand } from './freq'
 import { GeminiError, callGemini } from './gemini/client'
 import { parseAnalysis, type Analysis } from './gemini/parse'
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT, buildUserMessage } from './gemini/prompt'
-import { newFsrsCard } from './scheduler'
+import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
 import { normalizeKey, splitLines } from './text'
 
@@ -91,17 +91,7 @@ export async function saveAnalysis(
         suspended: false,
       }
       await db.chunks.add(chunk)
-      const card = (kind: 'R' | 'C'): CardRow => ({
-        id: crypto.randomUUID(),
-        itemType: 'chunk',
-        itemId: chunk.id,
-        kind,
-        unlocked: kind === 'R' ? 1 : 0,
-        due: now,
-        fsrs: newFsrsCard(now),
-        goodRCount: 0,
-      })
-      await db.cards.bulkAdd([card('R'), card('C')])
+      await db.cards.bulkAdd(newCardPair('chunk', chunk.id, now))
       chunksAdded++
     }
 
