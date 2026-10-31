@@ -1,0 +1,112 @@
+import { State } from 'ts-fsrs'
+import type { SinglishDB } from '../db/db'
+import type { CardRow } from '../db/types'
+import { getSettings } from './settings'
+
+export const DEFAULT_SECONDS_PER_REVIEW = 12
+const AVG_WINDOW = 200
+const AVG_MIN_SAMPLES = 50
+
+export type QueueItem = { card: CardRow; isNew: boolean }
+
+/** Local midnight of the day containing `now` (DST-safe). */
+export function startOfLocalDay(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+}
+
+export async function estimateAvgSeconds(db: SinglishDB): Promise<number> {
+  const last = await db.reviews.orderBy('reviewedAt').reverse().limit(AVG_WINDOW).toArray()
+  if (last.length < AVG_MIN_SAMPLES) return DEFAULT_SECONDS_PER_REVIEW
+  const totalMs = last.reduce((sum, r) => sum + r.elapsedMs, 0)
+  return totalMs / last.length / 1000
+}
+
+export async function buildSessionQueue(
+  db: SinglishDB,
+  now: Date,
+): Promise<{
+  items: QueueItem[]
+  dueCount: number
+  newCount: number
+  estMinutes: number
+  newBlockedByLoad: boolean
+}> {
+  const settings = await getSettings(db)
+  const avgSeconds = await estimateAvgSeconds(db)
+
+  const [chunks, words, songs, unlocked] = await Promise.all([
+    db.chunks.toArray(),
+    db.words.toArray(),
+    db.songs.toArray(),
+    db.cards
+      .where('[unlocked+due]')
+      .between([1, new Date(0)], [1, now], true, true)
+      .toArray(),
+  ])
+  const chunkById = new Map(chunks.map((c) => [c.id, c]))
+  const wordById = new Map(words.map((w) => [w.id, w]))
+  const songAdded = new Map(songs.map((s) => [s.id, s.addedAt.getTime()]))
+
+  const itemOf = (c: CardRow) => (c.itemType === 'chunk' ? chunkById.get(c.itemId) : wordById.get(c.itemId))
+  const active = (c: CardRow) => {
+    const item = itemOf(c)
+    return !!item && !item.suspended
+  }
+
+  const seen = new Set<string>()
+  const items: QueueItem[] = []
+
+  const dueCards = unlocked
+    .filter((c) => c.fsrs.state !== State.New && active(c))
+    .sort((a, b) => a.due.getTime() - b.due.getTime())
+  for (const card of dueCards) {
+    if (seen.has(card.itemId)) continue
+    seen.add(card.itemId)
+    items.push({ card, isNew: false })
+  }
+  const dueCount = items.length
+
+  const doneToday = await db.reviews
+    .where('reviewedAt')
+    .between(startOfLocalDay(now), now, true, true)
+    .filter((r) => r.wasNew)
+    .count()
+  let budget = Math.max(0, settings.newPerDay - doneToday)
+  const newBlockedByLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review
+  if (newBlockedByLoad) budget = 0
+
+  if (budget > 0) {
+    const sortKey = (c: CardRow) => {
+      const item = itemOf(c)!
+      return {
+        group: c.itemType === 'chunk' ? 0 : 1,
+        added: songAdded.get(item.songId) ?? 0,
+        line: item.lineIndex,
+        kind: c.kind === 'R' ? 0 : 1,
+      }
+    }
+    const candidates = (
+      await db.cards.where('[unlocked+due]').between([1, new Date(0)], [1, new Date(8.64e15)]).toArray()
+    )
+      .filter((c) => {
+        if (c.fsrs.state !== State.New || !active(c)) return false
+        return c.itemType === 'chunk' || wordById.get(c.itemId)?.triage === 'learn'
+      })
+      .map((c) => ({ c, k: sortKey(c) }))
+      .sort((x, y) => x.k.group - y.k.group || x.k.added - y.k.added || x.k.line - y.k.line || x.k.kind - y.k.kind)
+    for (const { c } of candidates) {
+      if (items.length - dueCount >= budget) break
+      if (seen.has(c.itemId)) continue
+      seen.add(c.itemId)
+      items.push({ card: c, isNew: true })
+    }
+  }
+
+  return {
+    items,
+    dueCount,
+    newCount: items.length - dueCount,
+    estMinutes: Math.ceil((items.length * avgSeconds) / 60),
+    newBlockedByLoad,
+  }
+}
