@@ -1,5 +1,7 @@
 import { useRoute, type Route } from './router'
 import { BottomNav } from './ui/components/BottomNav'
+import { AppDepsProvider, useDeps } from './ui/deps'
+import { Settings } from './ui/screens/Settings'
 
 function title(route: Route): string {
   switch (route.name) {
@@ -18,12 +20,18 @@ function title(route: Route): string {
 export function App() {
   const route = useRoute()
   return (
-    <div class="app">
-      <main class="screen">
-        <h1>{title(route)}</h1>
-        <p>In arrivo.</p>
-      </main>
-      <BottomNav route={route} />
-    </div>
+    <AppDepsProvider value={useDeps()}>
+      <div class="app">
+        {route.name === 'settings' ? (
+          <Settings />
+        ) : (
+          <main class="screen">
+            <h1>{title(route)}</h1>
+            <p>In arrivo.</p>
+          </main>
+        )}
+        {route.name !== 'settings' && <BottomNav route={route} />}
+      </div>
+    </AppDepsProvider>
   )
 }

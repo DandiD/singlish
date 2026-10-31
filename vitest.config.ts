@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   test: {
+    server: { deps: { inline: ['dexie-react-hooks'] } },
     environment: 'happy-dom',
     setupFiles: ['tests/setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],

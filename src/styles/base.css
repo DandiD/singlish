@@ -36,3 +36,34 @@ a { color: var(--accent-text); }
 .bottom-nav a[aria-current="page"] { color: var(--accent-text); background: var(--accent-tint); }
 .bottom-nav .disabled { color: var(--ghost-text); }
 .bottom-nav .disabled small { font-size: 11px; color: var(--muted-2); }
+
+/* Settings */
+.settings { padding-bottom: 32px; display: flex; flex-direction: column; gap: 14px; }
+.settings-head { display: flex; align-items: center; gap: 12px; }
+.settings-head h1 { font-size: 22px; margin: 0; }
+.icon-btn {
+  width: 44px; height: 44px; border-radius: 22px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line); background: var(--surface); color: var(--text); text-decoration: none; font-size: 24px;
+}
+.settings section { display: flex; flex-direction: column; gap: 10px; }
+.section-label { font-family: inherit; font-size: 12px; font-weight: 600; letter-spacing: .6px; color: var(--muted); margin: 8px 0 0; }
+.segmented { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.segmented button { min-height: 44px; border-radius: 10px; font-size: 14px; background: transparent; border: 1px solid transparent; color: var(--text-2); }
+.segmented button.on { background: var(--surface); border-color: var(--line-strong); font-weight: 600; color: var(--text); }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-2); }
+.field.grow { flex: 1; }
+.field input, .field select {
+  min-height: 48px; padding: 0 12px; border-radius: 12px; font-size: 16px;
+  border: 1px solid var(--line-strong); background: var(--surface); color: var(--text);
+}
+.field input[type="range"] { min-height: 44px; padding: 0; accent-color: var(--accent); }
+.row { display: flex; gap: 10px; align-items: flex-end; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { min-height: 48px; padding: 0 16px; border-radius: 12px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.btn.outline { background: transparent; border: 1px solid var(--line-strong); color: var(--text); }
+.btn.primary { background: var(--accent); border: 1px solid var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn:disabled { opacity: .5; cursor: default; }
+.note { font-size: 13px; color: var(--muted); margin: 0; }
+.note.danger { color: var(--danger-text); }
+.confirm { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--danger-line); }
+.confirm p { margin: 0; font-weight: 600; }
