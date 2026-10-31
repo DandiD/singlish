@@ -2,6 +2,9 @@ import { useRoute, type Route } from './router'
 import { BottomNav } from './ui/components/BottomNav'
 import { AppDepsProvider, useDeps } from './ui/deps'
 import { Settings } from './ui/screens/Settings'
+import { Songs } from './ui/screens/Songs'
+import { AddSong } from './ui/screens/AddSong'
+import { Analyzing } from './ui/screens/Analyzing'
 
 function title(route: Route): string {
   switch (route.name) {
@@ -24,13 +27,19 @@ export function App() {
       <div class="app">
         {route.name === 'settings' ? (
           <Settings />
+        ) : route.name === 'songs' ? (
+          <Songs />
+        ) : route.name === 'addSong' ? (
+          <AddSong />
+        ) : route.name === 'analyzing' ? (
+          <Analyzing key={route.songId} songId={route.songId} />
         ) : (
           <main class="screen">
             <h1>{title(route)}</h1>
             <p>In arrivo.</p>
           </main>
         )}
-        {route.name !== 'settings' && <BottomNav route={route} />}
+        {route.name !== 'settings' && route.name !== 'addSong' && route.name !== 'analyzing' && <BottomNav route={route} />}
       </div>
     </AppDepsProvider>
   )

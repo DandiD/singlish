@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { analyzeSong, createSong, openSongCount, saveAnalysis } from '../../src/domain/ingest'
+import { analyzeSong, createSong, openSongCount, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
 import fixtureJson from '../fixtures/analysis.json'
@@ -122,5 +122,38 @@ describe('analyzeSong', () => {
   })
   test('missing song throws', async () => {
     await expect(analyzeSong(db, 'nope', deps())).rejects.toThrow()
+  })
+})
+
+describe('retryQueuedSongs', () => {
+  test('re-analyzes queued songs sequentially and ignores per-song errors', async () => {
+    await saveSettings(db, { apiKey: 'k' })
+    const a = await createSong(db, input, now)
+    const b = await createSong(db, input, now)
+    await db.songs.update(a.id, { status: 'queued' })
+    await db.songs.update(b.id, { status: 'queued' })
+    const fetchFn = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 400 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        candidates: [{ content: { parts: [{ text: JSON.stringify(analysis) }] } }],
+      })))
+    const freq = vi.fn().mockResolvedValue(ranks)
+    await retryQueuedSongs(
+      { db, fetch: fetchFn as unknown as typeof fetch, sleep, now: () => now },
+      { online: true, loadRanksFn: freq },
+    )
+    const statuses = (await db.songs.toArray()).map((s) => s.status).sort()
+    expect(statuses).toEqual(['analyzed', 'queued'])
+  })
+
+  test('does nothing when offline', async () => {
+    const a = await createSong(db, input, now)
+    await db.songs.update(a.id, { status: 'queued' })
+    const fetchFn = vi.fn()
+    await retryQueuedSongs(
+      { db, fetch: fetchFn as unknown as typeof fetch, sleep, now: () => now },
+      { online: false },
+    )
+    expect(fetchFn).not.toHaveBeenCalled()
   })
 })

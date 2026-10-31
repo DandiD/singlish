@@ -1,6 +1,6 @@
 import type { SinglishDB } from '../db/db'
 import type { Chunk, Context, Song, Word } from '../db/types'
-import { filterWordsByBand } from './freq'
+import { filterWordsByBand, loadRanks } from './freq'
 import { GeminiError, callGemini } from './gemini/client'
 import { parseAnalysis, type Analysis } from './gemini/parse'
 import { RESPONSE_SCHEMA, SYSTEM_PROMPT, buildUserMessage } from './gemini/prompt'
@@ -220,4 +220,33 @@ export async function analyzeSong(
 
 export async function openSongCount(db: SinglishDB): Promise<number> {
   return db.songs.where('status').anyOf('analyzed', 'studying').count()
+}
+
+export async function retryQueuedSongs(
+  deps: { db: SinglishDB; fetch: typeof fetch; sleep: (ms: number) => Promise<void>; now: () => Date },
+  opts: { online?: boolean; loadRanksFn?: (f: typeof fetch) => Promise<Map<string, number>> } = {},
+): Promise<void> {
+  const online = opts.online ?? navigator.onLine
+  if (!online) return
+  const queued = await deps.db.songs.where('status').equals('queued').toArray()
+  if (queued.length === 0) return
+  let ranks: Map<string, number>
+  try {
+    ranks = await (opts.loadRanksFn ?? loadRanks)(deps.fetch)
+  } catch {
+    return
+  }
+  for (const song of queued) {
+    try {
+      await analyzeSong(deps.db, song.id, {
+        fetch: deps.fetch,
+        sleep: deps.sleep,
+        now: deps.now(),
+        ranks,
+        online: true,
+      })
+    } catch {
+      // resta in coda o fallisce: si riprova alla prossima apertura
+    }
+  }
 }

@@ -67,3 +67,31 @@ a { color: var(--accent-text); }
 .note.danger { color: var(--danger-text); }
 .confirm { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--danger-line); }
 .confirm p { margin: 0; font-weight: 600; }
+
+/* Songs, AddSong, Analyzing */
+.songs-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.songs-head h1 { margin: 0; font-size: 28px; }
+.btn.pill { border-radius: 22px; min-height: 44px; }
+.song-list { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.song-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.song-card h2 { margin: 0; font-size: 17px; }
+.song-card p { margin: 0; }
+.song-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.badge { font-size: 12px; font-weight: 600; color: var(--accent-text-2); text-transform: uppercase; letter-spacing: .4px; }
+.song-actions { display: flex; gap: 8px; }
+.song-actions .btn, .analyzing .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.add-song { display: flex; flex-direction: column; gap: 14px; }
+.add-form { display: flex; flex-direction: column; gap: 16px; }
+.add-form section { display: flex; flex-direction: column; gap: 10px; }
+.add-form .card { padding: 16px; border-radius: 16px; background: var(--surface); border: 1px solid var(--line); }
+.range-row { display: flex; align-items: flex-end; gap: 12px; }
+.range-value { font-size: 22px; min-width: 64px; text-align: right; }
+textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: inherit; font-size: 15px; line-height: 1.5; resize: none; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); }
+.btn.cta { min-height: 56px; border-radius: 16px; font-size: 17px; }
+.note.center { text-align: center; }
+.analyzing { display: flex; flex-direction: column; gap: 14px; }
+.analyzing .card { display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.analyzing h2 { margin: 0; font-size: 22px; }
+.analyzing p { margin: 0; }
+.steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 15px; }
+.outcome { padding: 16px; border-radius: 16px; background: var(--accent-tint); color: var(--accent-text-2); }

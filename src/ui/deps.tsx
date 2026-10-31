@@ -10,7 +10,7 @@ export type AppDeps = {
   now: () => Date
 }
 
-const defaultDeps: AppDeps = {
+export const defaultDeps: AppDeps = {
   db,
   fetch: (...args) => window.fetch(...args),
   sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
