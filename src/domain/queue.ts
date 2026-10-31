@@ -9,6 +9,11 @@ const AVG_MIN_SAMPLES = 50
 
 export type QueueItem = { card: CardRow; isNew: boolean }
 
+/** Local midnight of the day after the one containing `now` (DST-safe: local constructor, not +24h). */
+export function startOfNextLocalDay(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+}
+
 /** Local midnight of the day containing `now` (DST-safe). */
 export function startOfLocalDay(now: Date): Date {
   return new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -40,7 +45,7 @@ export async function buildSessionQueue(
     db.songs.toArray(),
     db.cards
       .where('[unlocked+due]')
-      .between([1, new Date(0)], [1, now], true, true)
+      .between([1, new Date(0)], [1, startOfNextLocalDay(now)], true, false)
       .toArray(),
   ])
   const chunkById = new Map(chunks.map((c) => [c.id, c]))

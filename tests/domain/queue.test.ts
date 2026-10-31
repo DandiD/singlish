@@ -160,3 +160,34 @@ describe('buildSessionQueue', () => {
     expect(q.items.map((i) => i.card.itemId)).not.toContain('c-susp')
   })
 })
+
+describe('due selection uses the local day', () => {
+  async function fresh(ids: [string, Date][]) {
+    db = createDb('t-' + crypto.randomUUID())
+    await db.songs.add(song('s1', at('2026-10-02T10:00:00')))
+    await db.chunks.bulkAdd(ids.map(([id]) => chunk(id, 's1', 0)))
+    await db.cards.bulkAdd(ids.map(([id, due]) => dueRow(id, due)))
+  }
+  const dueIds = async (n: Date) =>
+    (await buildSessionQueue(db, n)).items.filter((i) => !i.isNew).map((i) => i.card.itemId)
+
+  test('a card due later today (21:00) is included at 09:00', async () => {
+    await fresh([['later', at('2026-10-31T21:00:00')]])
+    const q = await buildSessionQueue(db, at('2026-10-31T09:00:00'))
+    expect(q.dueCount).toBe(1)
+    expect(await dueIds(at('2026-10-31T09:00:00'))).toEqual(['later'])
+  })
+
+  test('a card due tomorrow 00:30 is not included', async () => {
+    await fresh([['tomorrow', at('2026-11-01T00:30:00')], ['today', at('2026-10-31T23:59:00')]])
+    expect(await dueIds(at('2026-10-31T09:00:00'))).toEqual(['today'])
+  })
+
+  test('DST day (2026-10-25, 25h long): boundary is the next local midnight', async () => {
+    await fresh([
+      ['late-evening', at('2026-10-25T23:30:00')],
+      ['next-day', at('2026-10-26T00:00:00')],
+    ])
+    expect(await dueIds(at('2026-10-25T01:00:00'))).toEqual(['late-evening'])
+  })
+})
