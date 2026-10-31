@@ -1,0 +1,65 @@
+import { createEmptyCard, fsrs, generatorParameters, Rating, State, type Card } from 'ts-fsrs'
+import type { SinglishDB } from '../db/db'
+import type { CardRow, Rating as RatingValue } from '../db/types'
+
+export function newFsrsCard(now: Date): Card {
+  return createEmptyCard(now)
+}
+
+export function newCardPair(itemType: CardRow['itemType'], itemId: string, now: Date): CardRow[] {
+  return (['R', 'C'] as const).map((kind) => ({
+    id: crypto.randomUUID(),
+    itemType,
+    itemId,
+    kind,
+    unlocked: kind === 'R' ? (1 as const) : (0 as const),
+    due: now,
+    fsrs: newFsrsCard(now),
+    goodRCount: 0,
+  }))
+}
+
+const RATING_MAP = { 1: Rating.Again, 2: Rating.Hard, 3: Rating.Good, 4: Rating.Easy } as const
+
+export function createScheduler(desiredRetention: number) {
+  return fsrs(generatorParameters({ request_retention: desiredRetention, enable_fuzz: false }))
+}
+
+export async function recordReview(
+  db: SinglishDB,
+  cardId: string,
+  input: { rating: RatingValue; auto: boolean; answer: string | null; elapsedMs: number },
+  now: Date,
+  desiredRetention: number,
+): Promise<CardRow> {
+  return db.transaction('rw', db.cards, db.reviews, async () => {
+    const card = await db.cards.get(cardId)
+    if (!card) throw new Error(`Card not found: ${cardId}`)
+    const result = createScheduler(desiredRetention).next(card.fsrs, now, RATING_MAP[input.rating])
+    const goodRCount =
+      card.kind === 'R' && input.rating !== 1 ? card.goodRCount + 1 : card.goodRCount
+    const updated: CardRow = { ...card, fsrs: result.card, due: result.card.due, goodRCount }
+    await db.cards.put(updated)
+    await db.reviews.add({
+      id: crypto.randomUUID(),
+      cardId,
+      rating: input.rating,
+      auto: input.auto,
+      answer: input.answer,
+      elapsedMs: input.elapsedMs,
+      reviewedAt: now,
+      wasNew: card.fsrs.state === State.New,
+    })
+    if (card.kind === 'R' && goodRCount >= 2) {
+      const sibling = await db.cards
+        .where('itemId')
+        .equals(card.itemId)
+        .filter((c) => c.kind === 'C' && c.itemType === card.itemType)
+        .first()
+      if (sibling && sibling.unlocked === 0) {
+        await db.cards.update(sibling.id, { unlocked: 1, due: now })
+      }
+    }
+    return updated
+  })
+}
