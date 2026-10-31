@@ -151,3 +151,48 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .radios button { min-height: 44px; border-radius: 12px; font-size: 15px; background: transparent; color: var(--text-2); border: 1px solid var(--line-strong); }
 .radios button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
 .triage-foot { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; }
+
+/* Today, Session */
+.today { display: flex; flex-direction: column; gap: 14px; }
+.today-head { display: flex; align-items: center; justify-content: space-between; }
+.wordmark { font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -.5px; }
+.today-card { display: flex; flex-direction: column; gap: 16px; padding: 20px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.today-card h1 { margin: 0; font-size: 28px; }
+.today-card p { margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat { display: flex; flex-direction: column; }
+.stat-num { font-size: 28px; font-weight: 600; }
+.today .btn, .session .btn, .session-done .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.today-songs-head { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; }
+.today-songs-head h2 { margin: 0; font-size: 18px; }
+.link-add { min-height: 44px; display: inline-flex; align-items: center; font-size: 15px; font-weight: 500; color: var(--accent-text); text-decoration: none; }
+.today .song-card { text-decoration: none; color: var(--text); }
+.today .song-card h3 { margin: 0; font-size: 16px; }
+.bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--accent); }
+
+.session { display: flex; flex-direction: column; gap: 14px; padding-bottom: 32px; min-height: 100dvh; }
+.session-head { display: flex; align-items: center; gap: 12px; }
+.session-card { display: flex; flex-direction: column; gap: 20px; padding: 24px; border-radius: 24px; background: var(--surface); border: 1px solid var(--line); }
+.session-card .chip { align-self: flex-start; }
+.verse { font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 26px; line-height: 1.35; margin: 0; }
+.gap { display: inline-block; min-width: 120px; border-bottom: 2px dashed var(--accent); }
+.meaning { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.c-answer { display: flex; flex-direction: column; gap: 14px; }
+.c-answer input { min-height: 56px; padding: 0 14px; border-radius: 14px; font-size: 20px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); }
+.feedback { padding: 14px; border-radius: 14px; background: var(--surface-2); }
+.feedback p { margin: 4px 0 0; font-size: 14px; color: var(--text-2); }
+.feedback.f3 strong { color: var(--green-text); }
+.feedback.f2 strong { color: var(--accent-text-2); }
+.feedback.f1 strong { color: var(--danger-text); }
+.rating-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.rating-btn { min-height: 48px; min-width: 44px; border-radius: 12px; font-size: 15px; font-weight: 600; background: var(--surface); color: var(--text); border: 1px solid var(--line-strong); cursor: pointer; }
+.rating-btn.r1 { border-color: var(--danger-line); color: var(--danger-text); }
+.rating-btn.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 32px; background: var(--overlay); }
+.overlay-box { width: 100%; max-width: 420px; display: flex; flex-direction: column; align-items: stretch; gap: 20px; text-align: center; }
+.overlay-box h2 { margin: 0; font-size: 26px; }
+.pause-time { font-size: 56px; }
+.intro.center { text-align: center; }
+.stat-box { padding: 12px; border-radius: 12px; background: var(--surface-2); text-align: center; font-size: 14px; }
+.session-done { align-items: stretch; justify-content: center; }
