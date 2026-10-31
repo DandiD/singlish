@@ -25,6 +25,7 @@ const LEGEND: [string, string][] = [
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const { db, now } = useDeps()
   const [sessionId, setSessionId] = useState('')
+  const [confirming, setConfirming] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -141,6 +142,29 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           <a class="btn outline" href={song.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
         </footer>
       )}
+
+      <footer class="study-foot">
+        {confirming ? (
+          <div class="confirm" role="alertdialog" aria-label="Conferma completamento">
+            <p>Segnare questa canzone come completata? Libera un posto tra le canzoni aperte.</p>
+            <div class="grid2">
+              <button type="button" class="btn outline" onClick={() => setConfirming(false)}>Annulla</button>
+              <button
+                type="button"
+                class="btn primary"
+                onClick={async () => {
+                  await db.songs.update(songId, { status: 'done' })
+                  window.location.hash = href({ name: 'songs' })
+                }}
+              >
+                Conferma
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" class="btn outline" onClick={() => setConfirming(true)}>Segna come completata</button>
+        )}
+      </footer>
 
       {itemId && <ItemSheet song={song} itemId={itemId} />}
     </main>

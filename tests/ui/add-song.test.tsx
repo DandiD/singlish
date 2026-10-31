@@ -69,6 +69,24 @@ describe('AddSong', () => {
     expect(btn.disabled).toBe(false)
   })
 
+  test('only section headers (no lyric lines) disables submit', () => {
+    mount(<AddSong />)
+    const btn = screen.getByRole('button', { name: 'Analizza con Gemini' }) as HTMLButtonElement
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: '[Chorus]\n[Verse 2]' } })
+    expect(btn.disabled).toBe(true)
+  })
+
+  test('AddSong is blocked by 3 analyzed + 1 queued songs', async () => {
+    for (const status of ['analyzed', 'analyzed', 'analyzed', 'queued'] as const) {
+      const s = await createSong(db, { title: 'S', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: 0 }, now)
+      await db.songs.update(s.id, { status })
+    }
+    mount(<AddSong />)
+    await screen.findByText('Massimo 4 canzoni aperte')
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'hello there' } })
+    expect((screen.getByRole('button', { name: 'Analizza con Gemini' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   test('submit creates the song and goes to analyzing', async () => {
     mount(<AddSong />)
     fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: 'T' } })
@@ -92,6 +110,26 @@ describe('Songs', () => {
     mount(<Songs />)
     await screen.findByText('Massimo 4 canzoni aperte')
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  test('3 analyzed + 1 queued also disables Aggiungi', async () => {
+    for (const status of ['analyzed', 'analyzed', 'analyzed', 'queued'] as const) {
+      const s = await createSong(db, input, now)
+      await db.songs.update(s.id, { status })
+    }
+    mount(<Songs />)
+    await screen.findByText('Massimo 4 canzoni aperte')
+    expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  test('done songs do not count towards the limit', async () => {
+    for (const status of ['done', 'done', 'done', 'done', 'analyzed'] as const) {
+      const s = await createSong(db, input, now)
+      await db.songs.update(s.id, { status })
+    }
+    mount(<Songs />)
+    await screen.findAllByText('S')
+    expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(false)
   })
 
   test('draft song shows Analizza ora', async () => {

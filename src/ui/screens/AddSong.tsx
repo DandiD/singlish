@@ -3,13 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
 import { href } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
-import { createSong, openSongCount } from '../../domain/ingest'
+import { splitLines } from '../../domain/text'
+import { createSong, activeSongCount } from '../../domain/ingest'
 
 const MAX_OPEN = 4
 
 export function AddSong() {
   const { db, fetch, now } = useDeps()
-  const open = useLiveQuery(() => openSongCount(db), [db])
+  const open = useLiveQuery(() => activeSongCount(db), [db])
   const [link, setLink] = useState('')
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
@@ -21,7 +22,7 @@ export function AddSong() {
   const linkRef = useRef<HTMLInputElement>(null)
 
   const full = (open ?? 0) >= MAX_OPEN
-  const canSubmit = text.trim() !== '' && !full && !busy
+  const canSubmit = splitLines(text).length > 0 && !full && !busy
   const canonical = parseSpotifyTrackUrl(link)
 
   const onLinkBlur = async (e: Event) => {
@@ -46,7 +47,7 @@ export function AddSong() {
     setBusy(true)
     setError('')
     try {
-      if ((await openSongCount(db)) >= MAX_OPEN) {
+      if ((await activeSongCount(db)) >= MAX_OPEN) {
         setBusy(false)
         return
       }

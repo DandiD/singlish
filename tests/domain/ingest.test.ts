@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { analyzeSong, createSong, openSongCount, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
+import { activeSongCount, analyzeSong, createSong, openSongCount, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
 import fixtureJson from '../fixtures/analysis.json'
@@ -100,6 +100,15 @@ describe('analyzeSong', () => {
     expect(f).not.toHaveBeenCalled()
     expect((await db.songs.get(song.id))!.status).toBe('queued')
     expect(await openSongCount(db)).toBe(0)
+    expect(await activeSongCount(db)).toBe(1)
+  })
+  test('activeSongCount counts everything but done', async () => {
+    for (const status of ['draft', 'queued', 'analyzed', 'studying', 'done'] as const) {
+      const s = await createSong(db, input, now)
+      await db.songs.update(s.id, { status })
+    }
+    expect(await activeSongCount(db)).toBe(4)
+    expect(await openSongCount(db)).toBe(2)
   })
   test('rate limited ends queued', async () => {
     await saveSettings(db, { apiKey: 'k' })

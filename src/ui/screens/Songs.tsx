@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { openSongCount } from '../../domain/ingest'
+import { activeSongCount } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 
 const MAX_OPEN = 4
@@ -24,7 +24,7 @@ const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long'
 export function Songs() {
   const { db } = useDeps()
   const songs = useLiveQuery(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
-  const open = useLiveQuery(() => openSongCount(db), [db])
+  const open = useLiveQuery(() => activeSongCount(db), [db])
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
   const full = open >= MAX_OPEN

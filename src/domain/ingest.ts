@@ -222,6 +222,11 @@ export async function openSongCount(db: SinglishDB): Promise<number> {
   return db.songs.where('status').anyOf('analyzed', 'studying').count()
 }
 
+/** Songs that count toward the add limit: everything not yet 'done' (draft, queued, analyzed, studying). */
+export async function activeSongCount(db: SinglishDB): Promise<number> {
+  return db.songs.where('status').notEqual('done').count()
+}
+
 export async function retryQueuedSongs(
   deps: { db: SinglishDB; fetch: typeof fetch; sleep: (ms: number) => Promise<void>; now: () => Date },
   opts: { online?: boolean; loadRanksFn?: (f: typeof fetch) => Promise<Map<string, number>> } = {},
