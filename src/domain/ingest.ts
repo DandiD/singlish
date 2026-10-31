@@ -106,28 +106,39 @@ export async function saveAnalysis(
     }
 
     const known = new Set((await db.words.toArray()).map((w) => w.lemma.toLowerCase()))
-    const fresh = []
-    for (const w of analysis.words) {
-      const lemma = w.lemma.trim().toLowerCase()
+    const fresh: ((typeof analysis.words)[number])[] = []
+    const extraLines = new Map<string, number[]>()
+    for (const raw of analysis.words) {
+      const w = { ...raw, lemma: raw.lemma.trim().toLowerCase() }
+      const lemma = w.lemma
       if (known.has(lemma)) {
         const existing = await db.words.where('lemma').equals(lemma).first()
         if (existing && addContext(existing.contexts, { songId, lineIndex: w.line_index })) {
           await db.words.put(existing)
         }
+      } else if (extraLines.has(lemma)) {
+        extraLines.get(lemma)!.push(w.line_index)
       } else {
+        extraLines.set(lemma, [])
         fresh.push(w)
       }
     }
     const accepted = filterWordsByBand(fresh, ranks, band, known)
     const rows: Word[] = accepted.map((w) => ({
       id: crypto.randomUUID(),
-      lemma: w.lemma.trim().toLowerCase(),
+      lemma: w.lemma,
       surfaceForm: w.surface_form,
       pos: w.pos,
       freqRank: w.freqRank,
       songId,
       lineIndex: w.line_index,
-      contexts: [{ songId, lineIndex: w.line_index }],
+      contexts: (() => {
+        const ctxs: Context[] = []
+        for (const li of [w.line_index, ...(extraLines.get(w.lemma) ?? [])]) {
+          addContext(ctxs, { songId, lineIndex: li })
+        }
+        return ctxs
+      })(),
       cefr: w.cefr,
       register: w.register,
       topic: w.topic,
@@ -184,8 +195,10 @@ export async function analyzeSong(
   const settings = await getSettings(db)
   const band: [number, number] = [settings.bandStart, settings.bandEnd]
   const known = [
-    ...(await db.chunks.toArray()).map((c) => c.baseForm.toLowerCase()),
-    ...(await db.words.toArray()).map((w) => w.lemma.toLowerCase()),
+    ...new Set([
+      ...(await db.chunks.toArray()).map((c) => c.baseForm.toLowerCase()),
+      ...(await db.words.toArray()).map((w) => w.lemma.toLowerCase()),
+    ]),
   ].slice(0, 300)
   try {
     const raw = await callGemini(

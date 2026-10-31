@@ -58,6 +58,19 @@ describe('saveAnalysis', () => {
     expect((await db.chunks.toArray())[0].contexts).toHaveLength(2)
   })
 
+  test('same lemma on two lines in one analysis saves one word with two contexts', async () => {
+    const s1 = await createSong(db, input, now)
+    const w = analysis.words[1]
+    const dup = { ...analysis, words: [{ ...w, lemma: ' Wander', line_index: 2 }, { ...w, line_index: 7 }] }
+    const r = await saveAnalysis(db, s1.id, dup, ranks, now)
+    expect(r).toMatchObject({ chunksAdded: 3, wordsPending: 1 })
+    const words = await db.words.toArray()
+    expect(words).toHaveLength(1)
+    expect(words[0].lemma).toBe('wander')
+    expect(words[0].contexts).toEqual([{ songId: s1.id, lineIndex: 2 }, { songId: s1.id, lineIndex: 7 }])
+    expect(await db.chunks.count()).toBe(3)
+  })
+
   test('key differing by case/apostrophes reuses the chunk', async () => {
     const s1 = await createSong(db, input, now)
     const s2 = await createSong(db, input, now)
