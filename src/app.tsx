@@ -5,6 +5,8 @@ import { Settings } from './ui/screens/Settings'
 import { Songs } from './ui/screens/Songs'
 import { AddSong } from './ui/screens/AddSong'
 import { Analyzing } from './ui/screens/Analyzing'
+import { Study } from './ui/screens/Study'
+import { Triage } from './ui/screens/Triage'
 
 function title(route: Route): string {
   switch (route.name) {
@@ -33,13 +35,17 @@ export function App() {
           <AddSong />
         ) : route.name === 'analyzing' ? (
           <Analyzing key={route.songId} songId={route.songId} />
+        ) : route.name === 'study' ? (
+          <Study key={route.songId} songId={route.songId} itemId={route.itemId} />
+        ) : route.name === 'triage' ? (
+          <Triage key={route.songId} songId={route.songId} />
         ) : (
           <main class="screen">
             <h1>{title(route)}</h1>
             <p>In arrivo.</p>
           </main>
         )}
-        {route.name !== 'settings' && route.name !== 'addSong' && route.name !== 'analyzing' && <BottomNav route={route} />}
+        {route.name !== 'settings' && route.name !== 'addSong' && route.name !== 'analyzing' && route.name !== 'study' && route.name !== 'triage' && <BottomNav route={route} />}
       </div>
     </AppDepsProvider>
   )

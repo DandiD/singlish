@@ -95,3 +95,59 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .analyzing p { margin: 0; }
 .steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; color: var(--muted); font-size: 15px; }
 .outcome { padding: 16px; border-radius: 16px; background: var(--accent-tint); color: var(--accent-text-2); }
+
+/* Study, ItemSheet, Triage */
+.grow { flex: 1; min-width: 0; }
+.study { display: flex; flex-direction: column; gap: 14px; padding-bottom: 32px; }
+.study h1 { margin: 0; font-size: 20px; }
+.banner { display: flex; align-items: center; justify-content: space-between; min-height: 48px; padding: 0 16px; border-radius: 12px; background: var(--accent-tint); color: var(--accent-text-2); font-size: 15px; font-weight: 600; text-decoration: none; }
+.card.grammar { padding: 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); font-size: 14px; }
+.card.grammar p { margin: 4px 0 0; }
+.legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: var(--text-2); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.swatch { display: inline-block; width: 12px; height: 4px; border-radius: 2px; padding: 0; }
+.lyrics { font-size: 18px; line-height: 1.9; }
+.lyrics p { margin: 0; }
+.hl { border-radius: 3px; padding: 0 2px; color: inherit; text-decoration: none; border-bottom: 2px solid transparent; }
+.hl.pv { background: color-mix(in srgb, var(--blue) 16%, transparent); border-bottom-color: var(--blue); }
+.hl.id { background: color-mix(in srgb, var(--accent) 16%, transparent); border-bottom-color: var(--accent); }
+.hl.co, .hl.fp { background: color-mix(in srgb, var(--green) 16%, transparent); border-bottom-color: var(--green); }
+.hl.sl { background: color-mix(in srgb, var(--violet) 16%, transparent); border-bottom-color: var(--violet); }
+.hl.w { border-bottom-color: var(--text-2); }
+.hl.cs { border-bottom: 2px dotted var(--muted); }
+.study-foot { padding-top: 12px; border-top: 1px solid var(--line); }
+.study-foot .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+.sheet-scrim { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: var(--overlay); }
+.sheet { position: relative; width: 100%; max-width: 640px; max-height: 90dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 12px 20px 28px; background: var(--surface); border-top: 1px solid var(--line-strong); border-radius: 24px 24px 0 0; outline: none; }
+.sheet-handle { width: 40px; height: 4px; border-radius: 2px; background: var(--line-strong); align-self: center; }
+.sheet-close { position: absolute; top: 12px; right: 12px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; padding-right: 48px; }
+.chip { padding: 4px 10px; border-radius: 12px; background: var(--chip); color: var(--text-2); font-size: 12px; font-weight: 600; }
+.chip.t-phrasal_verb { background: color-mix(in srgb, var(--blue) 16%, transparent); color: var(--blue-text); }
+.chip.t-idiom { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text-2); }
+.chip.t-collocation, .chip.t-fixed_phrase { background: color-mix(in srgb, var(--green) 16%, transparent); color: var(--green-text); }
+.chip.t-slang { background: color-mix(in srgb, var(--violet) 16%, transparent); color: var(--text); }
+.sheet-title { font-size: 28px; line-height: 1.1; margin: 0; }
+.sheet-meaning { font-size: 17px; font-weight: 600; margin: 0; }
+.sheet-expl { font-size: 14px; color: var(--text-2); margin: 0; }
+.examples { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 14px; background: var(--surface-2); font-size: 15px; }
+.examples p { margin: 4px 0 0; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.btn.danger { border-color: var(--danger-line); color: var(--danger-text); }
+.sheet-edit { display: flex; flex-direction: column; gap: 12px; }
+.sheet-edit textarea { padding: 12px; border-radius: 12px; font: inherit; font-size: 16px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); }
+
+.triage { display: flex; flex-direction: column; gap: 14px; }
+.triage .settings-head h1 { font-size: 20px; }
+.triage .settings-head p { margin: 0; }
+.intro { margin: 4px 0 0; font-size: 14px; color: var(--text-2); line-height: 1.45; }
+.triage-list { list-style: none; margin: 0; padding: 0; }
+.triage-list li { display: flex; flex-direction: column; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--divider); }
+.triage-top { display: flex; align-items: baseline; justify-content: space-between; }
+.triage-word { font-size: 18px; font-weight: 600; }
+.triage-meaning { font-size: 14px; color: var(--text-2); }
+.radios { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.radios button { min-height: 44px; border-radius: 12px; font-size: 15px; background: transparent; color: var(--text-2); border: 1px solid var(--line-strong); }
+.radios button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
+.triage-foot { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; }
