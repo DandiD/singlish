@@ -67,6 +67,17 @@ test('C card: typo is proposed as Difficile; confirming records rating 2 auto tr
   expect(r).toMatchObject({ cardId: 'k2', rating: 2, auto: true, answer: 'let it slid' })
 })
 
+test('C card whose surfaceForm is not in the verse shows meaning and input only, no verse', async () => {
+  await db.chunks.add(chunk('c9', 'let it go', 0))
+  await db.cards.add(reviewCard('k9', 'c9', 'C', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await screen.findByRole('textbox')
+  expect(screen.getByText('sig-c9')).toBeTruthy()
+  expect(container.querySelector('.verse')).toBeNull()
+  expect(container.querySelector('.gap')).toBeNull()
+  expect(screen.queryByText(/Every night/)).toBeNull()
+})
+
 test('C card: changing the proposed rating records auto false', async () => {
   await seedCOnly()
   renderSession()

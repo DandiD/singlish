@@ -258,21 +258,19 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   return (
     <section class="card session-card">
       <span class="chip">{`${isC ? 'COMPLETA' : 'RICONOSCI'}${isNew ? ' · NUOVA' : ''}`}</span>
-      <p class="verse" lang="en">
-        {isC ? (
-          idxGap >= 0 ? (
+      {!(isC && idxGap < 0) && (
+        <p class="verse" lang="en">
+          {isC ? (
             <>
               {verse.slice(0, idxGap)}
-              <span class="gap" aria-label="spazio da completare">{' '.repeat(10)}</span>
+              <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
               {verse.slice(idxGap + item.surfaceForm.length)}
             </>
           ) : (
-            <>{verse} <span class="gap" aria-label="spazio da completare">{' '.repeat(10)}</span></>
-          )
-        ) : (
-          <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: cls }]} />
-        )}
-      </p>
+            <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: cls }]} />
+          )}
+        </p>
+      )}
       <p class="note">{`${song?.title ?? ''} · riga ${ctx.lineIndex + 1}`}</p>
 
       {!isC && !revealed && (

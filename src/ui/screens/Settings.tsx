@@ -40,12 +40,15 @@ export function Settings() {
     void saveSettings(db, { theme })
   }
 
+  const hasStored = settings.apiKey.trim() !== ''
+  const effectiveKey = typedKey.trim() !== '' ? typedKey : settings.apiKey
+
   const probe = async () => {
     setKeyStatus('running')
     try {
       await callGemini(
         {
-          apiKey: typedKey,
+          apiKey: effectiveKey,
           model,
           system: 'Rispondi con {"ok": true}.',
           user: 'ping',
@@ -53,7 +56,7 @@ export function Settings() {
         },
         { fetch, sleep },
       )
-      await saveSettings(db, { apiKey: typedKey, model })
+      await saveSettings(db, { apiKey: effectiveKey, model })
       setTypedKey('')
       setTypedModel(null)
       setKeyStatus('valid')
@@ -156,7 +159,7 @@ export function Settings() {
           <button
             type="button"
             class="btn outline"
-            disabled={keyStatus === 'running' || typedKey.trim() === ''}
+            disabled={keyStatus === 'running' || (typedKey.trim() === '' && !hasStored)}
             onClick={probe}
           >
             Prova
