@@ -5,6 +5,10 @@ import { getSettings, saveSettings } from '../../domain/settings'
 import { callGemini } from '../../domain/gemini/client'
 import { downloadOrShare, exportBackup, importBackup } from '../../domain/backup'
 import type { Level, Settings as SettingsRow } from '../../db/types'
+import { useInstall } from '../../pwa/install'
+import { applyTheme } from '../theme'
+import { Icon } from '../components/Icon'
+import { InstallCard } from '../components/InstallCard'
 
 const THEMES: { value: SettingsRow['theme']; label: string }[] = [
   { value: 'auto', label: 'Automatico' },
@@ -24,6 +28,7 @@ export function Settings() {
   const [hasPending, setHasPending] = useState(false)
   const [backupMsg, setBackupMsg] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const install = useInstall()
 
   if (!settings) return <main class="screen settings" aria-busy="true" />
 
@@ -36,7 +41,7 @@ export function Settings() {
   }
 
   const setTheme = (theme: SettingsRow['theme']) => {
-    document.documentElement.dataset.theme = theme
+    applyTheme(theme)
     void saveSettings(db, { theme })
   }
 
@@ -108,7 +113,7 @@ export function Settings() {
   return (
     <main class="screen settings">
       <header class="settings-head">
-        <a class="icon-btn" href="#/" aria-label="Indietro">‹</a>
+        <a class="icon-btn" href="#/" aria-label="Indietro"><Icon name="back" /></a>
         <h1>Impostazioni</h1>
       </header>
 
@@ -282,6 +287,12 @@ export function Settings() {
           </div>
         )}
         <p role="status" class={backupMsg.includes('non') ? 'note danger' : 'note'}>{backupMsg}</p>
+      </section>
+
+      <section aria-labelledby="s-app">
+        <h2 class="section-label" id="s-app">APP</h2>
+        <InstallCard state={install.state} onInstall={() => void install.install()} />
+        <p class="note">{`Versione ${__APP_VERSION__}`}</p>
       </section>
     </main>
   )

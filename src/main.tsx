@@ -5,23 +5,25 @@ import { registerSW } from 'virtual:pwa-register'
 import { getSettings, saveSettings } from './domain/settings'
 import { retryQueuedSongs } from './domain/ingest'
 import { defaultDeps } from './ui/deps'
+import { createSwStore } from './pwa/sw-store'
+import { applyTheme } from './ui/theme'
+import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/base.css'
+import './styles/motion.css'
 
-document.documentElement.dataset.theme = 'auto'
-render(<App />, document.getElementById('app')!)
+const swStore = createSwStore((hooks) => registerSW({ immediate: true, ...hooks }))
+
+applyTheme('auto')
+render(<App swStore={swStore} />, document.getElementById('app')!)
 getSettings(db)
-  .then((s) => {
-    document.documentElement.dataset.theme = s.theme
-  })
+  .then((s) => applyTheme(s.theme))
   .catch(() => {})
 
 if (navigator.onLine) {
   const { db: d, fetch: f, sleep, now } = defaultDeps
   retryQueuedSongs({ db: d, fetch: f, sleep, now }).catch(() => {})
 }
-
-registerSW({ immediate: true })
 
 getSettings(db)
   .then(async (s) => {

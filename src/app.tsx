@@ -9,6 +9,9 @@ import { Study } from './ui/screens/Study'
 import { Triage } from './ui/screens/Triage'
 import { Today } from './ui/screens/Today'
 import { Session } from './ui/screens/Session'
+import { OfflineBadge } from './ui/components/OfflineBadge'
+import { UpdateToast } from './ui/components/UpdateToast'
+import type { SwStore } from './pwa/sw-store'
 
 function title(route: Route): string {
   switch (route.name) {
@@ -24,11 +27,15 @@ function title(route: Route): string {
   }
 }
 
-export function App() {
+const NO_NAV: Route['name'][] = ['settings', 'addSong', 'analyzing', 'study', 'triage', 'session']
+
+export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
+  const withNav = !NO_NAV.includes(route.name)
   return (
     <AppDepsProvider value={useDeps()}>
-      <div class="app">
+      <div class={withNav ? 'app with-nav' : 'app'}>
+        <OfflineBadge />
         {route.name === 'settings' ? (
           <Settings />
         ) : route.name === 'songs' ? (
@@ -51,7 +58,8 @@ export function App() {
             <p>In arrivo.</p>
           </main>
         )}
-        {route.name !== 'settings' && route.name !== 'addSong' && route.name !== 'analyzing' && route.name !== 'study' && route.name !== 'triage' && route.name !== 'session' && <BottomNav route={route} />}
+        {withNav && <BottomNav route={route} />}
+        {swStore && <UpdateToast store={swStore} />}
       </div>
     </AppDepsProvider>
   )
