@@ -5,6 +5,7 @@ import { analyzeSong } from '../../domain/ingest'
 import { loadRanks } from '../../domain/freq'
 import { GeminiError } from '../../domain/gemini/client'
 import type { Song } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 type State =
   | { kind: 'running' }
@@ -82,18 +83,19 @@ export function Analyzing({ songId }: { songId: string }) {
   return (
     <main class="screen analyzing">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'addSong' })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'addSong' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>{title || 'Analisi'}</h1>
       </header>
 
       <section class="card" aria-live="polite">
         {state.kind === 'running' && (
           <>
+            <div class="wave" aria-hidden="true"><span /><span /><span /><span /><span /></div>
             <h2>Gemini sta leggendo il testo</h2>
             <ul class="steps">
-              {STEPS.map((s) => (
-                <li key={s}>
-                  <span aria-hidden="true">○ </span>
+              {STEPS.map((s, i) => (
+                <li key={s} style={{ '--i': i }}>
+                  <span class="step-dot" aria-hidden="true" />
                   {s}
                 </li>
               ))}

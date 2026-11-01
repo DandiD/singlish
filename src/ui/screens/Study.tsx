@@ -9,6 +9,7 @@ import { TimerPill } from '../components/TimerPill'
 import { Highlighted, type Span } from '../components/Highlighted'
 import { ItemSheet } from './ItemSheet'
 import type { ChunkType } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 const TYPE_CLASS: Record<ChunkType, string> = {
   phrasal_verb: 'pv',
@@ -95,7 +96,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   return (
     <main class="screen study">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <div class="grow">
           <h1>{song.title}</h1>
           <p class="note">{`Studio · ${chunkCount} chunk · ${wordCount} parole`}</p>

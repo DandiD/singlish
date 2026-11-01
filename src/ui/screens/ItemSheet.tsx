@@ -4,6 +4,7 @@ import { useDeps } from '../deps'
 import { href } from '../../router'
 import { Highlighted } from '../components/Highlighted'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 const TYPE_LABEL: Record<ChunkType, string> = {
   phrasal_verb: 'Phrasal verb',
@@ -31,7 +32,14 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const [meaning, setMeaning] = useState('')
   const [explanation, setExplanation] = useState('')
   const ref = useRef<HTMLElement>(null)
-  const close = () => { window.location.hash = href({ name: 'study', songId: song.id }) }
+  const [closing, setClosing] = useState(false)
+  const close = () => {
+    const go = () => { window.location.hash = href({ name: 'study', songId: song.id }) }
+    // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
+    setClosing(true)
+    setTimeout(go, 200)
+  }
 
   useEffect(() => { ref.current?.focus() }, [])
   useEffect(() => {
@@ -69,10 +77,10 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
   const label = kind === 'chunk' ? 'Scheda del chunk' : 'Scheda della parola'
   return (
-    <div class="sheet-scrim" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) close() }}>
       <section class="sheet" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} ref={ref}>
         <div class="sheet-handle" aria-hidden="true" />
-        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={close}>×</button>
+        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={close}><Icon name="close" /></button>
         <div class="chips">
           {kind === 'chunk' && <span class={`chip t-${item.type}`}>{TYPE_LABEL[item.type]}</span>}
           {kind === 'word' && <span class="chip">Parola</span>}

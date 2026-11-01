@@ -4,6 +4,7 @@ import { useDeps } from '../deps'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings } from '../../domain/settings'
+import { Icon } from '../components/Icon'
 
 const MAX_OPEN = 4
 
@@ -46,7 +47,7 @@ export function Today() {
     <main class="screen today">
       <header class="today-head">
         <span class="wordmark">Singlish</span>
-        <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni">⚙</a>
+        <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
       </header>
       <p class="note">{capitalize(dateFmt.format(now()))}</p>
 
@@ -59,12 +60,12 @@ export function Today() {
         </div>
         <p class="note">{`su ${minutes} minuti`}</p>
         {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre i ${minutes} minuti`}</p>}
-        <a class="btn primary cta" href={href({ name: 'session' })}>Inizia sessione</a>
+        <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
       </section>
 
       <div class="today-songs-head">
         <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN}`}</span></h2>
-        <a class="link-add" href={href({ name: 'addSong' })}>+ Aggiungi</a>
+        <a class="link-add" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi</a>
       </div>
       <ul class="song-list">
         {progress.map(({ song, total, done }) => (
@@ -72,7 +73,7 @@ export function Today() {
             <a class="song-card" href={href({ name: 'study', songId: song.id })}>
               <h3>{song.title}</h3>
               <p class="note">{`${done} di ${total} chunk e parole nel ripasso`}</p>
-              <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ width: `${total ? (done / total) * 100 : 0}%` }} /></div>
+              <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
             </a>
           </li>
         ))}

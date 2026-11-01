@@ -18,7 +18,7 @@ export function TimerPill({ state, remaining, expired, onPause, onResume }: Time
   return (
     <button
       type="button"
-      class="timer-pill mono"
+      class={`timer-pill mono${expired ? ' expired' : ''}`}
       aria-label={label}
       onClick={running ? onPause : onResume}
       style={{

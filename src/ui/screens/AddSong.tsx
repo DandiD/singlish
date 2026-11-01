@@ -5,6 +5,7 @@ import { href } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
 import { createSong, activeSongCount } from '../../domain/ingest'
+import { Icon } from '../components/Icon'
 
 const MAX_OPEN = 4
 
@@ -72,7 +73,7 @@ export function AddSong() {
   return (
     <main class="screen add-song">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>Aggiungi canzone</h1>
       </header>
       <form class="add-form" onSubmit={submit}>

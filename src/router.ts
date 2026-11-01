@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 
 export type Route =
   | { name: 'today' }
@@ -63,10 +63,71 @@ export function href(route: Route): string {
   }
 }
 
+export type NavDirection = 'forward' | 'back' | 'fade' | 'none'
+
+const DEPTH: Record<Route['name'], number> = {
+  today: 0, songs: 0, notFound: 0,
+  settings: 1, addSong: 1, study: 1, session: 1,
+  analyzing: 2, triage: 2,
+}
+
+/** Come animare il passaggio fra due route: in profondità avanti/indietro, fra schede in dissolvenza. */
+export function navDirection(from: Route, to: Route): NavDirection {
+  if (href(from) === href(to)) return 'none'
+  // Aprire o chiudere la scheda di un elemento: il foglio dal basso si anima da solo.
+  if (from.name === 'study' && to.name === 'study' && from.songId === to.songId) return 'none'
+  const d = DEPTH[to.name] - DEPTH[from.name]
+  return d > 0 ? 'forward' : d < 0 ? 'back' : 'fade'
+}
+
+type ViewTransitionDoc = Document & {
+  startViewTransition?: (update: () => Promise<void>) => { finished: Promise<void>; ready: Promise<void> }
+}
+
+/**
+ * Aspetta che la nuova schermata abbia i dati (niente main aria-busy), al massimo `maxMs`.
+ * Con setTimeout e non requestAnimationFrame: durante la transizione il disegno è sospeso.
+ */
+function settled(maxMs = 250): Promise<void> {
+  const start = performance.now()
+  return new Promise((resolve) => {
+    const tick = () => {
+      if (!document.querySelector('main[aria-busy="true"]') || performance.now() - start > maxMs) resolve()
+      else setTimeout(tick, 16)
+    }
+    setTimeout(tick, 0)
+  })
+}
+
 export function useRoute(): Route {
   const [hash, setHash] = useState(() => window.location.hash)
+  const current = useRef(hash)
   useEffect(() => {
-    const onChange = () => setHash(window.location.hash)
+    const onChange = () => {
+      const next = window.location.hash
+      const dir = navDirection(parseRoute(current.current), parseRoute(next))
+      current.current = next
+      const doc = document as ViewTransitionDoc
+      const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+      // La nuova schermata parte dall'alto; dentro la transizione, dopo la foto della vecchia.
+      const show = () => {
+        setHash(next)
+        if (dir !== 'none') window.scrollTo(0, 0)
+      }
+      if (dir === 'none' || !doc.startViewTransition || reduce) {
+        show()
+        return
+      }
+      const root = document.documentElement
+      root.dataset.nav = dir
+      const vt = doc.startViewTransition(() => {
+        show()
+        return settled()
+      })
+      // Una transizione interrotta (un'altra navigazione, la finestra che cambia) non è un errore.
+      vt.ready.catch(() => {})
+      vt.finished.catch(() => {}).finally(() => { if (root.dataset.nav === dir) delete root.dataset.nav })
+    }
     onChange()
     window.addEventListener('hashchange', onChange)
     return () => window.removeEventListener('hashchange', onChange)

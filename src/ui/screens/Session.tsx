@@ -11,6 +11,7 @@ import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
 import { RatingBar, RATING_LABEL } from '../components/RatingBar'
 import type { Chunk, ChunkType, Rating, Settings, Song, Word } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 const MAX_CARD_MS = 120_000
 const EXTRA_MS = 5 * 60_000
@@ -148,6 +149,7 @@ export function Session() {
   if (items.length === 0 || finished) {
     return (
       <main class="screen session session-done">
+        <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
         <p class="note">{`${counts.reviews} ripassate · ${counts.news} nuove`}</p>
         <a class="btn primary cta" href={href({ name: 'today' })}>Torna a Oggi</a>
@@ -163,10 +165,10 @@ export function Session() {
   return (
     <main class="screen session">
       <header class="session-head">
-        <a class="icon-btn" href={href({ name: 'today' })} aria-label="Esci dalla sessione">×</a>
+        <a class="icon-btn" href={href({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
-          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ width: `${(position / total) * 100}%` }} /></div>
+          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${position / total})` }} /></div>
         </div>
         {timerReady && (
           <TimerPill
@@ -267,7 +269,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
               {verse.slice(idxGap + item.surfaceForm.length)}
             </>
           ) : (
-            <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: cls }]} />
+            <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: `${cls} sweep` }]} />
           )}
         </p>
       )}

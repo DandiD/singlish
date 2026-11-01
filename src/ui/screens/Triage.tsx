@@ -3,6 +3,7 @@ import { useDeps } from '../deps'
 import { href } from '../../router'
 import { applyTriage, pendingWords } from '../../domain/triage'
 import type { Song, Word } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 export function Triage({ songId }: { songId: string }) {
   const { db, now } = useDeps()
@@ -35,7 +36,7 @@ export function Triage({ songId }: { songId: string }) {
   return (
     <main class="screen triage">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'study', songId })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'study', songId })} aria-label="Indietro"><Icon name="back" /></a>
         <div>
           <h1>Smista parole</h1>
           {song && <p class="note">{song.title}</p>}

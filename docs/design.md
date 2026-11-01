@@ -7,7 +7,7 @@ Look: "studio serale". Fondo scuro di default, un accento arancio, colori per ti
 - Titoli: Bricolage Grotesque 700 (opsz 12..96).
 - Testo: Inter Tight 400/500/600.
 - Timer e numeri tecnici: JetBrains Mono 500.
-Caricate da Google Fonts con `display=swap`; la PWA le mette in precache.
+Self-hosted in `public/fonts/` (woff2, sottoinsiemi latin e latin-ext, licenza OFL) con `display=swap`; il service worker le mette in precache, quindi funzionano offline dal primo avvio.
 
 ## Colori dei tipi di espressione
 phrasal verb `--blue` · idioma `--accent` · collocazione `--green` · slang `--violet` · parola singola: sottolineatura `--text-2` · parlato connesso: sottolineatura puntinata `--muted`.
@@ -170,3 +170,13 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 18 | Impostazioni | `#/settings` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico (Lessico disabilitato nell'MVP con etichetta "Presto"). Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
+
+## Movimento
+Regole in `src/styles/motion.css` (curve `--ease-out`, `--ease-spring`; durate `--t-fast/med/slow`).
+- Il movimento risponde ai gesti: cambio di schermata (View Transitions, avanti/indietro/dissolvenza secondo `navDirection` in `src/router.ts`), fogli dal basso che salgono e scendono, card della sessione che entrano da destra, voti e scelte che "saltano".
+- Un solo momento firma: nella card Riconosci il chunk si riempie da sinistra a destra come una riga di karaoke.
+- La barra in basso resta ferma durante le transizioni; l'indicatore scivola fra le schede.
+- `prefers-reduced-motion: reduce`: restano gli stati finali, senza spostamenti.
+
+## PWA
+Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

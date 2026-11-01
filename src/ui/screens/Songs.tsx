@@ -3,6 +3,7 @@ import { useDeps } from '../deps'
 import { href } from '../../router'
 import { activeSongCount } from '../../domain/ingest'
 import type { Song } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 const MAX_OPEN = 4
 
@@ -41,7 +42,7 @@ export function Songs() {
             window.location.hash = href({ name: 'addSong' })
           }}
         >
-          <span aria-hidden="true">+ </span>Aggiungi
+          <Icon name="plus" size={18} />Aggiungi
         </button>
       </header>
       {full && <p class="note">Massimo 4 canzoni aperte</p>}

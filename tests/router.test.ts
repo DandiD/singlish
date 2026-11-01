@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest'
-import { href, parseRoute } from '../src/router'
+import { describe, expect, test } from 'vitest'
+import { href, navDirection, parseRoute } from '../src/router'
 
 test('parseRoute maps hashes', () => {
   expect(parseRoute('')).toEqual({ name: 'today' })
@@ -18,4 +18,22 @@ test('parseRoute falls back to notFound on malformed hash', () => {
 test('href round-trips', () => {
   const r = { name: 'analyzing', songId: 'z' } as const
   expect(parseRoute(href(r))).toEqual(r)
+})
+
+describe('navDirection', () => {
+  test('entrare in profondità va avanti, risalire torna indietro', () => {
+    expect(navDirection({ name: 'today' }, { name: 'settings' })).toBe('forward')
+    expect(navDirection({ name: 'songs' }, { name: 'study', songId: 'a' })).toBe('forward')
+    expect(navDirection({ name: 'study', songId: 'a' }, { name: 'triage', songId: 'a' })).toBe('forward')
+    expect(navDirection({ name: 'triage', songId: 'a' }, { name: 'study', songId: 'a' })).toBe('back')
+    expect(navDirection({ name: 'session' }, { name: 'today' })).toBe('back')
+  })
+  test('tra schede allo stesso livello solo dissolvenza', () => {
+    expect(navDirection({ name: 'today' }, { name: 'songs' })).toBe('fade')
+  })
+  test('aprire o chiudere la scheda di un elemento non anima la pagina', () => {
+    expect(navDirection({ name: 'study', songId: 'a' }, { name: 'study', songId: 'a', itemId: 'x' })).toBe('none')
+    expect(navDirection({ name: 'study', songId: 'a', itemId: 'x' }, { name: 'study', songId: 'a' })).toBe('none')
+    expect(navDirection({ name: 'today' }, { name: 'today' })).toBe('none')
+  })
 })
