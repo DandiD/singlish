@@ -288,6 +288,11 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   const isC = card.kind === 'C'
   const cls = found.kind === 'chunk' ? TYPE_CLASS[found.item.type] : 'w'
 
+  const confirm = () => {
+    if (proposed === null) return
+    onRate(selected ?? proposed, (selected ?? proposed) === proposed, answer)
+  }
+
   const check = () => {
     const g = gradeAnswer(answer, item.surfaceForm)
     setProposed(g.rating)
@@ -329,7 +334,15 @@ function SessionCard({ card, isNew, found, song, onRate }: {
       {!isC && revealed && <RatingBar onSelect={(r) => onRate(r, false, null)} />}
 
       {isC && (
-        <div class="c-answer">
+        // Un modulo: "Invio" sulla tastiera del telefono fa Controlla, e poi Conferma.
+        <form
+          class="c-answer"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (proposed === null) check()
+            else confirm()
+          }}
+        >
           <label class="field">
             <span>La tua risposta</span>
             <input
@@ -338,6 +351,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
               autocomplete="off"
               autocapitalize="off"
               ref={noAutocorrect}
+              enterKeyHint="go"
               placeholder="scrivi il chunk"
               value={answer}
               readOnly={proposed !== null}
@@ -345,7 +359,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
             />
           </label>
           {proposed === null ? (
-            <button type="button" class="btn primary cta" onClick={check}>Controlla</button>
+            <button type="submit" class="btn primary cta">Controlla</button>
           ) : (
             <>
               <div class={`feedback f${proposed}`}>
@@ -353,16 +367,10 @@ function SessionCard({ card, isNew, found, song, onRate }: {
                 <p>{`Risposta attesa: ${item.surfaceForm} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
               </div>
               <RatingBar selected={selected ?? proposed} onSelect={setSelected} />
-              <button
-                type="button"
-                class="btn primary cta"
-                onClick={() => onRate(selected ?? proposed, (selected ?? proposed) === proposed, answer)}
-              >
-                Conferma
-              </button>
+              <button type="submit" class="btn primary cta">Conferma</button>
             </>
           )}
-        </div>
+        </form>
       )}
     </section>
   )

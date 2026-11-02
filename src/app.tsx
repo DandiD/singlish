@@ -1,4 +1,4 @@
-import { useRoute, type Route } from './router'
+import { href, useRoute, type Route } from './router'
 import { BottomNav } from './ui/components/BottomNav'
 import { AppDepsProvider, useDeps } from './ui/deps'
 import { Settings } from './ui/screens/Settings'
@@ -53,9 +53,10 @@ export function App({ swStore }: { swStore?: SwStore }) {
         ) : route.name === 'session' ? (
           <Session />
         ) : (
-          <main class="screen">
+          <main class="screen not-found">
             <h1>{title(route)}</h1>
-            <p>In arrivo.</p>
+            <p class="note">Questa pagina non esiste.</p>
+            <a class="btn primary" href={href({ name: 'today' })}>Torna a Oggi</a>
           </main>
         )}
         {withNav && <BottomNav route={route} />}

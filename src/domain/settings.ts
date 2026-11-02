@@ -45,7 +45,7 @@ export async function saveSettings(
     if (patch.bandEnd === undefined) next.bandEnd = end
   }
   next.desiredRetention = clamp(next.desiredRetention, 0.85, 0.95)
-  next.newPerDay = clamp(next.newPerDay, 1, 40)
+  next.newPerDay = clamp(Math.round(next.newPerDay), 1, 40)
   await db.settings.put(next)
   return next
 }

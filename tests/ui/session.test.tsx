@@ -258,3 +258,15 @@ test('C answer field really turns off autocorrect and spellcheck in browsers wit
     delete (HTMLElement.prototype as unknown as Record<string, unknown>).spellcheck
   }
 })
+
+test('C card: Enter on the keyboard checks the answer, Enter again confirms', async () => {
+  await seedCOnly()
+  renderSession()
+  const input = (await screen.findByRole('textbox')) as HTMLInputElement
+  fireEvent.input(input, { target: { value: 'let it slide' } })
+  fireEvent.submit(input.form!)
+  await screen.findByText('Esatto')
+  fireEvent.submit(input.form!)
+  await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+  expect((await db.reviews.toArray())[0]).toMatchObject({ rating: 3, auto: true, answer: 'let it slide' })
+})

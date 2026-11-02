@@ -42,3 +42,8 @@ test('patch merges over current', async () => {
   expect(s.apiKey).toBe('k')
   expect(s.theme).toBe('dark')
 })
+
+test('newPerDay is a whole number of cards', async () => {
+  expect((await saveSettings(db, { newPerDay: 2.5 })).newPerDay).toBe(3)
+  expect((await saveSettings(db, { newPerDay: 12.2 })).newPerDay).toBe(12)
+})

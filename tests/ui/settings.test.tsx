@@ -51,6 +51,17 @@ describe('Settings', () => {
     expect((await getSettings(db)).apiKey).toBe('KEY123')
   })
 
+  test('a pasted key with spaces or a newline is trimmed before testing and saving', async () => {
+    const f = vi.fn(async () => okBody()) as unknown as typeof fetch
+    mount(f)
+    fireEvent.input(await screen.findByLabelText('Chiave API'), { target: { value: '  KEY123\n' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+    await screen.findByText('Chiave valida')
+    expect((await getSettings(db)).apiKey).toBe('KEY123')
+    const init = (f as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1]
+    expect(new Headers(init.headers).get('x-goog-api-key')).toBe('KEY123')
+  })
+
   test('Prova with 400 saves nothing and shows error', async () => {
     const f = vi.fn(async () => new Response('{}', { status: 400 })) as unknown as typeof fetch
     mount(f)

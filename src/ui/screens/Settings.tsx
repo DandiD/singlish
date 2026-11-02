@@ -47,7 +47,8 @@ export function Settings() {
   }
 
   const hasStored = settings.apiKey.trim() !== ''
-  const effectiveKey = typedKey.trim() !== '' ? typedKey : settings.apiKey
+  // Una chiave incollata porta spesso spazi o a capo: si prova e si salva senza.
+  const effectiveKey = (typedKey.trim() !== '' ? typedKey : settings.apiKey).trim()
 
   const probe = async () => {
     setKeyStatus('running')
