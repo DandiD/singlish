@@ -7,6 +7,7 @@ import { RESPONSE_SCHEMA, SYSTEM_PROMPT, buildUserMessage } from './gemini/promp
 import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
 import { normalizeKey, splitLines } from './text'
+import { newId } from './id'
 
 export interface SongInput {
   title: string
@@ -19,7 +20,7 @@ export interface SongInput {
 export async function createSong(db: SinglishDB, input: SongInput, now: Date): Promise<Song> {
   const settings = await getSettings(db)
   const song: Song = {
-    id: crypto.randomUUID(),
+    id: newId(),
     kind: 'song',
     title: input.title,
     artist: input.artist,
@@ -71,7 +72,7 @@ export async function saveAnalysis(
         continue
       }
       const chunk: Chunk = {
-        id: crypto.randomUUID(),
+        id: newId(),
         songId,
         key,
         baseForm: c.base_form,
@@ -115,7 +116,7 @@ export async function saveAnalysis(
     }
     const accepted = filterWordsByBand(fresh, ranks, band, known)
     const rows: Word[] = accepted.map((w) => ({
-      id: crypto.randomUUID(),
+      id: newId(),
       lemma: w.lemma,
       surfaceForm: w.surface_form,
       pos: w.pos,

@@ -53,3 +53,57 @@ test('cancelling the confirm leaves the song untouched', async () => {
   expect((await db.songs.get('s1'))!.status).toBe('studying')
   expect(screen.queryByRole('button', { name: 'Conferma' })).toBeNull()
 })
+
+test('opening an item sheet moves focus into the dialog once its data has loaded', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: false, userEdited: false,
+  })
+  render(
+    <AppDepsProvider
+      value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}
+    >
+      <Study songId="s1" itemId="c1" />
+    </AppDepsProvider>,
+  )
+  const dialog = await screen.findByRole('dialog')
+  await waitFor(() => expect(document.activeElement).toBe(dialog))
+})
+
+test('closing the item sheet gives focus back to the element that opened it', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: false, userEdited: false,
+  })
+  const deps = { db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }
+  const view = render(<AppDepsProvider value={deps}><Study songId="s1" /></AppDepsProvider>)
+  const link = await screen.findByRole('link', { name: 'let it slide' })
+  link.focus()
+  view.rerender(<AppDepsProvider value={deps}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('dialog')))
+  view.rerender(<AppDepsProvider value={deps}><Study songId="s1" /></AppDepsProvider>)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(document.activeElement).toBe(screen.getByRole('link', { name: 'let it slide' }))
+})
+
+test('closing the sheet focuses the item link even when the tap did not focus it (Safari)', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: false, userEdited: false,
+  })
+  const deps = { db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }
+  const view = render(<AppDepsProvider value={deps}><Study songId="s1" /></AppDepsProvider>)
+  await screen.findByRole('link', { name: 'let it slide' })
+  ;(document.activeElement as HTMLElement | null)?.blur()
+  view.rerender(<AppDepsProvider value={deps}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await screen.findByRole('dialog')
+  view.rerender(<AppDepsProvider value={deps}><Study songId="s1" /></AppDepsProvider>)
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  expect(document.activeElement).toBe(screen.getByRole('link', { name: 'let it slide' }))
+})

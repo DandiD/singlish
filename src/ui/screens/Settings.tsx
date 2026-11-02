@@ -9,6 +9,7 @@ import { useInstall } from '../../pwa/install'
 import { applyTheme } from '../theme'
 import { Icon } from '../components/Icon'
 import { InstallCard } from '../components/InstallCard'
+import { noAutocorrect } from '../noAutocorrect'
 
 const THEMES: { value: SettingsRow['theme']; label: string }[] = [
   { value: 'auto', label: 'Automatico' },
@@ -156,8 +157,7 @@ export function Settings() {
               type="text"
               value={model}
               autocapitalize="off"
-              autocorrect="off"
-              spellcheck={false}
+              ref={noAutocorrect}
               onInput={(e) => setTypedModel((e.currentTarget as HTMLInputElement).value)}
             />
           </label>

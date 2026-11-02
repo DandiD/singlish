@@ -124,9 +124,10 @@ test('pause overlay offers Riprendi and Ferma e salva', async () => {
   await seedCOnly()
   renderSession()
   await screen.findByRole('textbox')
-  fireEvent.click(await screen.findByRole('button', { name: /^Timer, .*Metti in pausa/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Timer .*metti in pausa/ }))
   await screen.findByRole('dialog', { name: 'Sessione in pausa' })
-  expect(screen.getByRole('button', { name: 'Riprendi' })).toBeTruthy()
+  // Il fuoco entra nel dialogo, sull'azione principale.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Riprendi' })))
   fireEvent.click(screen.getByRole('button', { name: 'Ferma e salva' }))
   await waitFor(() => expect(window.location.hash).toBe('#/'))
   const sess = (await db.sessions.toArray())[0]
@@ -157,8 +158,10 @@ test('expired timer: finishing the card opens the sheet with Altri 5 minuti', as
   expect(screen.queryByRole('dialog', { name: 'Tempo della sessione finito' })).toBeNull()
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
   await screen.findByRole('dialog', { name: 'Tempo della sessione finito' })
-  expect(screen.getByText('1 ripassate')).toBeTruthy()
-  expect(screen.getByText('1 restano')).toBeTruthy()
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Altri 5 minuti' })))
+  expect(screen.getByText('1 ripassata')).toBeTruthy()
+  expect(screen.getByText('1 resta')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '0 minuti fatti' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Altri 5 minuti' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tempo della sessione finito' })).toBeNull())
   expect((await db.sessions.get('ss'))!.timer.durationMs).toBe(1000 + 300000)
@@ -186,4 +189,48 @@ test('Today: shows the blocked-new note when the review load exceeds the timer',
   }
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('Oggi niente card nuove: ripasso oltre i 2 minuti')
+})
+
+test('resuming an open session does not bring back items already reviewed in it (spec §4)', async () => {
+  await db.chunks.bulkAdd([chunk('c1', 'let it slide', 0), chunk('c2', 'play it down', 0), chunk('c3', 'wait beside', 1)])
+  await db.cards.bulkAdd([
+    reviewCard('k1', 'c1', 'R', '2026-10-30T10:00:00Z'),
+    reviewCard('k2', 'c2', 'R', '2026-10-30T11:00:00Z'),
+    reviewCard('k3', 'c3', 'R', '2026-10-30T12:00:00Z'),
+  ])
+  const first = renderSession()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mostra significato' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Di nuovo' }))
+  await screen.findByText('2 di 3')
+  // "Di nuovo" la rimette in scadenza fra pochi minuti: oggi stesso.
+  expect((await db.cards.get('k1'))!.due.getTime()).toBeLessThan(new Date('2026-11-01T00:00:00').getTime())
+  first.unmount()
+
+  // Riapro l'app: stessa sessione, stesso totale, la card già vista non torna.
+  renderSession()
+  expect(await screen.findByText('2 di 3')).toBeTruthy()
+  expect(screen.queryByText('sig-c1')).toBeNull()
+})
+
+test('C answer field really turns off autocorrect and spellcheck in browsers with boolean IDL properties', async () => {
+  // Chrome espone autocorrect e spellcheck come proprietà booleane riflesse sull'attributo:
+  // una stringa "off"/"false" assegnata alla proprietà diventa true. Qui lo simuliamo.
+  const reflect = (name: string, on: string, off: string) =>
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      get(this: HTMLElement) { return this.getAttribute(name) !== off },
+      set(this: HTMLElement, v: unknown) { this.setAttribute(name, v ? on : off) },
+    })
+  reflect('autocorrect', 'on', 'off')
+  reflect('spellcheck', 'true', 'false')
+  try {
+    await seedCOnly()
+    renderSession()
+    const input = await screen.findByRole('textbox')
+    expect(input.getAttribute('autocorrect')).toBe('off')
+    expect(input.getAttribute('spellcheck')).toBe('false')
+  } finally {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).autocorrect
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).spellcheck
+  }
 })

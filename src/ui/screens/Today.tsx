@@ -5,6 +5,7 @@ import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings } from '../../domain/settings'
 import { Icon } from '../components/Icon'
+import { plural } from '../plural'
 
 const MAX_OPEN = 4
 
@@ -58,8 +59,8 @@ export function Today() {
           <div class="stat"><span class="stat-num mono">{queue.newCount}</span><span class="note">nuove</span></div>
           <div class="stat"><span class="stat-num mono">{`~${queue.estMinutes}′`}</span><span class="note">stimati</span></div>
         </div>
-        <p class="note">{`su ${minutes} minuti`}</p>
-        {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre i ${minutes} minuti`}</p>}
+        <p class="note">{`su ${plural(minutes, 'minuto', 'minuti')}`}</p>
+        {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}`}</p>}
         <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
       </section>
 

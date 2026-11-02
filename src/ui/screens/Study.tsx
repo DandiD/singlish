@@ -10,6 +10,8 @@ import { Highlighted, type Span } from '../components/Highlighted'
 import { ItemSheet } from './ItemSheet'
 import type { ChunkType } from '../../db/types'
 import { Icon } from '../components/Icon'
+import { plural } from '../plural'
+import { newId } from '../../domain/id'
 
 const TYPE_CLASS: Record<ChunkType, string> = {
   phrasal_verb: 'pv',
@@ -30,7 +32,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
   useEffect(() => {
     let alive = true
-    const id = crypto.randomUUID()
+    const id = newId()
     void (async () => {
       const s = await getSettings(db)
       const t = Date.now()
@@ -114,7 +116,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
       {pending > 0 && (
         <a class="banner" href={href({ name: 'triage', songId })}>
-          <span>{`${pending} parole nuove da smistare`}</span>
+          <span>{`${plural(pending, 'parola nuova', 'parole nuove')} da smistare`}</span>
           <span aria-hidden="true">→</span>
         </a>
       )}

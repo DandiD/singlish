@@ -41,7 +41,21 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
     setTimeout(go, 200)
   }
 
-  useEffect(() => { ref.current?.focus() }, [])
+  // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
+  // in quel caso si torna al link dell'elemento nel testo.
+  useEffect(() => {
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    return () => {
+      const target = opener?.isConnected
+        ? opener
+        : document.querySelector<HTMLElement>(`.lyrics a[href$="item=${encodeURIComponent(itemId)}"]`)
+      target?.focus()
+    }
+  }, [])
+  // Il foglio compare solo quando i dati sono arrivati: il fuoco va spostato allora.
+  const loaded = !!found
+  useEffect(() => { if (loaded) ref.current?.focus() }, [loaded])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     document.addEventListener('keydown', onKey)

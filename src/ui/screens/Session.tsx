@@ -12,6 +12,9 @@ import { Highlighted } from '../components/Highlighted'
 import { RatingBar, RATING_LABEL } from '../components/RatingBar'
 import type { Chunk, ChunkType, Rating, Settings, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
+import { noAutocorrect } from '../noAutocorrect'
+import { plural } from '../plural'
+import { newId } from '../../domain/id'
 
 const MAX_CARD_MS = 120_000
 const EXTRA_MS = 5 * 60_000
@@ -43,6 +46,8 @@ export function Session() {
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [sheet, setSheet] = useState(false)
   const busy = useRef(false)
+  const resumeRef = useRef<HTMLButtonElement>(null)
+  const moreRef = useRef<HTMLButtonElement>(null)
   const cardStart = useRef(0)
   const ended = useRef(false)
 
@@ -52,12 +57,6 @@ export function Session() {
       const settings = await getSettings(db)
       const n = now()
       const queue = await buildSessionQueue(db, n)
-      const chunkIds = queue.items.filter((q) => q.card.itemType === 'chunk').map((q) => q.card.itemId)
-      const wordIds = queue.items.filter((q) => q.card.itemType === 'word').map((q) => q.card.itemId)
-      const [chunks, words] = await Promise.all([db.chunks.bulkGet(chunkIds), db.words.bulkGet(wordIds)])
-      const itemById = new Map<string, Item>()
-      for (const c of chunks) if (c) itemById.set(c.id, { kind: 'chunk', item: c })
-      for (const w of words) if (w) itemById.set(w.id, { kind: 'word', item: w })
       const songs = await db.songs.toArray()
       const songById = new Map(songs.map((s) => [s.id, s]))
 
@@ -66,11 +65,26 @@ export function Session() {
         .filter((r) => r.kind === 'review' && r.endedAt === null)
         .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())[0]
 
+      // Riprendendo una sessione aperta, ciò che è già stato ripassato in questa sessione non torna
+      // (spec §4: stessa voce mai due volte nella stessa sessione), anche se FSRS la rimette in scadenza oggi.
+      if (open) {
+        const reviewed = await db.reviews.where('reviewedAt').aboveOrEqual(open.startedAt).toArray()
+        const cards = await db.cards.bulkGet(reviewed.map((r) => r.cardId))
+        const seenItems = new Set(cards.flatMap((c) => (c ? [c.itemId] : [])))
+        queue.items = queue.items.filter((q) => !seenItems.has(q.card.itemId))
+      }
+      const chunkIds = queue.items.filter((q) => q.card.itemType === 'chunk').map((q) => q.card.itemId)
+      const wordIds = queue.items.filter((q) => q.card.itemType === 'word').map((q) => q.card.itemId)
+      const [chunks, words] = await Promise.all([db.chunks.bulkGet(chunkIds), db.words.bulkGet(wordIds)])
+      const itemById = new Map<string, Item>()
+      for (const c of chunks) if (c) itemById.set(c.id, { kind: 'chunk', item: c })
+      for (const w of words) if (w) itemById.set(w.id, { kind: 'word', item: w })
+
       let sessionId = open?.id ?? ''
       if (queue.items.length === 0) {
         if (open) await db.sessions.update(open.id, { endedAt: n })
       } else if (!open) {
-        sessionId = crypto.randomUUID()
+        sessionId = newId()
         await db.sessions.add({
           id: sessionId, kind: 'review', songId: null, startedAt: n, endedAt: null,
           timer: startTimer(settings.timerMinutes.review * 60_000, Date.now()),
@@ -113,6 +127,11 @@ export function Session() {
     void db.sessions.update(sessionId, { endedAt: now() })
   }, [finished, sessionId, timerReady])
 
+  // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
+  const pausedNow = timer.state.status === 'paused'
+  useEffect(() => { if (pausedNow) resumeRef.current?.focus() }, [pausedNow])
+  useEffect(() => { if (sheet) moreRef.current?.focus() }, [sheet])
+
   if (!loaded) return <main class="screen session" aria-busy="true" />
 
   const total = loaded.doneReviews + loaded.doneNew + items.length
@@ -151,7 +170,7 @@ export function Session() {
       <main class="screen session session-done">
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
-        <p class="note">{`${counts.reviews} ripassate · ${counts.news} nuove`}</p>
+        <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
         <a class="btn primary cta" href={href({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
@@ -200,7 +219,7 @@ export function Session() {
             <div class="mono pause-time">{formatMmSs(timer.remaining)}</div>
             <h2>In pausa</h2>
             <p class="intro center">{`Il tempo è fermo. ${remainingCards === 1 ? 'La card che resta ti aspetta' : `Le ${remainingCards} card che restano ti aspettano`}.`}</p>
-            <button type="button" class="btn primary cta" onClick={timer.resume}>Riprendi</button>
+            <button type="button" class="btn primary cta" ref={resumeRef} onClick={timer.resume}>Riprendi</button>
             <button type="button" class="btn outline" onClick={() => void closeSession()}>Ferma e salva</button>
           </section>
         </div>
@@ -210,16 +229,17 @@ export function Session() {
         <div class="sheet-scrim">
           <section class="sheet" role="dialog" aria-modal="true" aria-label="Tempo della sessione finito">
             <div class="sheet-handle" aria-hidden="true" />
-            <h1>{`${Math.round(timer.state.durationMs / 60_000)} minuti fatti`}</h1>
+            <h1>{plural(Math.round(timer.state.durationMs / 60_000), 'minuto fatto', 'minuti fatti')}</h1>
             <div class="grid3">
-              <div class="stat-box"><strong class="mono">{`${counts.reviews} ripassate`}</strong></div>
-              <div class="stat-box"><strong class="mono">{`${counts.news} nuove`}</strong></div>
-              <div class="stat-box"><strong class="mono">{`${remainingCards} restano`}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(counts.reviews, 'ripassata', 'ripassate')}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(counts.news, 'nuova', 'nuove')}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(remainingCards, 'resta', 'restano')}</strong></div>
             </div>
             <p class="intro">Le card che restano scadono domani: il ripasso tiene conto del ritardo.</p>
             <button
               type="button"
               class="btn primary cta"
+              ref={moreRef}
               onClick={() => { timerRef.current.extend(EXTRA_MS); setSheet(false) }}
             >
               Altri 5 minuti
@@ -298,8 +318,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
               lang="en"
               autocomplete="off"
               autocapitalize="off"
-              autocorrect="off"
-              spellcheck={'false' as unknown as boolean}
+              ref={noAutocorrect}
               placeholder="scrivi il chunk"
               value={answer}
               readOnly={proposed !== null}

@@ -4,6 +4,7 @@ import { href } from '../../router'
 import { applyTriage, pendingWords } from '../../domain/triage'
 import type { Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
+import { plural } from '../plural'
 
 export function Triage({ songId }: { songId: string }) {
   const { db, now } = useDeps()
@@ -72,7 +73,7 @@ export function Triage({ songId }: { songId: string }) {
         ))}
       </ul>
       <footer class="triage-foot">
-        <p class="note center">{`${learn} da imparare · ${known} note, aggiunte al tuo profilo`}</p>
+        <p class="note center">{`${learn} da imparare · ${plural(known, 'nota, aggiunta', 'note, aggiunte')} al tuo profilo`}</p>
         <button type="button" class="btn primary cta" disabled={busy || !words} onClick={confirm}>Conferma</button>
       </footer>
     </main>
