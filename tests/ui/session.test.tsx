@@ -115,9 +115,33 @@ test('R card: show meaning, then Bene records rating 3 auto false', async () => 
   expect(sess.reviewsDone).toBe(1)
 })
 
-test('empty queue shows Fatto per oggi', async () => {
+test('empty queue without anything reviewed: nothing to review, not "Fatto per oggi"', async () => {
   renderSession()
-  await screen.findByText('Fatto per oggi')
+  await screen.findByRole('heading', { name: 'Niente da ripassare' })
+  expect(screen.queryByText('Fatto per oggi')).toBeNull()
+  expect(screen.getByRole('link', { name: 'Torna a Oggi' }).getAttribute('href')).toBe('#/')
+})
+
+test('empty queue and no songs: invites to add a song', async () => {
+  await db.songs.clear()
+  renderSession()
+  await screen.findByRole('heading', { name: 'Niente da ripassare' })
+  expect(screen.getByRole('link', { name: /Aggiungi una canzone/ }).getAttribute('href')).toBe('#/songs/new')
+})
+
+test('Today with no cards and no songs: no session button, invites to add a song', async () => {
+  await db.songs.clear()
+  render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
+  await screen.findByText('in scadenza')
+  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.getByRole('link', { name: /Aggiungi una canzone/ }).getAttribute('href')).toBe('#/songs/new')
+})
+
+test('Today with songs but nothing due: says so, no session button', async () => {
+  render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
+  await screen.findByText('in scadenza')
+  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.getByText('Niente da ripassare oggi.')).toBeTruthy()
 })
 
 test('pause overlay offers Riprendi and Ferma e salva', async () => {

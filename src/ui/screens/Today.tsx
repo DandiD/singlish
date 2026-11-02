@@ -61,7 +61,13 @@ export function Today() {
         </div>
         <p class="note">{`su ${plural(minutes, 'minuto', 'minuti')}`}</p>
         {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}`}</p>}
-        <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
+        {queue.items.length > 0 ? (
+          <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
+        ) : progress.length === 0 ? (
+          <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
+        ) : (
+          <p class="note">Niente da ripassare oggi.</p>
+        )}
       </section>
 
       <div class="today-songs-head">

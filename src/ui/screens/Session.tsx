@@ -165,6 +165,25 @@ export function Session() {
 
   if (items.length > 0 && !finished && !timerReady) return <main class="screen session" aria-busy="true" />
 
+  // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
+  if (items.length === 0 && counts.reviews + counts.news === 0) {
+    const noSongs = loaded.songById.size === 0
+    return (
+      <main class="screen session session-done">
+        <h1>Niente da ripassare</h1>
+        <p class="note">
+          {noSongs
+            ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
+            : 'Per ora non ci sono card in scadenza. Torna domani.'}
+        </p>
+        {noSongs && (
+          <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
+        )}
+        <a class={noSongs ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })}>Torna a Oggi</a>
+      </main>
+    )
+  }
+
   if (items.length === 0 || finished) {
     return (
       <main class="screen session session-done">
