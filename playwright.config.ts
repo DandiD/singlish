@@ -9,6 +9,8 @@ export default defineConfig({
     ...devices['Pixel 7'],
     viewport: { width: 390, height: 844 },
     serviceWorkers: 'block',
+    // Un fallimento raro e non riprodotto (circa 1 su 100) lascia la prova di cosa è successo.
+    trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   webServer: {

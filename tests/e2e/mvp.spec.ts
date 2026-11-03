@@ -70,7 +70,7 @@ test('percorso completo: chiave, canzone, analisi, triage, studio, sessione, per
   await page.getByRole('link', { name: 'Inizia sessione' }).click()
   await page.getByRole('button', { name: 'Mostra significato' }).click()
   await page.getByRole('button', { name: 'Bene' }).click()
-  // Il voto è salvato quando la sessione passa alla card successiva (o finisce): prima non si ricarica.
+  // Come farebbe una persona: si lascia la sessione dopo che è passata alla card successiva (o è finita).
   await expect(page.getByText(/^2 di \d+$|^Fatto per oggi$/)).toBeVisible()
 
   await page.goto('/#/')
