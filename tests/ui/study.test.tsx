@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/pr
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Study } from '../../src/ui/screens/Study'
-import { openSongCount } from '../../src/domain/ingest'
+import { activeSongCount } from '../../src/domain/ingest'
 import type { Song } from '../../src/db/types'
 
 let db: SinglishDB
@@ -36,13 +36,13 @@ const mount = () =>
 
 test('Segna come completata asks for confirmation, then marks done and goes to Canzoni', async () => {
   mount()
-  expect(await openSongCount(db)).toBe(1)
+  expect(await activeSongCount(db)).toBe(1)
   fireEvent.click(await screen.findByRole('button', { name: 'Segna come completata' }))
   // in-page confirm: nothing changes yet
   expect((await db.songs.get('s1'))!.status).toBe('studying')
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
   await waitFor(async () => expect((await db.songs.get('s1'))!.status).toBe('done'))
-  expect(await openSongCount(db)).toBe(0)
+  expect(await activeSongCount(db)).toBe(0)
   expect(window.location.hash).toBe('#/songs')
 })
 

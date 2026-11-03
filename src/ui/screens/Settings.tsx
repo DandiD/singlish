@@ -141,6 +141,7 @@ export function Settings() {
     setPending(undefined)
     try {
       await importBackup(db, data)
+      applyTheme((await getSettings(db)).theme)
       setBackupMsg({ tone: 'ok', text: 'Backup importato.' })
     } catch {
       setBackupMsg({ tone: 'error', text: 'Importazione non riuscita: i tuoi dati non sono cambiati. Il file potrebbe essere danneggiato.' })

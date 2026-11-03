@@ -5,10 +5,9 @@ import { failedMessage } from '../errors'
 import { href, goReplace, onBack } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
-import { createSong, activeSongCount, LIMIT_NOTE } from '../../domain/ingest'
+import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
 
-const MAX_OPEN = 4
 
 export function AddSong() {
   const { db, fetch, now } = useDeps()
@@ -24,7 +23,7 @@ export function AddSong() {
 
   const linkRef = useRef<HTMLInputElement>(null)
 
-  const full = (open ?? 0) >= MAX_OPEN
+  const full = (open ?? 0) >= MAX_OPEN_SONGS
   const canSubmit = splitLines(text).length > 0 && !full && !busy
   const canonical = parseSpotifyTrackUrl(link)
   // Si segnala solo dopo aver lasciato il campo: mentre si incolla o si scrive non disturba.
@@ -53,7 +52,7 @@ export function AddSong() {
     setBusy(true)
     setError('')
     try {
-      if ((await activeSongCount(db)) >= MAX_OPEN) {
+      if ((await activeSongCount(db)) >= MAX_OPEN_SONGS) {
         setBusy(false)
         return
       }

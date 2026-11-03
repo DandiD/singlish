@@ -120,6 +120,19 @@ describe('Settings', () => {
     await waitFor(async () => expect((await getSettings(db)).theme).toBe('dark'))
   })
 
+  test('il tema del backup importato si applica subito, come quello scelto qui', async () => {
+    await saveSettings(db, { theme: 'dark' })
+    const file = new File([JSON.stringify(await exportBackup(db, now))], 'b.json', { type: 'application/json' })
+    await saveSettings(db, { theme: 'light' })
+    document.documentElement.dataset.theme = 'light'
+    const { container } = mount()
+    await screen.findByLabelText('Livello')
+    fireEvent.change(container.querySelector('input[type=file]') as HTMLInputElement, { target: { files: [file] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sostituisci' }))
+    await screen.findByText('Backup importato.')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
   test('import cancel leaves data untouched', async () => {
     await saveSettings(db, { newPerDay: 20 })
     const { container } = mount()

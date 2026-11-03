@@ -1,11 +1,10 @@
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { activeSongCount, LIMIT_NOTE } from '../../domain/ingest'
+import { activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 
-const MAX_OPEN = 4
 
 export function statusLabel(status: Song['status']): string {
   switch (status) {
@@ -13,10 +12,11 @@ export function statusLabel(status: Song['status']): string {
     case 'queued':
       return 'Da analizzare'
     case 'analyzed':
+      return 'Da studiare'
     case 'studying':
       return 'In studio'
     case 'done':
-      return 'Completate'
+      return 'Completata'
   }
 }
 
@@ -28,7 +28,7 @@ export function Songs() {
   const open = useLive(() => activeSongCount(db), [db])
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
-  const full = open >= MAX_OPEN
+  const full = open >= MAX_OPEN_SONGS
 
   return (
     <main class="screen songs">

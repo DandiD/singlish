@@ -4,12 +4,13 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { getSettings } from '../../domain/settings'
+import { pendingWords } from '../../domain/triage'
 import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted, type Span } from '../components/Highlighted'
 import { ItemSheet } from './ItemSheet'
-import type { ChunkType } from '../../db/types'
+import type { ChunkType, Context } from '../../db/types'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
@@ -46,6 +47,11 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     return () => { alive = false }
   }, [db, songId])
 
+  // Aprire lo Studio di una canzone tenuta per più avanti la mette in studio: da qui le sue card nuove entrano nel ripasso.
+  useEffect(() => {
+    db.songs.where('id').equals(songId).filter((s) => s.status === 'analyzed').modify({ status: 'studying' }).catch(reportError)
+  }, [db, songId])
+
   const timer = useTimer(sessionId, { autoPauseOnHide: true, wakeLock: false }, db)
   const timerRef = useRef(timer)
   timerRef.current = timer
@@ -55,11 +61,12 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     const song = (await db.songs.get(songId)) ?? null
     const chunks = (await db.chunks.toArray()).filter((c) => c.contexts.some((x) => x.songId === songId))
     const words = (await db.words.toArray()).filter((w) => w.contexts.some((x) => x.songId === songId) || w.songId === songId)
-    return { song, chunks, words }
+    const pending = (await pendingWords(db, songId)).length
+    return { song, chunks, words, pending }
   }, [db, songId])
 
   if (!data) return <main class="screen" aria-busy="true" />
-  const { song, chunks, words } = data
+  const { song, chunks, words, pending } = data
   if (!song) {
     return (
       <main class="screen">
@@ -70,20 +77,19 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     )
   }
 
-  const pending = words.filter((w) => w.songId === songId && w.triage === 'pending').length
+  // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa.
+  const here = (contexts: Context[]) => contexts.filter((x) => x.songId === songId)
+  const shownChunks = chunks.filter((c) => !c.suspended)
+  const shownWords = words.filter((w) => !w.suspended && w.triage !== 'known' && here(w.contexts).length > 0)
 
   const spansFor = (i: number): Span[] => {
     const spans: Span[] = []
-    for (const c of chunks) {
-      if (c.suspended) continue
-      if (c.contexts.some((x) => x.songId === songId && x.lineIndex === i)) {
-        spans.push({ text: c.surfaceForm, id: c.id, className: TYPE_CLASS[c.type] })
+    for (const item of [...shownChunks, ...shownWords]) {
+      for (const x of here(item.contexts)) {
+        if (x.lineIndex !== i) continue
+        const className = 'type' in item ? TYPE_CLASS[item.type] : 'w'
+        spans.push({ text: x.surfaceForm ?? item.surfaceForm, id: item.id, className })
       }
-    }
-    for (const w of words) {
-      if (w.suspended || w.triage === 'known') continue
-      const ctxs = w.contexts.some((x) => x.songId === songId) ? w.contexts.filter((x) => x.songId === songId) : [{ songId, lineIndex: w.lineIndex }]
-      if (ctxs.some((x) => x.lineIndex === i)) spans.push({ text: w.surfaceForm, id: w.id, className: 'w' })
     }
     song.connectedSpeech.forEach((cs, k) => {
       if (cs.lineIndex === i) spans.push({ text: cs.written, id: `cs:${k}`, className: 'cs' })
@@ -93,8 +99,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const hrefFor = (id: string) =>
     id.startsWith('cs:') ? undefined : href({ name: 'study', songId, itemId: id })
 
-  const chunkCount = chunks.filter((c) => !c.suspended).length
-  const wordCount = words.filter((w) => w.songId === songId && w.triage !== 'known' && !w.suspended).length
+  const chunkCount = shownChunks.length
+  const wordCount = shownWords.length
   const gp = song.grammarPoint
 
   return (
@@ -103,7 +109,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <div class="grow">
           <h1>{song.title}</h1>
-          <p class="note">{`Studio · ${chunkCount} chunk · ${wordCount} parole`}</p>
+          <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}`}</p>
         </div>
         {sessionId && (
           <TimerPill

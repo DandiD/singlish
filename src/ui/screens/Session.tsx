@@ -3,7 +3,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
-import { buildSessionQueue, startOfLocalDay, type QueueItem } from '../../domain/queue'
+import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
@@ -61,19 +61,8 @@ export function Session() {
       const songs = await db.songs.toArray()
       const songById = new Map(songs.map((s) => [s.id, s]))
 
-      const dayStart = startOfLocalDay(n)
-      const open = (await db.sessions.where('startedAt').aboveOrEqual(dayStart).toArray())
-        .filter((r) => r.kind === 'review' && r.endedAt === null)
-        .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())[0]
-
-      // Riprendendo una sessione aperta, ciò che è già stato ripassato in questa sessione non torna
-      // (spec §4: stessa voce mai due volte nella stessa sessione), anche se FSRS la rimette in scadenza oggi.
-      if (open) {
-        const reviewed = await db.reviews.where('reviewedAt').aboveOrEqual(open.startedAt).toArray()
-        const cards = await db.cards.bulkGet(reviewed.map((r) => r.cardId))
-        const seenItems = new Set(cards.flatMap((c) => (c ? [c.itemId] : [])))
-        queue.items = queue.items.filter((q) => !seenItems.has(q.card.itemId))
-      }
+      // La coda esclude già ciò che la sessione aperta ha fatto vedere: è la stessa che conta Oggi.
+      const open = queue.openSession
       const chunkIds = queue.items.filter((q) => q.card.itemType === 'chunk').map((q) => q.card.itemId)
       const wordIds = queue.items.filter((q) => q.card.itemType === 'word').map((q) => q.card.itemId)
       const [chunks, words] = await Promise.all([db.chunks.bulkGet(chunkIds), db.words.bulkGet(wordIds)])
@@ -261,7 +250,7 @@ export function Session() {
               <div class="stat-box"><strong class="mono">{plural(counts.news, 'nuova', 'nuove')}</strong></div>
               <div class="stat-box"><strong class="mono">{plural(remainingCards, 'resta', 'restano')}</strong></div>
             </div>
-            <p class="intro">Le card che restano scadono domani: il ripasso tiene conto del ritardo.</p>
+            <p class="intro">Chiudendo, le card che restano ti aspettano su Oggi.</p>
             <button
               type="button"
               class="btn primary cta"
@@ -288,6 +277,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   const verse = song?.lines[ctx.lineIndex] ?? ''
+  const surface = ctx.surfaceForm ?? item.surfaceForm
   const [revealed, setRevealed] = useState(false)
   const [answer, setAnswer] = useState('')
   const [proposed, setProposed] = useState<Rating | null>(null)
@@ -301,12 +291,12 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   }
 
   const check = () => {
-    const g = gradeAnswer(answer, item.surfaceForm)
+    const g = gradeAnswer(answer, surface)
     setProposed(g.rating)
     setSelected(g.rating)
   }
 
-  const idxGap = verse.toLowerCase().replace(/[’‘]/g, "'").indexOf(item.surfaceForm.toLowerCase().replace(/[’‘]/g, "'"))
+  const idxGap = verse.toLowerCase().replace(/[’‘]/g, "'").indexOf(surface.toLowerCase().replace(/[’‘]/g, "'"))
 
   return (
     <section class="card session-card">
@@ -317,10 +307,10 @@ function SessionCard({ card, isNew, found, song, onRate }: {
             <>
               {verse.slice(0, idxGap)}
               <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
-              {verse.slice(idxGap + item.surfaceForm.length)}
+              {verse.slice(idxGap + surface.length)}
             </>
           ) : (
-            <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: `${cls} sweep` }]} />
+            <Highlighted line={verse} spans={[{ text: surface, id: item.id, className: `${cls} sweep` }]} />
           )}
         </p>
       )}
@@ -371,7 +361,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
             <>
               <div class={`feedback f${proposed}`}>
                 <strong>{proposed === 3 ? 'Esatto' : proposed === 2 ? 'Quasi: un errore di battitura' : 'Non ancora'}</strong>
-                <p>{`Risposta attesa: ${item.surfaceForm} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
+                <p>{`Risposta attesa: ${surface} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
               </div>
               <RatingBar selected={selected ?? proposed} onSelect={setSelected} />
               <button type="submit" class="btn primary cta">Conferma</button>

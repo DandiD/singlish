@@ -191,3 +191,47 @@ describe('due selection uses the local day', () => {
     expect(await dueIds(at('2026-10-25T01:00:00'))).toEqual(['late-evening'])
   })
 })
+
+describe('sessione lasciata a metà', () => {
+  test('il blocco delle nuove si calcola sulle card che restano davvero', async () => {
+    // 200 card in scadenza, tutte già viste nella sessione aperta: non pesano più sul carico
+    await seedDueCards(db, 200)
+    await db.sessions.add({
+      id: 'open', kind: 'review', songId: null, startedAt: new Date(now.getTime() - 3600_000), endedAt: null,
+      timer: { status: 'paused', durationMs: 1800_000, accumulatedMs: 0, resumedAt: null }, reviewsDone: 200, newDone: 0,
+    })
+    const seen = (await db.cards.toArray()).filter((c) => c.itemId.startsWith('due-'))
+    await db.reviews.bulkAdd(seen.map((c) => ({
+      id: 'r-' + c.id, cardId: c.id, rating: 1 as const, auto: false, answer: null, elapsedMs: 12_000,
+      reviewedAt: new Date(now.getTime() - 60_000), wasNew: false,
+    })))
+    const q = await buildSessionQueue(db, now)
+    expect(q.items.some((i) => i.card.itemId.startsWith('due-'))).toBe(false)
+    expect(q.newBlockedByLoad).toBe(false)
+    expect(q.newCount).toBe(16)
+  })
+})
+
+describe('canzoni rimandate', () => {
+  test('le voci di una canzone analizzata ma non ancora in studio non entrano come nuove', async () => {
+    await db.songs.update('s2', { status: 'analyzed' })
+    const q = await buildSessionQueue(db, now)
+    expect(q.items.some((i) => i.card.itemId === 'c2-0')).toBe(false)
+  })
+  test('se la stessa voce compare in una canzone in studio, entra', async () => {
+    await db.songs.update('s2', { status: 'analyzed' })
+    await db.chunks.update('c2-0', { contexts: [{ songId: 's2', lineIndex: 3 }, { songId: 's1', lineIndex: 0 }] })
+    const q = await buildSessionQueue(db, now)
+    expect(q.items.some((i) => i.card.itemId === 'c2-0')).toBe(true)
+  })
+  test('le card già in ripasso di una canzone rimandata restano nel ripasso', async () => {
+    await db.songs.update('s1', { status: 'analyzed' })
+    const q = await buildSessionQueue(db, now)
+    expect(q.items.filter((i) => !i.isNew).map((i) => i.card.id)).toEqual([veryLate, late])
+  })
+  test('anche una canzone completata continua a dare nuove', async () => {
+    await db.songs.update('s2', { status: 'done' })
+    const q = await buildSessionQueue(db, now)
+    expect(q.items.some((i) => i.card.itemId === 'c2-0')).toBe(true)
+  })
+})

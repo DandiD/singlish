@@ -78,6 +78,7 @@ test('item sheet: edit saves userEdited, suspend, exclude with confirm deletes c
   fireEvent.click(screen.getByRole('button', { name: 'Sospendi' }))
   await waitFor(async () => expect((await db.chunks.get('c1'))!.suspended).toBe(true))
   fireEvent.click(screen.getByRole('button', { name: 'Escludi' }))
+  expect(screen.getByText('Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Sì, escludi' }))
   await waitFor(async () => expect(await db.chunks.get('c1')).toBeUndefined())
   expect(await db.cards.where('itemId').equals('c1').count()).toBe(0)

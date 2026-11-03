@@ -4,10 +4,10 @@ import { useDeps } from '../deps'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings } from '../../domain/settings'
+import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 
-const MAX_OPEN = 4
 
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
@@ -18,7 +18,7 @@ export function Today() {
     const [queue, settings, songs, chunks, words] = await Promise.all([
       buildSessionQueue(db, now()),
       getSettings(db),
-      db.songs.where('status').anyOf('analyzed', 'studying').toArray(),
+      activeSongs(db),
       db.chunks.toArray(),
       db.words.toArray(),
     ])
@@ -43,6 +43,7 @@ export function Today() {
   if (!data) return <main class="screen" aria-busy="true" />
   const { queue, settings, progress } = data
   const minutes = settings.timerMinutes.review
+  const full = progress.length >= MAX_OPEN_SONGS
 
   return (
     <main class="screen today">
@@ -71,19 +72,29 @@ export function Today() {
       </section>
 
       <div class="today-songs-head">
-        <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN}`}</span></h2>
-        <a class="link-add" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi</a>
+        <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN_SONGS}`}</span></h2>
+        {!full && <a class="link-add" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi</a>}
       </div>
+      {full && <p class="note">{LIMIT_NOTE}</p>}
       <ul class="song-list">
-        {progress.map(({ song, total, done }) => (
-          <li key={song.id}>
-            <a class="song-card" href={href({ name: 'study', songId: song.id })}>
-              <h3>{song.title}</h3>
-              <p class="note">{`${done} di ${total} chunk e parole nel ripasso`}</p>
-              <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
-            </a>
-          </li>
-        ))}
+        {progress.map(({ song, total, done }) =>
+          song.status === 'draft' || song.status === 'queued' ? (
+            <li key={song.id}>
+              <a class="song-card" href={href({ name: 'analyzing', songId: song.id })}>
+                <h3>{song.title}</h3>
+                <p class="note">Da analizzare</p>
+              </a>
+            </li>
+          ) : (
+            <li key={song.id}>
+              <a class="song-card" href={href({ name: 'study', songId: song.id })}>
+                <h3>{song.title}</h3>
+                <p class="note">{song.status === 'analyzed' ? `Da studiare · ${total} chunk e parole` : `${done} di ${total} chunk e parole nel ripasso`}</p>
+                <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
+              </a>
+            </li>
+          ),
+        )}
       </ul>
     </main>
   )

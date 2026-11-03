@@ -71,8 +71,8 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const { kind, item } = found
   const table = kind === 'chunk' ? db.chunks : db.words
   const title = kind === 'chunk' ? item.baseForm : item.lemma
-  const surface = item.surfaceForm
   const own = item.contexts.find((c) => c.songId === song.id)
+  const surface = own?.surfaceForm ?? item.surfaceForm
   const lineIdx = own?.lineIndex ?? item.lineIndex
   const line = song.lines[lineIdx]
   const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
@@ -166,7 +166,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
         {mode === 'confirm' ? (
           <div class="confirm" role="alert">
-            <p>Escludere definitivamente questo elemento e le sue card?</p>
+            <p>Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.</p>
             <div class="grid2">
               <button type="button" class="btn outline danger" onClick={() => void exclude()}>Sì, escludi</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>

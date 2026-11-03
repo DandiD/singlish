@@ -1,6 +1,6 @@
 import { State } from 'ts-fsrs'
 import type { SinglishDB } from '../db/db'
-import type { CardRow } from '../db/types'
+import type { CardRow, SessionRow } from '../db/types'
 import { getSettings } from './settings'
 
 export const DEFAULT_SECONDS_PER_REVIEW = 12
@@ -35,6 +35,8 @@ export async function buildSessionQueue(
   newCount: number
   estMinutes: number
   newBlockedByLoad: boolean
+  /** La sessione di ripasso di oggi lasciata a metà, se c'è. */
+  openSession: SessionRow | null
 }> {
   const settings = await getSettings(db)
   const avgSeconds = await estimateAvgSeconds(db)
@@ -58,7 +60,26 @@ export async function buildSessionQueue(
     return !!item && !item.suspended
   }
 
+  // In una sessione lasciata a metà ciò che è già stato ripassato non torna (spec §4: stessa voce mai due
+  // volte nella stessa sessione), anche se FSRS la rimette in scadenza oggi. Oggi e Sessione contano così,
+  // e il carico che blocca le nuove è quello che resta davvero.
+  const openSession = await findOpenReviewSession(db, now)
   const seen = new Set<string>()
+  if (openSession) {
+    const reviewed = await db.reviews.where('reviewedAt').aboveOrEqual(openSession.startedAt).toArray()
+    for (const c of await db.cards.bulkGet(reviewed.map((r) => r.cardId))) if (c) seen.add(c.itemId)
+  }
+  // Le nuove arrivano solo dalle canzoni che si stanno studiando (o già completate):
+  // una canzone analizzata e «tenuta per più avanti» non porta card nuove finché non si apre lo Studio.
+  const songStatus = new Map(songs.map((s) => [s.id, s.status]))
+  const studied = (songId: string) => {
+    const st = songStatus.get(songId)
+    return st === 'studying' || st === 'done'
+  }
+  const inStudy = (c: CardRow) => {
+    const item = itemOf(c)!
+    return studied(item.songId) || item.contexts.some((x) => studied(x.songId))
+  }
   const items: QueueItem[] = []
 
   const dueCards = unlocked
@@ -94,7 +115,7 @@ export async function buildSessionQueue(
       await db.cards.where('[unlocked+due]').between([1, new Date(0)], [1, new Date(8.64e15)]).toArray()
     )
       .filter((c) => {
-        if (c.fsrs.state !== State.New || !active(c)) return false
+        if (c.fsrs.state !== State.New || !active(c) || !inStudy(c)) return false
         return c.itemType === 'chunk' || wordById.get(c.itemId)?.triage === 'learn'
       })
       .map((c) => ({ c, k: sortKey(c) }))
@@ -113,5 +134,14 @@ export async function buildSessionQueue(
     newCount: items.length - dueCount,
     estMinutes: Math.ceil((items.length * avgSeconds) / 60),
     newBlockedByLoad,
+    openSession,
   }
+}
+
+/** L'ultima sessione di ripasso iniziata oggi e non chiusa. */
+export async function findOpenReviewSession(db: SinglishDB, now: Date): Promise<SessionRow | null> {
+  const open = (await db.sessions.where('startedAt').aboveOrEqual(startOfLocalDay(now)).toArray())
+    .filter((r) => r.kind === 'review' && r.endedAt === null)
+    .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())
+  return open[0] ?? null
 }

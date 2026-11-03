@@ -186,6 +186,8 @@ test('expired timer: finishing the card opens the sheet with Altri 5 minuti', as
   expect(screen.getByText('1 ripassata')).toBeTruthy()
   expect(screen.getByText('1 resta')).toBeTruthy()
   expect(screen.getByRole('heading', { name: '0 minuti fatti' })).toBeTruthy()
+  // Chiudendo, le card che restano sono ancora in scadenza oggi: il foglio lo dice com'è.
+  expect(screen.getByText('Chiudendo, le card che restano ti aspettano su Oggi.')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Altri 5 minuti' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tempo della sessione finito' })).toBeNull())
   expect((await db.sessions.get('ss'))!.timer.durationMs).toBe(1000 + 300000)

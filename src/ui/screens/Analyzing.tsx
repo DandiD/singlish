@@ -4,6 +4,7 @@ import { reportError } from '../report'
 import { href, goReplace, onBack, onBackTo } from '../../router'
 import { analyzeSong } from '../../domain/ingest'
 import { loadRanks } from '../../domain/freq'
+import { pendingWords } from '../../domain/triage'
 import { getSettings } from '../../domain/settings'
 import { geminiProblem, type Problem } from '../errors'
 import type { Song } from '../../db/types'
@@ -40,7 +41,7 @@ export function Analyzing({ songId }: { songId: string }) {
         }
         if (alive) setTitle(before.title)
         if (before && (before.status === 'analyzed' || before.status === 'studying' || before.status === 'done')) {
-          const pending = await db.words.where('songId').equals(songId).filter((w) => w.triage === 'pending').count()
+          const pending = (await pendingWords(db, songId)).length
           if (alive) setState({ kind: 'analyzed', song: before, pending })
           return
         }
@@ -66,7 +67,7 @@ export function Analyzing({ songId }: { songId: string }) {
           return
         }
         const song = await db.songs.get(songId)
-        const pending = await db.words.where('songId').equals(songId).filter((w) => w.triage === 'pending').count()
+        const pending = (await pendingWords(db, songId)).length
         if (alive && song) setState({ kind: 'analyzed', song, pending })
       } catch (e) {
         if (!alive) return

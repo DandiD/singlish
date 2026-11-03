@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { activeSongCount, analyzeSong, createSong, openSongCount, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
+import { activeSongCount, analyzeSong, createSong, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
 import fixtureJson from '../fixtures/analysis.json'
@@ -71,6 +71,37 @@ describe('saveAnalysis', () => {
     expect(await db.chunks.count()).toBe(3)
   })
 
+  test('un verso dove la voce compare in un\'altra forma ricorda quella forma', async () => {
+    const s1 = await createSong(db, input, now)
+    const s2 = await createSong(db, input, now)
+    const c = analysis.chunks[0]
+    const w = analysis.words[1]
+    await saveAnalysis(db, s1.id, { ...analysis, chunks: [c], words: [w] }, ranks, now)
+    await saveAnalysis(db, s2.id, {
+      ...analysis,
+      chunks: [{ ...c, surface_form: c.surface_form + 'ing', line_index: 4 }],
+      words: [{ ...w, surface_form: 'wandered', line_index: 5 }, { ...w, line_index: 6 }],
+    }, ranks, now)
+    const [chunk] = await db.chunks.toArray()
+    expect(chunk.contexts).toEqual([
+      { songId: s1.id, lineIndex: c.line_index },
+      { songId: s2.id, lineIndex: 4, surfaceForm: c.surface_form + 'ing' },
+    ])
+    const [word] = await db.words.toArray()
+    expect(word.contexts.slice(1)).toEqual([
+      { songId: s2.id, lineIndex: 5, surfaceForm: 'wandered' },
+      { songId: s2.id, lineIndex: 6 },
+    ])
+  })
+
+  test('nella stessa analisi, una parola ripetuta in un\'altra forma ricorda la forma di ogni verso', async () => {
+    const s1 = await createSong(db, input, now)
+    const w = analysis.words[1]
+    await saveAnalysis(db, s1.id, { ...analysis, words: [{ ...w, line_index: 2 }, { ...w, surface_form: 'wandered', line_index: 7 }] }, ranks, now)
+    const [word] = await db.words.toArray()
+    expect(word.contexts).toEqual([{ songId: s1.id, lineIndex: 2 }, { songId: s1.id, lineIndex: 7, surfaceForm: 'wandered' }])
+  })
+
   test('key differing by case/apostrophes reuses the chunk', async () => {
     const s1 = await createSong(db, input, now)
     const s2 = await createSong(db, input, now)
@@ -98,7 +129,7 @@ describe('analyzeSong', () => {
     expect(await analyzeSong(db, song.id, deps({ fetch: okFetch() }))).toBe('analyzed')
     expect((await db.songs.get(song.id))!.status).toBe('analyzed')
     expect(await db.chunks.count()).toBe(3)
-    expect(await openSongCount(db)).toBe(1)
+    expect(await activeSongCount(db)).toBe(1)
   })
   test('offline queues without calling', async () => {
     const song = await createSong(db, input, now)
@@ -106,7 +137,6 @@ describe('analyzeSong', () => {
     expect(await analyzeSong(db, song.id, deps({ fetch: f, online: false }))).toBe('queued')
     expect(f).not.toHaveBeenCalled()
     expect((await db.songs.get(song.id))!.status).toBe('queued')
-    expect(await openSongCount(db)).toBe(0)
     expect(await activeSongCount(db)).toBe(1)
   })
   test('activeSongCount counts everything but done', async () => {
@@ -115,7 +145,6 @@ describe('analyzeSong', () => {
       await db.songs.update(s.id, { status })
     }
     expect(await activeSongCount(db)).toBe(4)
-    expect(await openSongCount(db)).toBe(2)
   })
   test('rate limited ends queued', async () => {
     await saveSettings(db, { apiKey: 'k' })
