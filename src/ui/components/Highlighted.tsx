@@ -3,6 +3,13 @@ export type Segment = { text: string } | Span
 
 const fold = (s: string): string => s.replace(/[’‘]/g, "'").toLowerCase()
 
+/** La prima forma che compare davvero nel verso (es. forma del verso, forma originale, forma base); altrimenti la prima. */
+export function formIn(line: string, forms: (string | undefined)[]): string {
+  const hay = fold(line)
+  const list = forms.filter((f): f is string => !!f && !!f.trim())
+  return list.find((f) => hay.includes(fold(f).trim())) ?? list[0] ?? ''
+}
+
 /** Divide la riga in segmenti: testo semplice e span evidenziati (primo match per span, il più lungo vince). */
 export function highlightLine(line: string, spans: Span[]): Segment[] {
   const hay = fold(line)

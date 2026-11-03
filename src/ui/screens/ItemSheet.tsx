@@ -3,7 +3,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goBackTo } from '../../router'
-import { Highlighted } from '../components/Highlighted'
+import { formIn, Highlighted } from '../components/Highlighted'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
 
@@ -72,9 +72,9 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const table = kind === 'chunk' ? db.chunks : db.words
   const title = kind === 'chunk' ? item.baseForm : item.lemma
   const own = item.contexts.find((c) => c.songId === song.id)
-  const surface = own?.surfaceForm ?? item.surfaceForm
   const lineIdx = own?.lineIndex ?? item.lineIndex
   const line = song.lines[lineIdx]
+  const surface = formIn(line ?? '', [own?.surfaceForm, item.surfaceForm, kind === 'chunk' ? item.baseForm : item.lemma])
   const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }

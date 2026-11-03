@@ -8,7 +8,7 @@ import { pendingWords } from '../../domain/triage'
 import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
-import { Highlighted, type Span } from '../components/Highlighted'
+import { formIn, Highlighted, type Span } from '../components/Highlighted'
 import { ItemSheet } from './ItemSheet'
 import type { ChunkType, Context } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -88,7 +88,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       for (const x of here(item.contexts)) {
         if (x.lineIndex !== i) continue
         const className = 'type' in item ? TYPE_CLASS[item.type] : 'w'
-        spans.push({ text: x.surfaceForm ?? item.surfaceForm, id: item.id, className })
+        const base = 'type' in item ? item.baseForm : item.lemma
+        spans.push({ text: formIn(song.lines[i] ?? '', [x.surfaceForm, item.surfaceForm, base]), id: item.id, className })
       }
     }
     song.connectedSpeech.forEach((cs, k) => {

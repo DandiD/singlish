@@ -206,3 +206,47 @@ describe('parole da smistare', () => {
     expect(await screen.findByText('3 parole nuove da smistare')).toBeTruthy()
   })
 })
+
+describe('dati salvati prima della forma per verso', () => {
+  test('una voce condivisa senza forma del verso si evidenzia con la forma base, se è nel verso', async () => {
+    // come le canzoni analizzate prima: nessuna surfaceForm nel contesto di s2; nel verso c'è la forma base
+    await db.songs.update('s2', { lines: ['we let it slide past the harbour', 'the gulls wander low'] })
+    await db.chunks.update('c1', {
+      surfaceForm: 'letting it slide', baseForm: 'let it slide',
+      contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }],
+    })
+    mount(<Study songId="s2" />)
+    await screen.findByRole('heading', { name: 'Harbour Lights' })
+    const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+    expect(ids.has('c1')).toBe(true)
+    expect(screen.getByText('Studio · 1 chunk · 1 parola')).toBeTruthy()
+    expect(ids.size).toBe(2)
+  })
+})
+
+describe('Oggi e Studio sulla stessa canzone', () => {
+  const studyNumbers = () => {
+    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+    const banner = screen.queryByText(/da smistare$/)?.textContent?.match(/^(\d+)/)
+    return { items: +m[1] + +m[2], pending: banner ? +banner[1] : 0 }
+  }
+  const todayTotal = async (title: string) => {
+    const card = (await screen.findByRole('heading', { name: title })).closest('a')!
+    return +card.textContent!.match(/di (\d+) chunk e parole/)![1]
+  }
+  test('il totale di Oggi è sempre le voci dello Studio meno quelle da smistare, prima e dopo lo smistamento', async () => {
+    const { applyTriage } = await import('../../src/domain/triage')
+    for (const step of ['prima', 'dopo'] as const) {
+      if (step === 'dopo') await applyTriage(db, { w2: 'learn' }, now)
+      mount(<Study songId="s1" />)
+      await screen.findByRole('heading', { name: 'Lantern Road' })
+      await waitFor(() => expect(screen.getByText(/^Studio · /)).toBeTruthy())
+      const s = studyNumbers()
+      cleanup()
+      mount(<Today />)
+      expect(await todayTotal('Lantern Road')).toBe(s.items - s.pending)
+      if (step === 'dopo') expect(s.pending).toBe(0)
+      cleanup()
+    }
+  })
+})
