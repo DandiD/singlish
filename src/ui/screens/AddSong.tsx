@@ -29,11 +29,18 @@ export function AddSong() {
   // Si segnala solo dopo aver lasciato il campo: mentre si incolla o si scrive non disturba.
   const badLink = linkLeft && link.trim() !== '' && !canonical
 
+  // Il titolo da Spotify si chiede una volta per link; l'invio aspetta la stessa richiesta se è ancora in corso.
+  const lookup = useRef<{ url: string; title: Promise<string | null> } | null>(null)
+  const titleFor = (url: string) => {
+    if (lookup.current?.url !== url) lookup.current = { url, title: fetchTrackTitle(url, fetch) }
+    return lookup.current.title
+  }
+
   const onLinkBlur = async (e: Event) => {
     setLinkLeft(true)
     const url = parseSpotifyTrackUrl((e.currentTarget as HTMLInputElement).value)
     if (!url) return
-    const found = await fetchTrackTitle(url, fetch)
+    const found = await titleFor(url)
     if (found) setTitle((cur) => (cur.trim() === '' ? found : cur))
   }
 
@@ -56,10 +63,16 @@ export function AddSong() {
         setBusy(false)
         return
       }
+      // Link incollato per ultimo o Spotify lento: senza titolo scritto si aspetta quello di Spotify (massimo 4 s).
+      let finalTitle = title.trim()
+      if (!finalTitle && canonical) {
+        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000))
+        finalTitle = ((await Promise.race([titleFor(canonical), timeout])) ?? '').trim()
+      }
       const song = await createSong(
         db,
         {
-          title: title.trim() || 'Senza titolo',
+          title: finalTitle || 'Senza titolo',
           artist: artist.trim(),
           spotifyUrl: canonical,
           rawText: text,

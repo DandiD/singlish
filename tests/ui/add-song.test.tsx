@@ -48,6 +48,40 @@ describe('AddSong', () => {
     expect((screen.getByLabelText('Titolo') as HTMLInputElement).value).toBe('Mine')
   })
 
+  test('link incollato per ultimo e invio subito: la canzone prende il titolo da Spotify', async () => {
+    mount(<AddSong />, oembed('Midnight Harbor'))
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one\nline two' } })
+    fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    expect((await db.songs.toArray())[0].title).toBe('Midnight Harbor')
+  })
+
+  test('risposta di Spotify lenta: l\'invio la aspetta e salva il titolo', async () => {
+    let release!: () => void
+    const slow = vi.fn(() => new Promise<Response>((r) => { release = () => r(new Response(JSON.stringify({ title: 'Slow Tide' }), { status: 200 })) })) as unknown as typeof fetch
+    mount(<AddSong />, slow)
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
+    const link = screen.getByLabelText('Link Spotify')
+    fireEvent.input(link, { target: { value: URL_OK } })
+    fireEvent.blur(link)
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await new Promise((r) => setTimeout(r, 20))
+    release()
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    expect((await db.songs.toArray())[0].title).toBe('Slow Tide')
+  })
+
+  test('un titolo scritto a mano vince su quello di Spotify anche all\'invio', async () => {
+    mount(<AddSong />, oembed('Other'))
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
+    fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: '  Mine  ' } })
+    fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    expect((await db.songs.toArray())[0].title).toBe('Mine')
+  })
+
   test('failing oEmbed leaves title empty', async () => {
     const f = vi.fn(async () => new Response('no', { status: 404 })) as unknown as typeof fetch
     mount(<AddSong />, f)
