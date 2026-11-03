@@ -2,15 +2,38 @@
 <html lang="it" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#111317" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="description" content="Impara l’inglese dalle canzoni: espressioni, parole e ripasso quotidiano." />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#111317" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Singlish" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="preload" href="/fonts/inter-tight-400-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/bricolage-grotesque-700-latin.woff2" as="font" type="font/woff2" crossorigin />
     <title>Singlish</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap"
-      rel="stylesheet"
-    />
+    <style>
+      /* Letto al primo disegno, prima dei fogli di stile: niente lampo bianco nel tema scuro. */
+      html { background: #111317; }
+      @media (prefers-color-scheme: light) { html[data-theme="auto"] { background: #F5F6F8; } }
+    </style>
+    <script>
+      // Il prompt d'installazione può arrivare prima che l'app sia montata: lo teniamo da parte.
+      window.__singlishInstall = null
+      addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault()
+        window.__singlishInstall = e
+        dispatchEvent(new Event('singlish:installable'))
+      })
+      addEventListener('appinstalled', function () {
+        window.__singlishInstall = null
+        dispatchEvent(new Event('singlish:installable'))
+      })
+    </script>
   </head>
   <body>
     <div id="app"></div>

@@ -1,4 +1,6 @@
-// Genera public/icons/icon-192.png e icon-512.png senza dipendenze (solo node:zlib).
+// Genera le icone della PWA senza dipendenze (solo node:zlib):
+// icon-192/512 (purpose any: quadrato arrotondato su fondo trasparente),
+// maskable-192/512 (fondo pieno, la S resta nella zona sicura), apple-touch-icon 180 (fondo pieno).
 import { deflateSync } from 'node:zlib'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
@@ -47,12 +49,14 @@ arc(0.5, 0.62, 0.12, -0.5 * Math.PI, 0.85 * Math.PI)
 const lower = pts.splice(0)
 const path = [...upper, ...lower]
 
-function png(size) {
-  const raw = Buffer.alloc((size * 3 + 1) * size)
+function png(size, { rounded }) {
+  const stride = size * 4 + 1
+  const raw = Buffer.alloc(stride * size)
   const w = 0.04
   const aa = 1.5 / size
+  const r = 0.22 // raggio degli angoli per l'icona "any"
   for (let y = 0; y < size; y++) {
-    raw[y * (size * 3 + 1)] = 0
+    raw[y * stride] = 0
     for (let x = 0; x < size; x++) {
       const px = (x + 0.5) / size, py = (y + 0.5) / size
       let d = Infinity
@@ -60,15 +64,22 @@ function png(size) {
         d = Math.min(d, distSeg(px, py, path[i - 1][0], path[i - 1][1], path[i][0], path[i][1]))
       }
       const cov = Math.max(0, Math.min(1, (w - d) / aa + 0.5))
-      const o = y * (size * 3 + 1) + 1 + x * 3
+      let alpha = 1
+      if (rounded) {
+        const qx = Math.max(Math.abs(px - 0.5) - (0.5 - r), 0)
+        const qy = Math.max(Math.abs(py - 0.5) - (0.5 - r), 0)
+        alpha = Math.max(0, Math.min(1, (r - Math.hypot(qx, qy)) / aa + 0.5))
+      }
+      const o = y * stride + 1 + x * 4
       for (let c = 0; c < 3; c++) raw[o + c] = Math.round(BG[c] + (FG[c] - BG[c]) * cov)
+      raw[o + 3] = Math.round(alpha * 255)
     }
   }
   const ihdr = Buffer.alloc(13)
   ihdr.writeUInt32BE(size, 0)
   ihdr.writeUInt32BE(size, 4)
   ihdr[8] = 8
-  ihdr[9] = 2
+  ihdr[9] = 6
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
     chunk('IHDR', ihdr),
@@ -78,4 +89,8 @@ function png(size) {
 }
 
 mkdirSync('public/icons', { recursive: true })
-for (const s of [192, 512]) writeFileSync(`public/icons/icon-${s}.png`, png(s))
+for (const s of [192, 512]) {
+  writeFileSync(`public/icons/icon-${s}.png`, png(s, { rounded: true }))
+  writeFileSync(`public/icons/maskable-${s}.png`, png(s, { rounded: false }))
+}
+writeFileSync('public/icons/apple-touch-icon.png', png(180, { rounded: false }))

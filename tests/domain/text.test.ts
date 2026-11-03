@@ -38,4 +38,8 @@ describe('text', () => {
     expect(normalizeKey('Get It Off My Chest')).toBe(normalizeKey('get it off my chest'))
     expect(normalizeKey('Don’t stop')).toBe(normalizeKey("don't  STOP"))
   })
+  test('una contrazione scritta senza apostrofo è un errore di battitura, non una risposta sbagliata', () => {
+    expect(gradeAnswer("dont let go", "don't let go")).toEqual({ rating: 2, distance: 1 })
+    expect(gradeAnswer('im over it', "I'm over it").rating).toBe(2)
+  })
 })

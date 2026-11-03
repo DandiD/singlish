@@ -4,7 +4,8 @@ export type Level = 'B1' | 'B2' | 'C1'
 export type Register = 'usable' | 'informal' | 'song_only'
 export type ChunkType = 'phrasal_verb' | 'idiom' | 'collocation' | 'fixed_phrase' | 'slang'
 export type Rating = 1 | 2 | 3 | 4
-export type Context = { songId: string; lineIndex: number }
+/** Un verso in cui compare la voce. `surfaceForm` c'è solo se lì la voce ha una forma diversa da `surfaceForm` della voce. */
+export type Context = { songId: string; lineIndex: number; surfaceForm?: string }
 
 export interface Song {
   id: string
@@ -19,6 +20,8 @@ export interface Song {
   comprehensionBefore: number | null
   grammarPoint: { title: string; explanationIt: string; lineIndex: number } | null
   connectedSpeech: { lineIndex: number; written: string; sung: string; noteIt: string }[]
+  /** Traduzione italiana dei versi con un elemento da studiare. Assente nelle canzoni analizzate prima. */
+  lineTranslations?: { lineIndex: number; textIt: string }[]
   addedAt: Date
   analyzedAt: Date | null
 }

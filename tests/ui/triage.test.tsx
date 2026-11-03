@@ -78,7 +78,53 @@ test('item sheet: edit saves userEdited, suspend, exclude with confirm deletes c
   fireEvent.click(screen.getByRole('button', { name: 'Sospendi' }))
   await waitFor(async () => expect((await db.chunks.get('c1'))!.suspended).toBe(true))
   fireEvent.click(screen.getByRole('button', { name: 'Escludi' }))
+  expect(screen.getByText('Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Sì, escludi' }))
   await waitFor(async () => expect(await db.chunks.get('c1')).toBeUndefined())
   expect(await db.cards.where('itemId').equals('c1').count()).toBe(0)
+})
+
+test('smistamento non salvato: avviso chiaro e Conferma di nuovo usabile', async () => {
+  const { errors } = await import('../../src/ui/report')
+  errors.dismiss()
+  render(<AppDepsProvider value={deps()}><Triage songId="s1" /></AppDepsProvider>)
+  await screen.findByText('harbour')
+  db.words.bulkPut = (() => Promise.reject(new Error('disk'))) as never
+  db.cards.bulkAdd = (() => Promise.reject(new Error('disk'))) as never
+  db.words.update = (() => Promise.reject(new Error('disk'))) as never
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\. Riprova/))
+  await waitFor(() => expect((screen.getByRole('button', { name: 'Conferma' }) as HTMLButtonElement).disabled).toBe(false))
+  expect(window.location.hash).toBe('')
+})
+
+test('modifica della scheda non salvata: resta in modifica e lo dice', async () => {
+  const { errors } = await import('../../src/ui/report')
+  errors.dismiss()
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  fireEvent.click(screen.getByRole('button', { name: 'Modifica' }))
+  db.chunks.update = (() => Promise.reject(new Error('disk'))) as never
+  fireEvent.click(screen.getByRole('button', { name: 'Salva' }))
+  await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
+  expect(screen.getByLabelText('Significato')).toBeTruthy()
+})
+
+test('la scheda mostra in fondo la traduzione del verso', async () => {
+  await db.songs.update('s1', { lineTranslations: [{ lineIndex: 0, textIt: 'Stanotte lascerò correre' }] })
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  const dialog = await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  const sections = [...dialog.querySelectorAll('.examples > div')]
+  const last = sections[sections.length - 1]
+  expect(last.querySelector('.section-label')!.textContent).toBe('TRADUZIONE DEL VERSO')
+  expect(last.textContent).toContain('Stanotte lascerò correre')
+})
+
+test('senza traduzione la sezione non compare', async () => {
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  expect(screen.queryByText('TRADUZIONE DEL VERSO')).toBeNull()
 })

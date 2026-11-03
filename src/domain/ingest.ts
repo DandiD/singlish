@@ -7,6 +7,7 @@ import { RESPONSE_SCHEMA, SYSTEM_PROMPT, buildUserMessage } from './gemini/promp
 import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
 import { normalizeKey, splitLines } from './text'
+import { newId } from './id'
 
 export interface SongInput {
   title: string
@@ -19,7 +20,7 @@ export interface SongInput {
 export async function createSong(db: SinglishDB, input: SongInput, now: Date): Promise<Song> {
   const settings = await getSettings(db)
   const song: Song = {
-    id: crypto.randomUUID(),
+    id: newId(),
     kind: 'song',
     title: input.title,
     artist: input.artist,
@@ -38,8 +39,18 @@ export async function createSong(db: SinglishDB, input: SongInput, now: Date): P
   return song
 }
 
+/** Il verso di una voce; la forma si ricorda solo se lì è diversa da quella della voce. */
+const contextOf = (songId: string, lineIndex: number, surface: string, itemSurface: string): Context =>
+  surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
+
 const addContext = (contexts: Context[], ctx: Context): boolean => {
-  if (contexts.some((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)) return false
+  const same = contexts.find((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)
+  if (same) {
+    // Un contesto salvato prima senza la forma del verso la prende ora.
+    if (!ctx.surfaceForm || same.surfaceForm === ctx.surfaceForm) return false
+    same.surfaceForm = ctx.surfaceForm
+    return true
+  }
   contexts.push(ctx)
   return true
 }
@@ -56,28 +67,29 @@ export async function saveAnalysis(
   return db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
     const song = await db.songs.get(songId)
     if (!song) throw new Error(`Song not found: ${songId}`)
+    // Una seconda analisi della stessa canzone (doppio avvio, coda all'apertura) non tocca nulla.
+    if (isAnalyzed(song)) return { chunksAdded: 0, contextsAdded: 0, wordsPending: 0 }
     let chunksAdded = 0
     let contextsAdded = 0
 
     for (const c of analysis.chunks) {
       const key = normalizeKey(c.base_form)
-      const ctx = { songId, lineIndex: c.line_index }
       const existing = await db.chunks.where('key').equals(key).first()
       if (existing) {
-        if (addContext(existing.contexts, ctx)) {
+        if (addContext(existing.contexts, contextOf(songId, c.line_index, c.surface_form, existing.surfaceForm))) {
           await db.chunks.put(existing)
           contextsAdded++
         }
         continue
       }
       const chunk: Chunk = {
-        id: crypto.randomUUID(),
+        id: newId(),
         songId,
         key,
         baseForm: c.base_form,
         surfaceForm: c.surface_form,
         lineIndex: c.line_index,
-        contexts: [ctx],
+        contexts: [{ songId, lineIndex: c.line_index }],
         type: c.type,
         cefr: c.cefr,
         register: c.register,
@@ -97,17 +109,17 @@ export async function saveAnalysis(
 
     const known = new Set((await db.words.toArray()).map((w) => w.lemma.toLowerCase()))
     const fresh: ((typeof analysis.words)[number])[] = []
-    const extraLines = new Map<string, number[]>()
+    const extraLines = new Map<string, { line: number; surface: string }[]>()
     for (const raw of analysis.words) {
       const w = { ...raw, lemma: raw.lemma.trim().toLowerCase() }
       const lemma = w.lemma
       if (known.has(lemma)) {
         const existing = await db.words.where('lemma').equals(lemma).first()
-        if (existing && addContext(existing.contexts, { songId, lineIndex: w.line_index })) {
+        if (existing && addContext(existing.contexts, contextOf(songId, w.line_index, w.surface_form, existing.surfaceForm))) {
           await db.words.put(existing)
         }
       } else if (extraLines.has(lemma)) {
-        extraLines.get(lemma)!.push(w.line_index)
+        extraLines.get(lemma)!.push({ line: w.line_index, surface: w.surface_form })
       } else {
         extraLines.set(lemma, [])
         fresh.push(w)
@@ -115,7 +127,7 @@ export async function saveAnalysis(
     }
     const accepted = filterWordsByBand(fresh, ranks, band, known)
     const rows: Word[] = accepted.map((w) => ({
-      id: crypto.randomUUID(),
+      id: newId(),
       lemma: w.lemma,
       surfaceForm: w.surface_form,
       pos: w.pos,
@@ -123,9 +135,9 @@ export async function saveAnalysis(
       songId,
       lineIndex: w.line_index,
       contexts: (() => {
-        const ctxs: Context[] = []
-        for (const li of [w.line_index, ...(extraLines.get(w.lemma) ?? [])]) {
-          addContext(ctxs, { songId, lineIndex: li })
+        const ctxs: Context[] = [{ songId, lineIndex: w.line_index }]
+        for (const x of extraLines.get(w.lemma) ?? []) {
+          addContext(ctxs, contextOf(songId, x.line, x.surface, w.surface_form))
         }
         return ctxs
       })(),
@@ -157,10 +169,18 @@ export async function saveAnalysis(
         sung: c.sung,
         noteIt: c.note_it,
       })),
+      lineTranslations: (analysis.line_translations ?? []).map((t) => ({ lineIndex: t.line_index, textIt: t.translation_it })),
       analyzedAt: now,
     })
     return { chunksAdded, contextsAdded, wordsPending: rows.length }
   })
+}
+
+const isAnalyzed = (song: Song) => song.status === 'analyzed' || song.status === 'studying' || song.status === 'done'
+
+/** In coda solo se non è stata analizzata nel frattempo (un'altra analisi della stessa canzone può essere finita). */
+function markQueued(db: SinglishDB, songId: string) {
+  return db.songs.where('id').equals(songId).filter((s) => !isAnalyzed(s)).modify({ status: 'queued' })
 }
 
 export interface AnalyzeDeps {
@@ -178,8 +198,9 @@ export async function analyzeSong(
 ): Promise<'analyzed' | 'queued'> {
   const song = await db.songs.get(songId)
   if (!song) throw new Error(`Song not found: ${songId}`)
+  if (isAnalyzed(song)) return 'analyzed'
   if (!deps.online) {
-    await db.songs.update(songId, { status: 'queued' })
+    await markQueued(db, songId)
     return 'queued'
   }
   const settings = await getSettings(db)
@@ -211,20 +232,26 @@ export async function analyzeSong(
         e.code === 'network' ||
         (e.code === 'http' && (e.status ?? 0) >= 500))
     ) {
-      await db.songs.update(songId, { status: 'queued' })
+      await markQueued(db, songId)
       return 'queued'
     }
     throw e
   }
 }
 
-export async function openSongCount(db: SinglishDB): Promise<number> {
-  return db.songs.where('status').anyOf('analyzed', 'studying').count()
+/** Canzoni aperte al massimo (spec §3). */
+export const MAX_OPEN_SONGS = 4
+
+/** Quando si è al limite di canzoni aperte: cosa succede e cosa fare. */
+export const LIMIT_NOTE = `Hai già ${MAX_OPEN_SONGS} canzoni aperte. Segnane una come completata per aggiungerne un'altra.`
+
+/** Le canzoni aperte: tutte quelle non completate (bozza, in coda, analizzate, in studio). Contano per il limite. */
+export function activeSongs(db: SinglishDB): Promise<Song[]> {
+  return db.songs.where('status').notEqual('done').toArray()
 }
 
-/** Songs that count toward the add limit: everything not yet 'done' (draft, queued, analyzed, studying). */
 export async function activeSongCount(db: SinglishDB): Promise<number> {
-  return db.songs.where('status').notEqual('done').count()
+  return (await activeSongs(db)).length
 }
 
 export async function retryQueuedSongs(

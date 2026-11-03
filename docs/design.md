@@ -7,7 +7,7 @@ Look: "studio serale". Fondo scuro di default, un accento arancio, colori per ti
 - Titoli: Bricolage Grotesque 700 (opsz 12..96).
 - Testo: Inter Tight 400/500/600.
 - Timer e numeri tecnici: JetBrains Mono 500.
-Caricate da Google Fonts con `display=swap`; la PWA le mette in precache.
+Self-hosted in `public/fonts/` (woff2, sottoinsiemi latin e latin-ext, licenza OFL) con `display=swap`; il service worker le mette in precache, quindi funzionano offline dal primo avvio.
 
 ## Colori dei tipi di espressione
 phrasal verb `--blue` · idioma `--accent` · collocazione `--green` · slang `--violet` · parola singola: sottolineatura `--text-2` · parlato connesso: sottolineatura puntinata `--muted`.
@@ -170,3 +170,55 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 18 | Impostazioni | `#/settings` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico (Lessico disabilitato nell'MVP con etichetta "Presto"). Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
+
+## Movimento
+Regole in `src/styles/motion.css` (curve `--ease-out`, `--ease-spring`; durate `--t-fast/med/slow`).
+- Il movimento risponde ai gesti: cambio di schermata (View Transitions, avanti/indietro/dissolvenza secondo `navDirection` in `src/router.ts`), fogli dal basso che salgono e scendono, card della sessione che entrano da destra, voti e scelte che "saltano".
+- Un solo momento firma: nella card Riconosci il chunk si riempie da sinistra a destra come una riga di karaoke.
+- La barra in basso resta ferma durante le transizioni; l'indicatore scivola fra le schede.
+- `prefers-reduced-motion: reduce`: restano gli stati finali, senza spostamenti.
+
+## Navigazione
+Cronologia dell'app in `src/nav-history.ts`, usata dal router (`goBack`, `goBackTo`, `goReplace`, `onBack`, `onBackTo`).
+- «Indietro» e ✕ ripercorrono la cronologia (come il tasto Indietro del telefono); senza pagine precedenti nell'app sostituiscono la voce con la pagina di riserva. Il tasto Indietro non riapre mai una pagina appena chiusa.
+- Gli esiti di un'azione (canzone salvata → analisi → smistamento → studio, scheda chiusa, sessione finita) sostituiscono la voce: tornando indietro non si ripassa da moduli e passaggi già conclusi.
+- Tornando a una pagina si ritrova lo scroll; una pagina nuova parte dall'alto. La scheda attiva della barra, toccata di nuovo, riporta in cima.
+- A ogni cambio di pagina il fuoco va sul titolo (`h1`) e la scheda del browser prende il titolo della pagina. Le schermate che caricano dati segnano `main` con `aria-busy` finché non sono pronte.
+
+## Errori
+Testi in `src/ui/errors.ts` (`geminiProblem`, `storageProblem`, `failedMessage`, `actionMessage`), uno per causa: cosa è successo (titolo, senza punto), perché e cosa fare (frasi complete). Mai codici tecnici a schermo, salvo lo status HTTP dove aiuta («errore 503»).
+- Gemini: chiave mancante o rifiutata e modello inesistente portano a Impostazioni; testo bloccato dai filtri, risposta incompleta, servizio occupato o irraggiungibile offrono «Riprova». In coda si dice il motivo (offline o Gemini occupato).
+- Prova della chiave: un solo tentativo; offline o rete assente non diventano mai «chiave non valida»; con 429 la chiave è buona e si salva.
+- Azioni non riuscite (voto, smistamento, modifica, completamento, impostazioni): avviso in basso (`reportError`, `ErrorToast`), il pulsante torna usabile. Anche le promesse rifiutate senza gestione arrivano all'avviso.
+- Pagine: `ErrorBoundary` al posto dello schermo bianco; `DbGate`, `useLive` e `useFailure` portano lì anche il database che non si apre e i caricamenti falliti, con un testo dedicato per spazio esaurito e dati del browser bloccati.
+- Moduli: errori sotto il campo con `aria-invalid` e `aria-describedby`, mostrati dopo aver lasciato il campo.
+
+## Coerenza dei dati fra schermate
+Ogni numero si calcola in un solo punto, così due schermate non possono contraddirsi.
+- Canzoni aperte: `activeSongs` / `activeSongCount` e `MAX_OPEN_SONGS` in `src/domain/ingest.ts` (tutte le non completate). Oggi le elenca tutte (bozze e in coda portano all'analisi) e, al limite, toglie «Aggiungi» e mostra `LIMIT_NOTE` come Canzoni e Aggiungi canzone.
+- Ripasso: `buildSessionQueue` esclude già le voci viste nella sessione lasciata a metà; Oggi annuncia esattamente le card che la Sessione mostrerà.
+- Voci di una canzone: `itemsInSong` in `src/domain/songItems.ts`, unica per lo Studio (evidenziazione e conteggi) e per l'avanzamento in Oggi. Le voci che il testo non riesce a evidenziare (coperte da una voce più lunga nello stesso verso, o con una forma che non si trova) sono elencate sotto il testo in «Altre voci di questa canzone»: ogni voce contata è raggiungibile, e i conteggi sono evidenziate + elencate.
+- Studio: i conteggi in testa sono le voci evidenziate nel testo (non sospese, parole non note, anche quelle nate in un'altra canzone). In Oggi la stessa canzone conta quelle voci meno le parole ancora da smistare.
+- Una voce in un'altra canzone si evidenzia nella forma del suo verso (`contexts[].surfaceForm`): testo, scheda e card della sessione usano la stessa. Per i dati salvati prima, se la forma non è nel verso si provano la forma base e le sue forme irregolari comuni (`formIn`: «run out of» → «ran out of»); una voce che resta introvabile finisce nell'elenco sotto il testo, contata come le altre. Salvando di nuovo una canzone, un contesto senza forma la prende.
+- Parole da smistare: `pendingWords` in `src/domain/triage.ts` (in un verso della canzone, anche se nate altrove, non sospese) per il banner dello Studio, Smista e l'esito dell'Analisi.
+- Canzone «tenuta per più avanti»: resta `analyzed`, in Canzoni e in Oggi si chiama «Da studiare» e non porta card nuove nel ripasso; aprirne lo Studio la porta a `studying`. Le card già in ripasso continuano.
+- Testi che descrivono un effetto dicono quello vero: chiudendo la sessione allo scadere le card restanti restano su Oggi; Escludi toglie la voce, che torna se ricompare in una canzone nuova.
+
+## Salvataggi
+Niente di ciò che l'utente inserisce si perde in silenzio.
+- Aggiungi canzone: il modulo è una bozza in `localStorage` (si esce dall'app per ascoltare e copiare il testo, e iOS può chiuderla); si svuota a canzone salvata. Senza titolo scritto, l'invio aspetta il titolo di Spotify (al massimo 4 s); correggendo il link, il titolo preso da Spotify si aggiorna; uno scritto a mano vince. La comprensione non indicata si salva vuota («—»), non 50%. Se l'utente va altrove mentre si aspetta, la canzone non si crea.
+- Analisi: l'esito si salva solo se la canzone non è già analizzata; una seconda analisi (doppio avvio, coda all'apertura) non cambia stato né dati.
+- Impostazioni: ogni campo si salva da solo, modello compreso (senza spazi; vuoto torna quello salvato). I numeri vuoti tornano al valore salvato, quelli fuori limite si fermano al limite, e il campo mostra il valore salvato. La prova della chiave salva la chiave provata, anche se intanto si è scritto altro.
+- Scheda: chiudendola mentre si modifica (velo, Esc, X) la modifica si salva; un significato vuoto non si salva.
+- Ripasso: voto e contatori della sessione in una sola transazione. Le sessioni di Studio si chiudono uscendo.
+- Canzoni: «Modifica» su ogni canzone, in qualunque stato, per titolo, artista e link Spotify. Titolo vuoto non salvabile; link non di un brano bloccato con lo stesso messaggio di Aggiungi canzone; link vuoto toglie il link; se il titolo è ancora «Senza titolo», arriva da Spotify lasciando il campo del link.
+- Link Spotify che non è di un brano: l'invio si ferma, lo dice e torna al campo (non si salva senza link in silenzio).
+
+## Contenuti e interazioni
+- Forme nel verso: `findForm` cerca la parola intera, poi il pezzo di parola («end» non diventa «fri*end*s»); Studio, scheda e card R/C della sessione usano la stessa forma (`formIn`), e la card C chiede quella.
+- Parlato connesso: le parole con sottolineatura puntinata aprono la scheda «Pronuncia» (scritto, cantato, spiegazione, verso).
+- Avvisi: nella sessione stanno in alto, sotto l'intestazione, per non coprire i voti; altrove in basso.
+- Installazione: accettata dal pulsante o dal menu (`appinstalled`), la scheda dice «App installata».
+
+## PWA
+Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

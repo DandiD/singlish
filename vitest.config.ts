@@ -3,6 +3,7 @@ import preact from '@preact/preset-vite'
 
 export default defineConfig({
   plugins: [preact()],
+  define: { __APP_VERSION__: JSON.stringify('test') },
   resolve: {
     alias: {
       react: 'preact/compat',

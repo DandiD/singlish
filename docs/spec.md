@@ -24,7 +24,7 @@ Priorità delle card nuove: chunk delle canzoni → parole "da imparare" → esp
 | Ripasso giornaliero | 30 minuti (timer della sessione), divisibile in 2 × 15 |
 | Card nuove al giorno | 16 (impostazione `newPerDay`), chunk e parole insieme |
 | Stop delle nuove | se i ripassi in scadenza oggi superano i 30 minuti stimati, le nuove non entrano |
-| Canzoni/testi aperti | massimo 4 |
+| Canzoni/testi aperti | massimo 4: tutte le canzoni non completate (bozze e in coda comprese) |
 | Modalità intensiva (v1) | 25 nuove al giorno per massimo 7 giorni |
 
 ## 4. Card dell'MVP
@@ -39,7 +39,7 @@ Voti FSRS: Again, Hard, Good, Easy (etichette UI: Di nuovo, Difficile, Bene, Fac
 Card dello stesso chunk/parola non escono nella stessa sessione.
 
 ## 5. Confronto delle risposte
-Minuscole; apostrofi tipografici ’ ‘ → '; spazi multipli → uno; trim; contrazioni equivalenti: I'm = I am, you're = you are, it's = it is, don't = do not, can't = cannot, won't = will not, gonna = going to, wanna = want to. Errore di battitura = distanza di Levenshtein ≤ 1 dopo la normalizzazione.
+Minuscole; apostrofi tipografici ’ ‘ → '; spazi multipli → uno; trim; contrazioni equivalenti: I'm = I am, you're = you are, it's = it is, don't = do not, can't = cannot, won't = will not, gonna = going to, wanna = want to. Errore di battitura = distanza di Levenshtein ≤ 1 dopo la normalizzazione; si confrontano anche le forme senza espansione delle contrazioni e vale la distanza minore («dont» per «don't» è un errore di battitura). Forma e buco si cercano nel verso come parola intera, poi come pezzo di parola.
 
 ## 6. Timer
 | Attività | Durata predefinita | Uscendo dall'app (`visibilitychange`) |
@@ -83,7 +83,8 @@ Solo per i chunk: una situazione in italiano per produrlo, nota di pronuncia se 
 si fonde o si accorcia.
 Aggiungi: un solo punto di grammatica, fino a 3 fenomeni di parlato connesso (solo canzoni),
 una stima della percentuale di testo che lo studente capisce già.
-Non tradurre il testo intero. Non inventare: se un significato dipende dal contesto, dillo.
+Traduci in italiano solo le righe che contengono un chunk o una parola estratti,
+una volta per riga; non tradurre le altre righe. Non inventare: se un significato dipende dal contesto, dillo.
 ```
 
 ### Messaggio utente
@@ -109,17 +110,19 @@ Testo (righe numerate):
     "production_prompt_it": "", "pronunciation_note_it": "" } ],
   "words": [ { "lemma": "", "surface_form": "", "line_index": 0,
     "pos": "noun | verb | adjective | adverb", "cefr": "B2", "register": "usable", "topic": "travel",
-    "meaning_it": "", "explanation_it": "", "extra_example_en": "" } ]
+    "meaning_it": "", "explanation_it": "", "extra_example_en": "" } ],
+  "line_translations": [ { "line_index": 0, "translation_it": "" } ]
 }
 ```
-Se `difficulty_known_pct` < 60 l'app suggerisce di rimandare la canzone (non la blocca).
+`line_translations`: solo le righe con almeno un chunk o una parola estratti; la scheda dell'elemento mostra la traduzione del suo verso.
+Se `difficulty_known_pct` < 60 l'app suggerisce di rimandare la canzone (non la blocca). Una canzone rimandata («Tienila per più avanti») non porta card nuove nel ripasso finché non se ne apre lo Studio.
 
 ## 9. Spotify
 Solo link. Titolo dal endpoint oEmbed `https://open.spotify.com/oembed?url={trackUrl}` (campo `title`). Se la chiamata fallisce (CORS o rete), campi vuoti da compilare a mano. Nessuna API Spotify autenticata. Link accettati: `https://open.spotify.com/track/{id}` con eventuale `?si=…` e prefisso `intl-xx/`.
 
 ## 10. Dati (IndexedDB con Dexie, database `singlish`)
 Tabelle MVP: songs, chunks, words, cards, reviews, sessions, settings. Campi in `docs/superpowers/plans/2026-10-31-singlish-mvp.md`, Task 2. Id: UUID generati sul dispositivo.
-Lo stesso chunk (`baseForm` normalizzato) o la stessa parola (`lemma`) in una seconda canzone non crea nuove card: si aggiunge il verso a `contexts[]`.
+Lo stesso chunk (`baseForm` normalizzato) o la stessa parola (`lemma`) in una seconda canzone non crea nuove card: si aggiunge il verso a `contexts[]`, con la forma in cui la voce compare lì (`surfaceForm`) se è diversa da quella della prima canzone.
 
 ## 11. Backup
 Esporta un file JSON con tutte le tabelle tranne `apiKey` (esclusa di proposito); importa sostituendo i dati dopo conferma. Condivisione tramite `navigator.share` se disponibile, altrimenti download.

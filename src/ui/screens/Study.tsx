@@ -1,25 +1,23 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { reportError } from '../report'
+import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { getSettings } from '../../domain/settings'
+import { pendingWords } from '../../domain/triage'
 import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
-import { Highlighted, type Span } from '../components/Highlighted'
-import { ItemSheet } from './ItemSheet'
-import type { ChunkType } from '../../db/types'
+import { Highlighted } from '../components/Highlighted'
+import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
+import { ItemSheet, SpeechSheet } from './ItemSheet'
 
-const TYPE_CLASS: Record<ChunkType, string> = {
-  phrasal_verb: 'pv',
-  idiom: 'id',
-  collocation: 'co',
-  fixed_phrase: 'fp',
-  slang: 'sl',
-}
+import { Icon } from '../components/Icon'
+import { plural } from '../plural'
+import { newId } from '../../domain/id'
 
 const LEGEND: [string, string][] = [
-  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
+  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['fp', 'espressione fissa'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
 ]
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
@@ -29,17 +27,29 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
   useEffect(() => {
     let alive = true
-    const id = crypto.randomUUID()
-    void (async () => {
+    const id = newId()
+    const created = (async () => {
       const s = await getSettings(db)
+      if (!alive) return false // uscito prima: nessuna sessione
       const t = Date.now()
       await db.sessions.add({
         id, kind: 'study', songId, startedAt: now(), endedAt: null,
         timer: startTimer(s.timerMinutes.study * 60_000, t), reviewsDone: 0, newDone: 0,
       })
       if (alive) setSessionId(id)
+      return true
     })()
-    return () => { alive = false }
+    created.catch(reportError)
+    return () => {
+      alive = false
+      // Uscendo dallo Studio la sua sessione si chiude.
+      void created.then(async (made) => { if (made) await db.sessions.update(id, { endedAt: now() }) }).catch(reportError)
+    }
+  }, [db, songId])
+
+  // Aprire lo Studio di una canzone tenuta per più avanti la mette in studio: da qui le sue card nuove entrano nel ripasso.
+  useEffect(() => {
+    db.songs.where('id').equals(songId).filter((s) => s.status === 'analyzed').modify({ status: 'studying' }).catch(reportError)
   }, [db, songId])
 
   const timer = useTimer(sessionId, { autoPauseOnHide: true, wakeLock: false }, db)
@@ -47,58 +57,41 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   timerRef.current = timer
   useEffect(() => () => { timerRef.current.pause() }, [])
 
-  const data = useLiveQuery(async () => {
+  const data = useLive(async () => {
     const song = (await db.songs.get(songId)) ?? null
     const chunks = (await db.chunks.toArray()).filter((c) => c.contexts.some((x) => x.songId === songId))
     const words = (await db.words.toArray()).filter((w) => w.contexts.some((x) => x.songId === songId) || w.songId === songId)
-    return { song, chunks, words }
+    const pending = (await pendingWords(db, songId)).length
+    return { song, chunks, words, pending }
   }, [db, songId])
 
-  if (!data) return <main class="screen" />
-  const { song, chunks, words } = data
+  if (!data) return <main class="screen" aria-busy="true" />
+  const { song, chunks, words, pending } = data
   if (!song) {
     return (
       <main class="screen">
-        <p>Canzone non trovata.</p>
-        <a class="btn outline" href={href({ name: 'songs' })}>Torna alle canzoni</a>
+        <h1>Canzone non trovata</h1>
+        <p class="note">Forse è stata eliminata, o il link è sbagliato.</p>
+        <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
       </main>
     )
   }
 
-  const pending = words.filter((w) => w.songId === songId && w.triage === 'pending').length
+  // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa (e per Oggi).
+  const placed = itemsInSong(song, chunks, words)
+  const hrefFor = (id: string) => href({ name: 'study', songId, itemId: id })
 
-  const spansFor = (i: number): Span[] => {
-    const spans: Span[] = []
-    for (const c of chunks) {
-      if (c.suspended) continue
-      if (c.contexts.some((x) => x.songId === songId && x.lineIndex === i)) {
-        spans.push({ text: c.surfaceForm, id: c.id, className: TYPE_CLASS[c.type] })
-      }
-    }
-    for (const w of words) {
-      if (w.suspended || w.triage === 'known') continue
-      const ctxs = w.contexts.some((x) => x.songId === songId) ? w.contexts.filter((x) => x.songId === songId) : [{ songId, lineIndex: w.lineIndex }]
-      if (ctxs.some((x) => x.lineIndex === i)) spans.push({ text: w.surfaceForm, id: w.id, className: 'w' })
-    }
-    song.connectedSpeech.forEach((cs, k) => {
-      if (cs.lineIndex === i) spans.push({ text: cs.written, id: `cs:${k}`, className: 'cs' })
-    })
-    return spans
-  }
-  const hrefFor = (id: string) =>
-    id.startsWith('cs:') ? undefined : href({ name: 'study', songId, itemId: id })
-
-  const chunkCount = chunks.filter((c) => !c.suspended).length
-  const wordCount = words.filter((w) => w.songId === songId && w.triage !== 'known' && !w.suspended).length
+  const chunkCount = placed.chunks.size
+  const wordCount = placed.words.size
   const gp = song.grammarPoint
 
   return (
     <main class="screen study">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <div class="grow">
           <h1>{song.title}</h1>
-          <p class="note">{`Studio · ${chunkCount} chunk · ${wordCount} parole`}</p>
+          <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}`}</p>
         </div>
         {sessionId && (
           <TimerPill
@@ -113,7 +106,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
       {pending > 0 && (
         <a class="banner" href={href({ name: 'triage', songId })}>
-          <span>{`${pending} parole nuove da smistare`}</span>
+          <span>{`${plural(pending, 'parola nuova', 'parole nuove')} da smistare`}</span>
           <span aria-hidden="true">→</span>
         </a>
       )}
@@ -133,9 +126,24 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
       <div class="lyrics" lang="en">
         {song.lines.map((l, i) => (
-          <p key={i}><Highlighted line={l} spans={spansFor(i)} hrefFor={hrefFor} /></p>
+          <p key={i}><Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} /></p>
         ))}
       </div>
+
+      {placed.unshown.length > 0 && (
+        <section class="other-items">
+          <h2 class="section-label" id="other-items">ALTRE VOCI DI QUESTA CANZONE</h2>
+          <ul aria-label="Altre voci di questa canzone">
+            {placed.unshown.map((i) => (
+              <li key={i.id}>
+                <a href={href({ name: 'study', songId, itemId: i.id })} lang="en">
+                  <span class={`hl ${'type' in i ? CHUNK_CLASS[i.type] : 'w'}`}>{'type' in i ? i.baseForm : i.lemma}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {song.spotifyUrl && (
         <footer class="study-foot">
@@ -153,8 +161,13 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn primary"
                 onClick={async () => {
-                  await db.songs.update(songId, { status: 'done' })
-                  window.location.hash = href({ name: 'songs' })
+                  try {
+                    await db.songs.update(songId, { status: 'done' })
+                    goBackTo({ name: 'songs' })
+                  } catch (e) {
+                    reportError(e)
+                    setConfirming(false)
+                  }
                 }}
               >
                 Conferma
@@ -166,7 +179,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         )}
       </footer>
 
-      {itemId && <ItemSheet song={song} itemId={itemId} />}
+      {itemId && (itemId.startsWith('cs:') ? <SpeechSheet song={song} itemId={itemId} /> : <ItemSheet song={song} itemId={itemId} />)}
     </main>
   )
 }

@@ -47,6 +47,12 @@ export function levenshtein(a: string, b: string): number {
 }
 
 export function gradeAnswer(given: string, expected: string): { rating: 1 | 2 | 3; distance: number } {
-  const distance = levenshtein(normalizeAnswer(given), normalizeAnswer(expected))
+  // Spec §5 sulle forme normalizzate; in più, una contrazione scritta senza apostrofo («dont») resta un errore
+  // di battitura: si confrontano anche le forme senza espansione e vale la distanza minore.
+  const plain = (s: string) => squeeze(fixQuotes(s.toLowerCase()))
+  const distance = Math.min(
+    levenshtein(normalizeAnswer(given), normalizeAnswer(expected)),
+    levenshtein(plain(given), plain(expected)),
+  )
   return { rating: distance === 0 ? 3 : distance === 1 ? 2 : 1, distance }
 }

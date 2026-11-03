@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { activeSongCount, analyzeSong, createSong, openSongCount, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
+import { activeSongCount, analyzeSong, createSong, retryQueuedSongs, saveAnalysis } from '../../src/domain/ingest'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
 import fixtureJson from '../fixtures/analysis.json'
@@ -71,6 +71,52 @@ describe('saveAnalysis', () => {
     expect(await db.chunks.count()).toBe(3)
   })
 
+  test('un contesto salvato senza forma prende la forma quando la canzone viene salvata di nuovo', async () => {
+    const s1 = await createSong(db, input, now)
+    const s2 = await createSong(db, input, now)
+    const c = analysis.chunks[0]
+    await saveAnalysis(db, s1.id, { ...analysis, chunks: [c], words: [] }, ranks, now)
+    const [old] = await db.chunks.toArray()
+    await db.chunks.update(old.id, { contexts: [...old.contexts, { songId: s2.id, lineIndex: 4 }] }) // dato vecchio
+    await saveAnalysis(db, s2.id, { ...analysis, chunks: [{ ...c, surface_form: 'ran out of', line_index: 4 }], words: [] }, ranks, now)
+    const [chunk] = await db.chunks.toArray()
+    expect(chunk.contexts).toEqual([
+      { songId: s1.id, lineIndex: c.line_index },
+      { songId: s2.id, lineIndex: 4, surfaceForm: 'ran out of' },
+    ])
+  })
+
+  test('un verso dove la voce compare in un\'altra forma ricorda quella forma', async () => {
+    const s1 = await createSong(db, input, now)
+    const s2 = await createSong(db, input, now)
+    const c = analysis.chunks[0]
+    const w = analysis.words[1]
+    await saveAnalysis(db, s1.id, { ...analysis, chunks: [c], words: [w] }, ranks, now)
+    await saveAnalysis(db, s2.id, {
+      ...analysis,
+      chunks: [{ ...c, surface_form: c.surface_form + 'ing', line_index: 4 }],
+      words: [{ ...w, surface_form: 'wandered', line_index: 5 }, { ...w, line_index: 6 }],
+    }, ranks, now)
+    const [chunk] = await db.chunks.toArray()
+    expect(chunk.contexts).toEqual([
+      { songId: s1.id, lineIndex: c.line_index },
+      { songId: s2.id, lineIndex: 4, surfaceForm: c.surface_form + 'ing' },
+    ])
+    const [word] = await db.words.toArray()
+    expect(word.contexts.slice(1)).toEqual([
+      { songId: s2.id, lineIndex: 5, surfaceForm: 'wandered' },
+      { songId: s2.id, lineIndex: 6 },
+    ])
+  })
+
+  test('nella stessa analisi, una parola ripetuta in un\'altra forma ricorda la forma di ogni verso', async () => {
+    const s1 = await createSong(db, input, now)
+    const w = analysis.words[1]
+    await saveAnalysis(db, s1.id, { ...analysis, words: [{ ...w, line_index: 2 }, { ...w, surface_form: 'wandered', line_index: 7 }] }, ranks, now)
+    const [word] = await db.words.toArray()
+    expect(word.contexts).toEqual([{ songId: s1.id, lineIndex: 2 }, { songId: s1.id, lineIndex: 7, surfaceForm: 'wandered' }])
+  })
+
   test('key differing by case/apostrophes reuses the chunk', async () => {
     const s1 = await createSong(db, input, now)
     const s2 = await createSong(db, input, now)
@@ -84,6 +130,13 @@ describe('saveAnalysis', () => {
   })
 })
 
+test('saveAnalysis salva sulla canzone le traduzioni dei versi', async () => {
+  const song = await createSong(db, input, now)
+  const withT: Analysis = { ...analysis, line_translations: [{ line_index: 3, translation_it: 'Ho capito che non saresti mai venuto' }] }
+  await saveAnalysis(db, song.id, withT, ranks, now)
+  expect((await db.songs.get(song.id))!.lineTranslations).toEqual([{ lineIndex: 3, textIt: 'Ho capito che non saresti mai venuto' }])
+})
+
 describe('analyzeSong', () => {
   test('success analyzes the song', async () => {
     await saveSettings(db, { apiKey: 'k' })
@@ -91,7 +144,7 @@ describe('analyzeSong', () => {
     expect(await analyzeSong(db, song.id, deps({ fetch: okFetch() }))).toBe('analyzed')
     expect((await db.songs.get(song.id))!.status).toBe('analyzed')
     expect(await db.chunks.count()).toBe(3)
-    expect(await openSongCount(db)).toBe(1)
+    expect(await activeSongCount(db)).toBe(1)
   })
   test('offline queues without calling', async () => {
     const song = await createSong(db, input, now)
@@ -99,7 +152,6 @@ describe('analyzeSong', () => {
     expect(await analyzeSong(db, song.id, deps({ fetch: f, online: false }))).toBe('queued')
     expect(f).not.toHaveBeenCalled()
     expect((await db.songs.get(song.id))!.status).toBe('queued')
-    expect(await openSongCount(db)).toBe(0)
     expect(await activeSongCount(db)).toBe(1)
   })
   test('activeSongCount counts everything but done', async () => {
@@ -108,7 +160,6 @@ describe('analyzeSong', () => {
       await db.songs.update(s.id, { status })
     }
     expect(await activeSongCount(db)).toBe(4)
-    expect(await openSongCount(db)).toBe(2)
   })
   test('rate limited ends queued', async () => {
     await saveSettings(db, { apiKey: 'k' })
@@ -131,6 +182,36 @@ describe('analyzeSong', () => {
   })
   test('missing song throws', async () => {
     await expect(analyzeSong(db, 'nope', deps())).rejects.toThrow()
+  })
+})
+
+describe('analisi lanciata due volte sulla stessa canzone', () => {
+  test('la seconda analisi non tocca una canzone già analizzata (né stato né dati)', async () => {
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await db.songs.update(song.id, { status: 'studying' })
+    const before = { chunks: await db.chunks.count(), cards: await db.cards.count(), words: await db.words.count() }
+    const other = { ...analysis, chunks: [{ ...analysis.chunks[0], base_form: 'something else' }], grammar_point: null }
+    await saveAnalysis(db, song.id, other, ranks, now)
+    const s = (await db.songs.get(song.id))!
+    expect(s.status).toBe('studying')
+    expect(s.grammarPoint).not.toBeNull()
+    expect({ chunks: await db.chunks.count(), cards: await db.cards.count(), words: await db.words.count() }).toEqual(before)
+  })
+  test('un 429 arrivato dopo non rimette in coda una canzone già analizzata', async () => {
+    await saveSettings(db, { apiKey: 'k' })
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await db.songs.update(song.id, { status: 'studying' })
+    const busy = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }))
+    await analyzeSong(db, song.id, deps({ fetch: busy }))
+    expect((await db.songs.get(song.id))!.status).toBe('studying')
+  })
+  test('offline non rimette in coda una canzone già analizzata', async () => {
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await analyzeSong(db, song.id, deps({ online: false }))
+    expect((await db.songs.get(song.id))!.status).toBe('analyzed')
   })
 })
 

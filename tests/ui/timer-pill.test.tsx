@@ -13,7 +13,8 @@ describe('TimerPill', () => {
     const onResume = vi.fn()
     render(<TimerPill state={paused} remaining={683000} expired={false} onPause={() => {}} onResume={onResume} />)
     const btn = screen.getByRole('button')
-    expect(btn.getAttribute('aria-label')).toContain('Riprendi')
+    // Il nome accessibile contiene il testo visibile (WCAG 2.5.3, label-in-name).
+    expect(btn.getAttribute('aria-label')).toBe('Timer 11:23 in pausa, riprendi')
     fireEvent.click(btn)
     expect(onResume).toHaveBeenCalledTimes(1)
   })
@@ -21,7 +22,7 @@ describe('TimerPill', () => {
     const onPause = vi.fn()
     render(<TimerPill state={running} remaining={683000} expired={false} onPause={onPause} onResume={() => {}} />)
     const btn = screen.getByRole('button')
-    expect(btn.getAttribute('aria-label')).toBe('Timer, 11 minuti e 23 secondi rimasti. Metti in pausa')
+    expect(btn.getAttribute('aria-label')).toBe('Timer 11:23, metti in pausa')
     expect(btn.textContent).toContain('11:23')
     fireEvent.click(btn)
     expect(onPause).toHaveBeenCalledTimes(1)

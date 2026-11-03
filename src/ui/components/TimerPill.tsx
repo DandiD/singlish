@@ -11,14 +11,13 @@ export interface TimerPillProps {
 
 export function TimerPill({ state, remaining, expired, onPause, onResume }: TimerPillProps) {
   const running = state.status === 'running'
-  const secs = Math.floor(remaining / 1000)
-  const label = running
-    ? `Timer, ${Math.floor(secs / 60)} minuti e ${secs % 60} secondi rimasti. Metti in pausa`
-    : 'Timer in pausa. Riprendi'
+  const time = formatMmSs(remaining)
+  // Il nome accessibile contiene il tempo visibile (WCAG 2.5.3).
+  const label = running ? `Timer ${time}, metti in pausa` : `Timer ${time} in pausa, riprendi`
   return (
     <button
       type="button"
-      class="timer-pill mono"
+      class={`timer-pill mono${expired ? ' expired' : ''}`}
       aria-label={label}
       onClick={running ? onPause : onResume}
       style={{
@@ -34,7 +33,7 @@ export function TimerPill({ state, remaining, expired, onPause, onResume }: Time
         color: expired ? 'var(--on-accent)' : 'var(--text)',
       }}
     >
-      {formatMmSs(remaining)}
+      {time}
     </button>
   )
 }

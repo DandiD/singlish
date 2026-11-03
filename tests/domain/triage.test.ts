@@ -38,3 +38,15 @@ describe('triage', () => {
     expect(await db.cards.where('itemId').equals('w1').count()).toBe(2)
   })
 })
+
+describe('parole da smistare di una canzone', () => {
+  test('comprende quelle nate in un\'altra canzone che compaiono qui, ordinate per verso di questa canzone', async () => {
+    await db.words.update('w3', { contexts: [{ songId: 's2', lineIndex: 0 }, { songId: 's1', lineIndex: 3 }] })
+    expect((await pendingWords(db, 's1')).map((w) => w.id)).toEqual(['w2', 'w3', 'w1'])
+    expect((await pendingWords(db, 's2')).map((w) => w.id)).toEqual(['w3'])
+  })
+  test('esclude le parole sospese', async () => {
+    await db.words.update('w1', { suspended: true })
+    expect((await pendingWords(db, 's1')).map((w) => w.id)).toEqual(['w2'])
+  })
+})

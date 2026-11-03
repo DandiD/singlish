@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { reportError } from '../report'
+import { goBackTo } from '../../router'
 import { Highlighted } from '../components/Highlighted'
+import { CHUNK_CLASS, formIn } from '../../domain/songItems'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 const TYPE_LABEL: Record<ChunkType, string> = {
   phrasal_verb: 'Phrasal verb',
@@ -18,7 +21,7 @@ type Found = { kind: 'chunk'; item: Chunk } | { kind: 'word'; item: Word } | nul
 
 export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const { db } = useDeps()
-  const found = useLiveQuery(
+  const found = useLive(
     async (): Promise<Found> => {
       const c = await db.chunks.get(itemId)
       if (c) return { kind: 'chunk', item: c }
@@ -30,49 +33,59 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'confirm'>('view')
   const [meaning, setMeaning] = useState('')
   const [explanation, setExplanation] = useState('')
-  const ref = useRef<HTMLElement>(null)
-  const close = () => { window.location.hash = href({ name: 'study', songId: song.id }) }
-
-  useEffect(() => { ref.current?.focus() }, [])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [song.id])
+  // Chiudendo la scheda mentre si modifica (velo, Esc, X), la modifica si salva invece di perdersi.
+  const editing = useRef<(() => Promise<void>) | null>(null)
+  const { ref, closing, close } = useSheet(song.id, itemId, !!found, () => editing.current?.())
 
   useEffect(() => {
-    if (found === null) close() // elemento inesistente o appena eliminato
+    if (found === null) void close() // elemento inesistente o appena eliminato
   }, [found])
 
   if (!found) return null
   const { kind, item } = found
   const table = kind === 'chunk' ? db.chunks : db.words
   const title = kind === 'chunk' ? item.baseForm : item.lemma
-  const surface = item.surfaceForm
   const own = item.contexts.find((c) => c.songId === song.id)
   const lineIdx = own?.lineIndex ?? item.lineIndex
   const line = song.lines[lineIdx]
+  const surface = formIn(line ?? '', [own?.surfaceForm, item.surfaceForm, kind === 'chunk' ? item.baseForm : item.lemma])
+  const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }
+  const canSave = meaning.trim() !== ''
+  const changed = meaning.trim() !== item.meaningIt || explanation.trim() !== item.explanationIt
   const save = async () => {
-    await (table as typeof db.chunks).update(item.id, { meaningIt: meaning.trim(), explanationIt: explanation.trim(), userEdited: true })
-    setMode('view')
+    if (!canSave) return
+    try {
+      await (table as typeof db.chunks).update(item.id, { meaningIt: meaning.trim(), explanationIt: explanation.trim(), userEdited: true })
+      setMode('view')
+    } catch (e) {
+      reportError(e)
+    }
   }
-  const suspend = async () => { await (table as typeof db.chunks).update(item.id, { suspended: true }) }
+  editing.current = mode === 'edit' && canSave && changed ? save : null
+  const suspend = async () => {
+    try { await (table as typeof db.chunks).update(item.id, { suspended: true }) } catch (e) { reportError(e) }
+  }
   const exclude = async () => {
-    await db.transaction('rw', db.chunks, db.words, db.cards, async () => {
-      await db.cards.where('itemId').equals(item.id).delete()
-      await table.delete(item.id)
-    })
-    close()
+    try {
+      await db.transaction('rw', db.chunks, db.words, db.cards, async () => {
+        await db.cards.where('itemId').equals(item.id).delete()
+        await table.delete(item.id)
+      })
+      void close()
+    } catch (e) {
+      reportError(e)
+      setMode('view')
+    }
   }
 
   const label = kind === 'chunk' ? 'Scheda del chunk' : 'Scheda della parola'
   return (
-    <div class="sheet-scrim" onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) void close() }}>
       <section class="sheet" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} ref={ref}>
         <div class="sheet-handle" aria-hidden="true" />
-        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={close}>×</button>
+        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={() => void close()}><Icon name="close" /></button>
         <div class="chips">
           {kind === 'chunk' && <span class={`chip t-${item.type}`}>{TYPE_LABEL[item.type]}</span>}
           {kind === 'word' && <span class="chip">Parola</span>}
@@ -91,7 +104,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <textarea rows={4} value={explanation} onInput={(e) => setExplanation((e.target as HTMLTextAreaElement).value)} />
             </label>
             <div class="grid2">
-              <button type="submit" class="btn primary">Salva</button>
+              <button type="submit" class="btn primary" disabled={!canSave}>Salva</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>
             </div>
           </form>
@@ -106,7 +119,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
           {line && (
             <div>
               <div class="section-label">{`NELLA CANZONE · RIGA ${lineIdx + 1}`}</div>
-              <p><Highlighted line={line} spans={[{ text: surface, id: item.id, className: 'w' }]} /></p>
+              <p><Highlighted line={line} spans={[{ text: surface, id: item.id, className: kind === 'chunk' ? CHUNK_CLASS[item.type] : 'w' }]} /></p>
             </div>
           )}
           {item.extraExampleEn && (
@@ -121,11 +134,17 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <p>{item.pronunciationNoteIt}</p>
             </div>
           )}
+          {translation && (
+            <div>
+              <div class="section-label">TRADUZIONE DEL VERSO</div>
+              <p>{translation}</p>
+            </div>
+          )}
         </div>
 
         {mode === 'confirm' ? (
           <div class="confirm" role="alert">
-            <p>Escludere definitivamente questo elemento e le sue card?</p>
+            <p>Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.</p>
             <div class="grid2">
               <button type="button" class="btn outline danger" onClick={() => void exclude()}>Sì, escludi</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>
@@ -141,6 +160,76 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <button type="button" class="btn outline danger" onClick={() => setMode('confirm')}>Escludi</button>
             </div>
           )
+        )}
+      </section>
+    </div>
+  )
+}
+
+/**
+ * Comportamento comune dei fogli dal basso: chiusura animata (una sola volta), Esc, fuoco dentro all'apertura
+ * e di nuovo su chi l'ha aperto alla chiusura. `beforeClose` gira prima di chiudere (es. salvare una modifica).
+ */
+export function useSheet(songId: string, itemId: string, loaded: boolean, beforeClose?: () => Promise<void> | undefined) {
+  const ref = useRef<HTMLElement>(null)
+  const [closing, setClosing] = useState(false)
+  const done = useRef(false)
+  const before = useRef(beforeClose)
+  before.current = beforeClose
+  const close = async () => {
+    if (done.current) return // Escludi e «voce sparita» chiedono entrambi di chiudere: si chiude una volta
+    done.current = true
+    await before.current?.()
+    const go = () => goBackTo({ name: 'study', songId })
+    // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
+    setClosing(true)
+    setTimeout(go, 200)
+  }
+  // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
+  // in quel caso si torna al link dell'elemento nel testo.
+  useEffect(() => {
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    return () => {
+      const sel = `a[href$="item=${encodeURIComponent(itemId)}"]`
+      const target = opener?.isConnected ? opener : document.querySelector<HTMLElement>(`.lyrics ${sel}, .other-items ${sel}`)
+      target?.focus()
+    }
+  }, [])
+  // Il foglio compare solo quando i dati sono arrivati: il fuoco va spostato allora. Fuoco ed Esc partono
+  // insieme al disegno del foglio (layout effect): nessun istante in cui il foglio è visibile ma sordo.
+  useLayoutEffect(() => { if (loaded) ref.current?.focus() }, [loaded])
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') void close() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [songId])
+  return { ref, closing, close }
+}
+
+/** Foglio di un fenomeno di parlato connesso: come si scrive, come si canta, perché. */
+export function SpeechSheet({ song, itemId }: { song: Song; itemId: string }) {
+  const cs = song.connectedSpeech[Number(itemId.slice(3))]
+  const { ref, closing, close } = useSheet(song.id, itemId, !!cs)
+  useEffect(() => { if (!cs) void close() }, [cs])
+  if (!cs) return null
+  return (
+    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) void close() }}>
+      <section class="sheet" role="dialog" aria-modal="true" aria-label="Pronuncia" tabIndex={-1} ref={ref}>
+        <div class="sheet-handle" aria-hidden="true" />
+        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={() => void close()}><Icon name="close" /></button>
+        <div class="chips"><span class="chip">Pronuncia</span></div>
+        <h2 class="sheet-title" lang="en">{cs.written}</h2>
+        <p class="sheet-meaning">Si canta <strong lang="en">{cs.sung}</strong></p>
+        {cs.noteIt && <p class="sheet-expl">{cs.noteIt}</p>}
+        {song.lines[cs.lineIndex] && (
+          <div class="examples">
+            <div>
+              <div class="section-label">{`NELLA CANZONE · RIGA ${cs.lineIndex + 1}`}</div>
+              <p lang="en"><Highlighted line={song.lines[cs.lineIndex]} spans={[{ text: cs.written, id: itemId, className: 'cs' }]} /></p>
+            </div>
+          </div>
         )}
       </section>
     </div>

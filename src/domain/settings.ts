@@ -37,15 +37,28 @@ export async function saveSettings(
   db: SinglishDB,
   patch: Partial<Omit<Settings, 'id'>>,
 ): Promise<Settings> {
-  const current = await getSettings(db)
-  const next: Settings = { ...current, ...patch, id: 'settings' }
-  if (patch.level !== undefined && patch.level !== current.level) {
-    const [start, end] = bandForLevel(patch.level)
-    if (patch.bandStart === undefined) next.bandStart = start
-    if (patch.bandEnd === undefined) next.bandEnd = end
-  }
-  next.desiredRetention = clamp(next.desiredRetention, 0.85, 0.95)
-  next.newPerDay = clamp(next.newPerDay, 1, 40)
-  await db.settings.put(next)
-  return next
+  return db.transaction('rw', db.settings, async () => {
+    const current = await getSettings(db)
+    const next: Settings = { ...current, ...patch, id: 'settings' }
+    if (patch.level !== undefined && patch.level !== current.level) {
+      const [start, end] = bandForLevel(patch.level)
+      if (patch.bandStart === undefined) next.bandStart = start
+      if (patch.bandEnd === undefined) next.bandEnd = end
+    }
+    next.desiredRetention = clamp(next.desiredRetention, 0.85, 0.95)
+    next.newPerDay = clamp(Math.round(next.newPerDay), 1, 40)
+    await db.settings.put(next)
+    return next
+  })
+}
+
+/** Copia in IndexedDB la chiave locale di sviluppo, solo se non ce n'è già una salvata. */
+export async function seedApiKey(db: SinglishDB, envKey: string | undefined): Promise<void> {
+  const key = envKey?.trim() ?? ''
+  if (key === '') return
+  await db.transaction('rw', db.settings, async () => {
+    const current = await getSettings(db)
+    if (current.apiKey.trim() !== '') return
+    await saveSettings(db, { apiKey: key })
+  })
 }

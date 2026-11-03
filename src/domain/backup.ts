@@ -51,7 +51,7 @@ function d(v: unknown): unknown {
   return typeof v === 'string' ? new Date(v) : v
 }
 
-function isBackup(file: unknown): file is BackupFile {
+export function isBackup(file: unknown): file is BackupFile {
   if (typeof file !== 'object' || file === null) return false
   const f = file as Record<string, unknown>
   if (f.app !== 'singlish' || f.version !== 1) return false

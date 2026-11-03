@@ -2,9 +2,14 @@ import type { SinglishDB } from '../db/db'
 import type { Word } from '../db/types'
 import { newCardPair } from './scheduler'
 
+/**
+ * Le parole da smistare di una canzone: quelle ancora `pending` che compaiono in un suo verso (anche se nate in
+ * un'altra canzone), non sospese, nell'ordine dei versi. Banner dello Studio, Smista e Analisi contano queste.
+ */
 export async function pendingWords(db: SinglishDB, songId: string): Promise<Word[]> {
-  const words = await db.words.where('songId').equals(songId).filter((w) => w.triage === 'pending').toArray()
-  return words.sort((a, b) => a.lineIndex - b.lineIndex)
+  const lineHere = (w: Word) => w.contexts.find((x) => x.songId === songId)?.lineIndex ?? (w.songId === songId ? w.lineIndex : -1)
+  const words = await db.words.where('triage').equals('pending').filter((w) => !w.suspended && lineHere(w) >= 0).toArray()
+  return words.sort((a, b) => lineHere(a) - lineHere(b))
 }
 
 export async function applyTriage(

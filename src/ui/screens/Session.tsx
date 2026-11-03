@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
-import { buildSessionQueue, startOfLocalDay, type QueueItem } from '../../domain/queue'
+import { reportError } from '../report'
+import { useFailure } from '../useFailure'
+import { href, goBackTo, onBack, onBackTo } from '../../router'
+import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
@@ -9,8 +11,13 @@ import { gradeAnswer } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
+import { findForm, formIn } from '../../domain/songItems'
 import { RatingBar, RATING_LABEL } from '../components/RatingBar'
 import type { Chunk, ChunkType, Rating, Settings, Song, Word } from '../../db/types'
+import { Icon } from '../components/Icon'
+import { noAutocorrect } from '../noAutocorrect'
+import { plural } from '../plural'
+import { newId } from '../../domain/id'
 
 const MAX_CARD_MS = 120_000
 const EXTRA_MS = 5 * 60_000
@@ -31,17 +38,18 @@ interface Loaded {
   doneNew: number
 }
 
-const goToday = () => {
-  window.location.hash = href({ name: 'today' })
-}
+const goToday = () => goBackTo({ name: 'today' })
 
 export function Session() {
   const { db, now } = useDeps()
+  const fail = useFailure()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [sheet, setSheet] = useState(false)
   const busy = useRef(false)
+  const resumeRef = useRef<HTMLButtonElement>(null)
+  const moreRef = useRef<HTMLButtonElement>(null)
   const cardStart = useRef(0)
   const ended = useRef(false)
 
@@ -51,25 +59,23 @@ export function Session() {
       const settings = await getSettings(db)
       const n = now()
       const queue = await buildSessionQueue(db, n)
+      const songs = await db.songs.toArray()
+      const songById = new Map(songs.map((s) => [s.id, s]))
+
+      // La coda esclude già ciò che la sessione aperta ha fatto vedere: è la stessa che conta Oggi.
+      const open = queue.openSession
       const chunkIds = queue.items.filter((q) => q.card.itemType === 'chunk').map((q) => q.card.itemId)
       const wordIds = queue.items.filter((q) => q.card.itemType === 'word').map((q) => q.card.itemId)
       const [chunks, words] = await Promise.all([db.chunks.bulkGet(chunkIds), db.words.bulkGet(wordIds)])
       const itemById = new Map<string, Item>()
       for (const c of chunks) if (c) itemById.set(c.id, { kind: 'chunk', item: c })
       for (const w of words) if (w) itemById.set(w.id, { kind: 'word', item: w })
-      const songs = await db.songs.toArray()
-      const songById = new Map(songs.map((s) => [s.id, s]))
-
-      const dayStart = startOfLocalDay(n)
-      const open = (await db.sessions.where('startedAt').aboveOrEqual(dayStart).toArray())
-        .filter((r) => r.kind === 'review' && r.endedAt === null)
-        .sort((a, b) => b.startedAt.getTime() - a.startedAt.getTime())[0]
 
       let sessionId = open?.id ?? ''
       if (queue.items.length === 0) {
         if (open) await db.sessions.update(open.id, { endedAt: n })
       } else if (!open) {
-        sessionId = crypto.randomUUID()
+        sessionId = newId()
         await db.sessions.add({
           id: sessionId, kind: 'review', songId: null, startedAt: n, endedAt: null,
           timer: startTimer(settings.timerMinutes.review * 60_000, Date.now()),
@@ -82,7 +88,7 @@ export function Session() {
         settings, sessionId: queue.items.length === 0 ? '' : sessionId, items: queue.items, itemById, songById,
         doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0,
       })
-    })()
+    })().catch(fail)
     return () => { alive = false }
   }, [db])
 
@@ -109,8 +115,13 @@ export function Session() {
     if (!timerReady) return
     ended.current = true
     timerRef.current.stop()
-    void db.sessions.update(sessionId, { endedAt: now() })
+    db.sessions.update(sessionId, { endedAt: now() }).catch(reportError)
   }, [finished, sessionId, timerReady])
+
+  // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
+  const pausedNow = timer.state.status === 'paused'
+  useEffect(() => { if (pausedNow) resumeRef.current?.focus() }, [pausedNow])
+  useEffect(() => { if (sheet) moreRef.current?.focus() }, [sheet])
 
   if (!loaded) return <main class="screen session" aria-busy="true" />
 
@@ -119,7 +130,11 @@ export function Session() {
 
   const closeSession = async () => {
     timerRef.current.stop()
-    await db.sessions.update(sessionId, { endedAt: now() })
+    try {
+      await db.sessions.update(sessionId, { endedAt: now() })
+    } catch (e) {
+      reportError(e)
+    }
     goToday()
   }
 
@@ -130,14 +145,19 @@ export function Session() {
     busy.current = true
     try {
       const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
-      await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
       const next = current.isNew
         ? { reviews: counts.reviews, news: counts.news + 1 }
         : { reviews: counts.reviews + 1, news: counts.news }
-      await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
+      // Voto e contatori della sessione in una sola transazione: o tutti e due, o nessuno.
+      await db.transaction('rw', db.cards, db.reviews, db.sessions, async () => {
+        await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
+        await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
+      })
       setCounts(next)
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
+    } catch (e) {
+      reportError(e)
     } finally {
       busy.current = false
     }
@@ -145,12 +165,32 @@ export function Session() {
 
   if (items.length > 0 && !finished && !timerReady) return <main class="screen session" aria-busy="true" />
 
+  // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
+  if (items.length === 0 && counts.reviews + counts.news === 0) {
+    const noSongs = loaded.songById.size === 0
+    return (
+      <main class="screen session session-done">
+        <h1>Niente da ripassare</h1>
+        <p class="note">
+          {noSongs
+            ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
+            : 'Per ora non ci sono card in scadenza. Torna domani.'}
+        </p>
+        {noSongs && (
+          <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
+        )}
+        <a class={noSongs ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
+      </main>
+    )
+  }
+
   if (items.length === 0 || finished) {
     return (
       <main class="screen session session-done">
+        <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
-        <p class="note">{`${counts.reviews} ripassate · ${counts.news} nuove`}</p>
-        <a class="btn primary cta" href={href({ name: 'today' })}>Torna a Oggi</a>
+        <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
+        <a class="btn primary cta" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
   }
@@ -163,10 +203,10 @@ export function Session() {
   return (
     <main class="screen session">
       <header class="session-head">
-        <a class="icon-btn" href={href({ name: 'today' })} aria-label="Esci dalla sessione">×</a>
+        <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
-          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ width: `${(position / total) * 100}%` }} /></div>
+          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${position / total})` }} /></div>
         </div>
         {timerReady && (
           <TimerPill
@@ -198,7 +238,7 @@ export function Session() {
             <div class="mono pause-time">{formatMmSs(timer.remaining)}</div>
             <h2>In pausa</h2>
             <p class="intro center">{`Il tempo è fermo. ${remainingCards === 1 ? 'La card che resta ti aspetta' : `Le ${remainingCards} card che restano ti aspettano`}.`}</p>
-            <button type="button" class="btn primary cta" onClick={timer.resume}>Riprendi</button>
+            <button type="button" class="btn primary cta" ref={resumeRef} onClick={timer.resume}>Riprendi</button>
             <button type="button" class="btn outline" onClick={() => void closeSession()}>Ferma e salva</button>
           </section>
         </div>
@@ -208,16 +248,17 @@ export function Session() {
         <div class="sheet-scrim">
           <section class="sheet" role="dialog" aria-modal="true" aria-label="Tempo della sessione finito">
             <div class="sheet-handle" aria-hidden="true" />
-            <h1>{`${Math.round(timer.state.durationMs / 60_000)} minuti fatti`}</h1>
+            <h1>{plural(Math.round(timer.state.durationMs / 60_000), 'minuto fatto', 'minuti fatti')}</h1>
             <div class="grid3">
-              <div class="stat-box"><strong class="mono">{`${counts.reviews} ripassate`}</strong></div>
-              <div class="stat-box"><strong class="mono">{`${counts.news} nuove`}</strong></div>
-              <div class="stat-box"><strong class="mono">{`${remainingCards} restano`}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(counts.reviews, 'ripassata', 'ripassate')}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(counts.news, 'nuova', 'nuove')}</strong></div>
+              <div class="stat-box"><strong class="mono">{plural(remainingCards, 'resta', 'restano')}</strong></div>
             </div>
-            <p class="intro">Le card che restano scadono domani: il ripasso tiene conto del ritardo.</p>
+            <p class="intro">Chiudendo, le card che restano ti aspettano su Oggi.</p>
             <button
               type="button"
               class="btn primary cta"
+              ref={moreRef}
               onClick={() => { timerRef.current.extend(EXTRA_MS); setSheet(false) }}
             >
               Altri 5 minuti
@@ -240,6 +281,8 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   const verse = song?.lines[ctx.lineIndex] ?? ''
+  // La stessa forma che lo Studio evidenzia: salvata per il verso, originale, base o irregolare.
+  const surface = formIn(verse, [ctx.surfaceForm, item.surfaceForm, found.kind === 'chunk' ? found.item.baseForm : found.item.lemma])
   const [revealed, setRevealed] = useState(false)
   const [answer, setAnswer] = useState('')
   const [proposed, setProposed] = useState<Rating | null>(null)
@@ -247,13 +290,19 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   const isC = card.kind === 'C'
   const cls = found.kind === 'chunk' ? TYPE_CLASS[found.item.type] : 'w'
 
+  const confirm = () => {
+    if (proposed === null) return
+    onRate(selected ?? proposed, (selected ?? proposed) === proposed, answer)
+  }
+
   const check = () => {
-    const g = gradeAnswer(answer, item.surfaceForm)
+    const g = gradeAnswer(answer, surface)
     setProposed(g.rating)
     setSelected(g.rating)
   }
 
-  const idxGap = verse.toLowerCase().replace(/[’‘]/g, "'").indexOf(item.surfaceForm.toLowerCase().replace(/[’‘]/g, "'"))
+  const at = findForm(verse, surface)
+  const idxGap = at ? at.start : -1
 
   return (
     <section class="card session-card">
@@ -264,10 +313,10 @@ function SessionCard({ card, isNew, found, song, onRate }: {
             <>
               {verse.slice(0, idxGap)}
               <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
-              {verse.slice(idxGap + item.surfaceForm.length)}
+              {verse.slice(at ? at.end : 0)}
             </>
           ) : (
-            <Highlighted line={verse} spans={[{ text: item.surfaceForm, id: item.id, className: cls }]} />
+            <Highlighted line={verse} spans={[{ text: surface, id: item.id, className: `${cls} sweep` }]} />
           )}
         </p>
       )}
@@ -288,7 +337,15 @@ function SessionCard({ card, isNew, found, song, onRate }: {
       {!isC && revealed && <RatingBar onSelect={(r) => onRate(r, false, null)} />}
 
       {isC && (
-        <div class="c-answer">
+        // Un modulo: "Invio" sulla tastiera del telefono fa Controlla, e poi Conferma.
+        <form
+          class="c-answer"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (proposed === null) check()
+            else confirm()
+          }}
+        >
           <label class="field">
             <span>La tua risposta</span>
             <input
@@ -296,33 +353,27 @@ function SessionCard({ card, isNew, found, song, onRate }: {
               lang="en"
               autocomplete="off"
               autocapitalize="off"
-              autocorrect="off"
-              spellcheck={'false' as unknown as boolean}
-              placeholder="scrivi il chunk"
+              ref={noAutocorrect}
+              enterKeyHint="go"
+              placeholder={found.kind === 'chunk' ? 'scrivi il chunk' : 'scrivi la parola'}
               value={answer}
               readOnly={proposed !== null}
               onInput={(e) => setAnswer((e.target as HTMLInputElement).value)}
             />
           </label>
           {proposed === null ? (
-            <button type="button" class="btn primary cta" onClick={check}>Controlla</button>
+            <button type="submit" class="btn primary cta">Controlla</button>
           ) : (
             <>
               <div class={`feedback f${proposed}`}>
                 <strong>{proposed === 3 ? 'Esatto' : proposed === 2 ? 'Quasi: un errore di battitura' : 'Non ancora'}</strong>
-                <p>{`Risposta attesa: ${item.surfaceForm} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
+                <p>{`Risposta attesa: ${surface} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
               </div>
               <RatingBar selected={selected ?? proposed} onSelect={setSelected} />
-              <button
-                type="button"
-                class="btn primary cta"
-                onClick={() => onRate(selected ?? proposed, (selected ?? proposed) === proposed, answer)}
-              >
-                Conferma
-              </button>
+              <button type="submit" class="btn primary cta">Conferma</button>
             </>
           )}
-        </div>
+        </form>
       )}
     </section>
   )

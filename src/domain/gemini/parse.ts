@@ -44,6 +44,8 @@ export const AnalysisSchema = z.object({
   ),
   chunks: z.array(ChunkSchema),
   words: z.array(WordSchema),
+  // Le analisi salvate prima della traduzione dei versi non ce l'hanno: si accetta anche l'assenza.
+  line_translations: z.array(z.object({ line_index: idx, translation_it: z.string() })).default([]),
 })
 
 export type Analysis = z.infer<typeof AnalysisSchema>
@@ -74,11 +76,20 @@ export function parseAnalysis(raw: unknown, lineCount: number): Analysis {
     return true
   })
 
+  const seenLines = new Set<number>()
+  const line_translations = a.line_translations.flatMap((t) => {
+    const text = t.translation_it.trim()
+    if (!inRange(t.line_index) || text === '' || seenLines.has(t.line_index)) return []
+    seenLines.add(t.line_index)
+    return [{ line_index: t.line_index, translation_it: text }]
+  })
+
   return {
     difficulty_known_pct: Math.min(100, Math.max(0, Math.round(a.difficulty_known_pct))),
     grammar_point: a.grammar_point && inRange(a.grammar_point.line_index) ? a.grammar_point : null,
     connected_speech: a.connected_speech.filter((c) => inRange(c.line_index)),
     chunks,
     words,
+    line_translations,
   }
 }

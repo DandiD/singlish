@@ -115,18 +115,43 @@ test('R card: show meaning, then Bene records rating 3 auto false', async () => 
   expect(sess.reviewsDone).toBe(1)
 })
 
-test('empty queue shows Fatto per oggi', async () => {
+test('empty queue without anything reviewed: nothing to review, not "Fatto per oggi"', async () => {
   renderSession()
-  await screen.findByText('Fatto per oggi')
+  await screen.findByRole('heading', { name: 'Niente da ripassare' })
+  expect(screen.queryByText('Fatto per oggi')).toBeNull()
+  expect(screen.getByRole('link', { name: 'Torna a Oggi' }).getAttribute('href')).toBe('#/')
+})
+
+test('empty queue and no songs: invites to add a song', async () => {
+  await db.songs.clear()
+  renderSession()
+  await screen.findByRole('heading', { name: 'Niente da ripassare' })
+  expect(screen.getByRole('link', { name: /Aggiungi una canzone/ }).getAttribute('href')).toBe('#/songs/new')
+})
+
+test('Today with no cards and no songs: no session button, invites to add a song', async () => {
+  await db.songs.clear()
+  render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
+  await screen.findByText('in scadenza')
+  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.getByRole('link', { name: /Aggiungi una canzone/ }).getAttribute('href')).toBe('#/songs/new')
+})
+
+test('Today with songs but nothing due: says so, no session button', async () => {
+  render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
+  await screen.findByText('in scadenza')
+  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.getByText('Niente da ripassare oggi.')).toBeTruthy()
 })
 
 test('pause overlay offers Riprendi and Ferma e salva', async () => {
   await seedCOnly()
   renderSession()
   await screen.findByRole('textbox')
-  fireEvent.click(await screen.findByRole('button', { name: /^Timer, .*Metti in pausa/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Timer .*metti in pausa/ }))
   await screen.findByRole('dialog', { name: 'Sessione in pausa' })
-  expect(screen.getByRole('button', { name: 'Riprendi' })).toBeTruthy()
+  // Il fuoco entra nel dialogo, sull'azione principale.
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Riprendi' })))
   fireEvent.click(screen.getByRole('button', { name: 'Ferma e salva' }))
   await waitFor(() => expect(window.location.hash).toBe('#/'))
   const sess = (await db.sessions.toArray())[0]
@@ -157,8 +182,12 @@ test('expired timer: finishing the card opens the sheet with Altri 5 minuti', as
   expect(screen.queryByRole('dialog', { name: 'Tempo della sessione finito' })).toBeNull()
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
   await screen.findByRole('dialog', { name: 'Tempo della sessione finito' })
-  expect(screen.getByText('1 ripassate')).toBeTruthy()
-  expect(screen.getByText('1 restano')).toBeTruthy()
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Altri 5 minuti' })))
+  expect(screen.getByText('1 ripassata')).toBeTruthy()
+  expect(screen.getByText('1 resta')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: '0 minuti fatti' })).toBeTruthy()
+  // Chiudendo, le card che restano sono ancora in scadenza oggi: il foglio lo dice com'è.
+  expect(screen.getByText('Chiudendo, le card che restano ti aspettano su Oggi.')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Altri 5 minuti' }))
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Tempo della sessione finito' })).toBeNull())
   expect((await db.sessions.get('ss'))!.timer.durationMs).toBe(1000 + 300000)
@@ -186,4 +215,117 @@ test('Today: shows the blocked-new note when the review load exceeds the timer',
   }
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('Oggi niente card nuove: ripasso oltre i 2 minuti')
+})
+
+test('resuming an open session does not bring back items already reviewed in it (spec §4)', async () => {
+  await db.chunks.bulkAdd([chunk('c1', 'let it slide', 0), chunk('c2', 'play it down', 0), chunk('c3', 'wait beside', 1)])
+  await db.cards.bulkAdd([
+    reviewCard('k1', 'c1', 'R', '2026-10-30T10:00:00Z'),
+    reviewCard('k2', 'c2', 'R', '2026-10-30T11:00:00Z'),
+    reviewCard('k3', 'c3', 'R', '2026-10-30T12:00:00Z'),
+  ])
+  const first = renderSession()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mostra significato' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Di nuovo' }))
+  await screen.findByText('2 di 3')
+  // "Di nuovo" la rimette in scadenza fra pochi minuti: oggi stesso.
+  expect((await db.cards.get('k1'))!.due.getTime()).toBeLessThan(new Date('2026-11-01T00:00:00').getTime())
+  first.unmount()
+
+  // Riapro l'app: stessa sessione, stesso totale, la card già vista non torna.
+  renderSession()
+  expect(await screen.findByText('2 di 3')).toBeTruthy()
+  expect(screen.queryByText('sig-c1')).toBeNull()
+})
+
+test('C answer field really turns off autocorrect and spellcheck in browsers with boolean IDL properties', async () => {
+  // Chrome espone autocorrect e spellcheck come proprietà booleane riflesse sull'attributo:
+  // una stringa "off"/"false" assegnata alla proprietà diventa true. Qui lo simuliamo.
+  const reflect = (name: string, on: string, off: string) =>
+    Object.defineProperty(HTMLElement.prototype, name, {
+      configurable: true,
+      get(this: HTMLElement) { return this.getAttribute(name) !== off },
+      set(this: HTMLElement, v: unknown) { this.setAttribute(name, v ? on : off) },
+    })
+  reflect('autocorrect', 'on', 'off')
+  reflect('spellcheck', 'true', 'false')
+  try {
+    await seedCOnly()
+    renderSession()
+    const input = await screen.findByRole('textbox')
+    expect(input.getAttribute('autocorrect')).toBe('off')
+    expect(input.getAttribute('spellcheck')).toBe('false')
+  } finally {
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).autocorrect
+    delete (HTMLElement.prototype as unknown as Record<string, unknown>).spellcheck
+  }
+})
+
+test('C card: Enter on the keyboard checks the answer, Enter again confirms', async () => {
+  await seedCOnly()
+  renderSession()
+  const input = (await screen.findByRole('textbox')) as HTMLInputElement
+  fireEvent.input(input, { target: { value: 'let it slide' } })
+  fireEvent.submit(input.form!)
+  await screen.findByText('Esatto')
+  fireEvent.submit(input.form!)
+  await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+  expect((await db.reviews.toArray())[0]).toMatchObject({ rating: 3, auto: true, answer: 'let it slide' })
+})
+
+test('voto non salvato: avviso, la card resta e si può votare di nuovo', async () => {
+  const { errors } = await import('../../src/ui/report')
+  errors.dismiss()
+  await seedCOnly()
+  renderSession()
+  await typeAndCheck('let it slid')
+  await screen.findByText('Quasi: un errore di battitura')
+  const realAdd = db.reviews.add.bind(db.reviews)
+  db.reviews.add = (() => Promise.reject(new Error('disk'))) as never
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
+  expect(screen.getByRole('button', { name: 'Conferma' })).toBeTruthy()
+  db.reviews.add = realAdd as never
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+})
+
+test('caricamento della sessione fallito: non resta in attesa per sempre', async () => {
+  const { ErrorBoundary } = await import('../../src/ui/components/ErrorBoundary')
+  db.cards.toArray = (() => Promise.reject(new Error('disk'))) as never
+  db.cards.where = (() => { throw new Error('disk') }) as never
+  render(<AppDepsProvider value={deps()}><ErrorBoundary><Session /></ErrorBoundary></AppDepsProvider>)
+  expect(await screen.findByRole('heading', { name: 'Questa pagina si è bloccata' })).toBeTruthy()
+})
+
+test('voto e contatori della sessione si salvano insieme: se uno fallisce, non resta un voto a metà', async () => {
+  await seedCOnly()
+  renderSession()
+  await typeAndCheck('let it slide')
+  await screen.findByText('Esatto')
+  const original = db.sessions.update.bind(db.sessions)
+  db.sessions.update = (async () => { throw new Error('disco pieno') }) as unknown as typeof db.sessions.update
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await new Promise((r) => setTimeout(r, 50))
+  db.sessions.update = original
+  expect(await db.reviews.count()).toBe(0)
+  expect((await db.cards.get('k2'))!.fsrs.reps).toBe(2)
+})
+
+test('card C: il buco è sulla parola intera e la risposta attesa è la forma del verso', async () => {
+  await db.songs.update('s1', { lines: ['My friends never end the night', 'We wait beside the harbour wall'] })
+  await db.chunks.add({ ...chunk('c3', 'end', 0), surfaceForm: 'end' })
+  await db.cards.add(reviewCard('k3', 'c3', 'C', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await screen.findByRole('textbox')
+  expect(container.querySelector('.verse')!.textContent!.replace(/ +/g, '_')).toBe('My friends never _ the night')
+})
+
+test('card C su dati vecchi: forma salvata non nel verso, si usa quella che c\'è (forma base)', async () => {
+  await db.chunks.add({ ...chunk('c4', 'let it slide', 0), surfaceForm: 'letting it slide', baseForm: 'let it slide' })
+  await db.cards.add(reviewCard('k4', 'c4', 'C', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await typeAndCheck('let it slide')
+  await screen.findByText('Esatto')
+  expect(container.querySelector('.gap')).not.toBeNull()
 })

@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { reportError } from '../report'
+import { href, goReplace, onBack, onBackTo } from '../../router'
 import { analyzeSong } from '../../domain/ingest'
 import { loadRanks } from '../../domain/freq'
-import { GeminiError } from '../../domain/gemini/client'
+import { pendingWords } from '../../domain/triage'
+import { getSettings } from '../../domain/settings'
+import { geminiProblem, type Problem } from '../errors'
 import type { Song } from '../../db/types'
+import { Icon } from '../components/Icon'
 
 type State =
   | { kind: 'running' }
   | { kind: 'analyzed'; song: Song; pending: number }
-  | { kind: 'queued' }
-  | { kind: 'error'; code: 'no_key' | 'bad_json' | 'other' }
+  | { kind: 'queued'; reason: 'offline' | 'busy' }
+  | { kind: 'missing' }
+  | { kind: 'error'; problem: Problem }
 
 const STEPS = ['Lettura del testo', 'Estrazione di chunk, grammatica, pronuncia', 'Selezione delle parole nella tua fascia']
 
@@ -30,9 +35,13 @@ export function Analyzing({ songId }: { songId: string }) {
     void (async () => {
       try {
         const before = await db.songs.get(songId)
-        if (alive && before) setTitle(before.title)
+        if (!before) {
+          if (alive) setState({ kind: 'missing' })
+          return
+        }
+        if (alive) setTitle(before.title)
         if (before && (before.status === 'analyzed' || before.status === 'studying' || before.status === 'done')) {
-          const pending = await db.words.where('songId').equals(songId).filter((w) => w.triage === 'pending').count()
+          const pending = (await pendingWords(db, songId)).length
           if (alive) setState({ kind: 'analyzed', song: before, pending })
           return
         }
@@ -54,16 +63,16 @@ export function Analyzing({ songId }: { songId: string }) {
         })
         if (!alive) return
         if (outcome === 'queued') {
-          setState({ kind: 'queued' })
+          setState({ kind: 'queued', reason: online ? 'busy' : 'offline' })
           return
         }
         const song = await db.songs.get(songId)
-        const pending = await db.words.where('songId').equals(songId).filter((w) => w.triage === 'pending').count()
+        const pending = (await pendingWords(db, songId)).length
         if (alive && song) setState({ kind: 'analyzed', song, pending })
       } catch (e) {
         if (!alive) return
-        const code = e instanceof GeminiError && (e.code === 'no_key' || e.code === 'bad_json') ? e.code : 'other'
-        setState({ kind: 'error', code })
+        const model = await getSettings(db).then((s) => s.model, () => '')
+        if (alive) setState({ kind: 'error', problem: geminiProblem(e, model) })
       }
     })()
     return () => {
@@ -75,25 +84,31 @@ export function Analyzing({ songId }: { songId: string }) {
 
   const studyNow = async () => {
     if (state.kind !== 'analyzed') return
-    await db.songs.update(songId, { status: 'studying' })
-    window.location.hash = href({ name: state.pending > 0 ? 'triage' : 'study', songId })
+    try {
+      await db.songs.update(songId, { status: 'studying' })
+    } catch (e) {
+      reportError(e)
+      return
+    }
+    goReplace({ name: state.pending > 0 ? 'triage' : 'study', songId })
   }
 
   return (
     <main class="screen analyzing">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'addSong' })} aria-label="Indietro">‹</a>
+        <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>{title || 'Analisi'}</h1>
       </header>
 
       <section class="card" aria-live="polite">
         {state.kind === 'running' && (
           <>
+            <div class="wave" aria-hidden="true"><span /><span /><span /><span /><span /></div>
             <h2>Gemini sta leggendo il testo</h2>
             <ul class="steps">
-              {STEPS.map((s) => (
-                <li key={s}>
-                  <span aria-hidden="true">○ </span>
+              {STEPS.map((s, i) => (
+                <li key={s} style={{ '--i': i }}>
+                  <span class="step-dot" aria-hidden="true" />
                   {s}
                 </li>
               ))}
@@ -101,11 +116,31 @@ export function Analyzing({ songId }: { songId: string }) {
           </>
         )}
 
-        {state.kind === 'queued' && (
+        {state.kind === 'queued' && state.reason === 'offline' && (
           <>
-            <h2>In coda</h2>
-            <p>La analizzo alla prossima apertura</p>
-            <a class="btn outline" href={href({ name: 'songs' })}>Vai alle canzoni</a>
+            <h2>Sei offline</h2>
+            <p>La canzone è salvata. La analizzo quando riapri l'app con la connessione.</p>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
+          </>
+        )}
+
+        {state.kind === 'queued' && state.reason === 'busy' && (
+          <>
+            <h2>Gemini è occupato</h2>
+            <p>
+              Hai raggiunto il limite di richieste gratuite, o il servizio non risponde. La canzone è salvata e resta in coda:
+              la analizzo alla prossima apertura dell'app.
+            </p>
+            <button type="button" class="btn primary" onClick={() => setAttempt((n) => n + 1)}>Riprova ora</button>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
+          </>
+        )}
+
+        {state.kind === 'missing' && (
+          <>
+            <h2>Canzone non trovata</h2>
+            <p>Forse è stata eliminata, o il link è sbagliato.</p>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
           </>
         )}
 
@@ -122,33 +157,21 @@ export function Analyzing({ songId }: { songId: string }) {
             {state.song.status !== 'done' && (
               <button type="button" class="btn primary cta" onClick={studyNow}>Studiala ora</button>
             )}
-            <a class="btn outline" href={href({ name: 'songs' })}>Tienila per più avanti</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Tienila per più avanti</a>
           </>
         )}
 
         {state.kind === 'error' && (
           <div role="alert">
-            {state.code === 'no_key' && (
-              <>
-                <h2>Manca la chiave Gemini</h2>
-                <p>Aggiungila nelle impostazioni, poi riprova.</p>
-                <a class="btn primary" href={href({ name: 'settings' })}>Vai a Impostazioni</a>
-              </>
+            <h2>{state.problem.title}</h2>
+            <p>{state.problem.text}</p>
+            {state.problem.fix === 'settings' && (
+              <a class="btn primary" href={href({ name: 'settings' })}>Vai a Impostazioni</a>
             )}
-            {state.code === 'bad_json' && (
-              <>
-                <h2>Risposta non valida, riprova</h2>
-                <button type="button" class="btn outline" onClick={() => setAttempt((n) => n + 1)}>Riprova</button>
-              </>
+            {state.problem.fix === 'retry' && (
+              <button type="button" class="btn primary" onClick={() => setAttempt((n) => n + 1)}>Riprova</button>
             )}
-            {state.code === 'other' && (
-              <>
-                <h2>Qualcosa è andato storto</h2>
-                <p>Non sono riuscito a completare l'analisi. Riprova tra poco.</p>
-                <button type="button" class="btn outline" onClick={() => setAttempt((n) => n + 1)}>Riprova</button>
-              </>
-            )}
-            <a class="btn outline" href={href({ name: 'songs' })}>Torna alle canzoni</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
           </div>
         )}
       </section>

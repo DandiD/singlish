@@ -1,6 +1,7 @@
 import { createEmptyCard, fsrs, generatorParameters, Rating, State, type Card } from 'ts-fsrs'
 import type { SinglishDB } from '../db/db'
 import type { CardRow, Rating as RatingValue } from '../db/types'
+import { newId } from './id'
 
 export function newFsrsCard(now: Date): Card {
   return createEmptyCard(now)
@@ -8,7 +9,7 @@ export function newFsrsCard(now: Date): Card {
 
 export function newCardPair(itemType: CardRow['itemType'], itemId: string, now: Date): CardRow[] {
   return (['R', 'C'] as const).map((kind) => ({
-    id: crypto.randomUUID(),
+    id: newId(),
     itemType,
     itemId,
     kind,
@@ -41,7 +42,7 @@ export async function recordReview(
     const updated: CardRow = { ...card, fsrs: result.card, due: result.card.due, goodRCount }
     await db.cards.put(updated)
     await db.reviews.add({
-      id: crypto.randomUUID(),
+      id: newId(),
       cardId,
       rating: input.rating,
       auto: input.auto,

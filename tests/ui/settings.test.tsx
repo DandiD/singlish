@@ -4,6 +4,7 @@ import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Settings } from '../../src/ui/screens/Settings'
 import { getSettings, saveSettings } from '../../src/domain/settings'
+import { exportBackup } from '../../src/domain/backup'
 
 let db: SinglishDB
 const now = new Date('2026-10-31T10:00:00Z')
@@ -47,17 +48,28 @@ describe('Settings', () => {
     expect(input.type).toBe('password')
     fireEvent.input(input, { target: { value: 'KEY123' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
-    await screen.findByText('Chiave valida')
+    await screen.findByText('Chiave valida, salvata.')
     expect((await getSettings(db)).apiKey).toBe('KEY123')
   })
 
+  test('a pasted key with spaces or a newline is trimmed before testing and saving', async () => {
+    const f = vi.fn(async () => okBody()) as unknown as typeof fetch
+    mount(f)
+    fireEvent.input(await screen.findByLabelText('Chiave API'), { target: { value: '  KEY123\n' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+    await screen.findByText('Chiave valida, salvata.')
+    expect((await getSettings(db)).apiKey).toBe('KEY123')
+    const init = (f as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls[0][1]
+    expect(new Headers(init.headers).get('x-goog-api-key')).toBe('KEY123')
+  })
+
   test('Prova with 400 saves nothing and shows error', async () => {
-    const f = vi.fn(async () => new Response('{}', { status: 400 })) as unknown as typeof fetch
+    const f = vi.fn(async () => new Response('{"error":{"details":[{"reason":"API_KEY_INVALID"}]}}', { status: 400 })) as unknown as typeof fetch
     mount(f)
     const input = await screen.findByLabelText('Chiave API')
     fireEvent.input(input, { target: { value: 'BAD' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
-    await screen.findByText('Chiave non valida, nulla salvato')
+    await screen.findByText(/^La chiave Gemini non funziona\. .*Nulla è stato salvato\.$/)
     expect((await getSettings(db)).apiKey).toBe('')
   })
 
@@ -72,7 +84,7 @@ describe('Settings', () => {
     const btn = screen.getByRole('button', { name: 'Prova' }) as HTMLButtonElement
     expect(btn.disabled).toBe(false)
     fireEvent.click(btn)
-    await screen.findByText('Chiave valida')
+    await screen.findByText('Chiave valida, salvata.')
     const call = (f as unknown as ReturnType<typeof vi.fn>).mock.calls[0] as unknown as [string, RequestInit]
     expect(call[0]).toContain('new-model')
     expect(JSON.stringify(call)).toContain('STORED')
@@ -82,17 +94,16 @@ describe('Settings', () => {
     expect(container.innerHTML).not.toContain('STORED')
   })
 
-  test('stored key + empty field: failing Prova saves nothing', async () => {
+  test('stored key + empty field: failing Prova does not touch the key', async () => {
     await saveSettings(db, { apiKey: 'STORED', model: 'old-model' })
-    const f = vi.fn(async () => new Response('{}', { status: 400 })) as unknown as typeof fetch
+    const f = vi.fn(async () => new Response('{"error":{"details":[{"reason":"API_KEY_INVALID"}]}}', { status: 400 })) as unknown as typeof fetch
     mount(f)
     await screen.findByLabelText('Chiave API')
     fireEvent.input(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
-    await screen.findByText('Chiave non valida, nulla salvato')
-    const s = await getSettings(db)
-    expect(s.apiKey).toBe('STORED')
-    expect(s.model).toBe('old-model')
+    await screen.findByText(/^La chiave Gemini non funziona\. .*Nulla è stato salvato\.$/)
+    // il modello è una preferenza e si salva da solo (come le altre); la chiave rifiutata no
+    expect((await getSettings(db)).apiKey).toBe('STORED')
   })
 
   test('no stored key and empty field: Prova stays disabled', async () => {
@@ -108,11 +119,24 @@ describe('Settings', () => {
     await waitFor(async () => expect((await getSettings(db)).theme).toBe('dark'))
   })
 
+  test('il tema del backup importato si applica subito, come quello scelto qui', async () => {
+    await saveSettings(db, { theme: 'dark' })
+    const file = new File([JSON.stringify(await exportBackup(db, now))], 'b.json', { type: 'application/json' })
+    await saveSettings(db, { theme: 'light' })
+    document.documentElement.dataset.theme = 'light'
+    const { container } = mount()
+    await screen.findByLabelText('Livello')
+    fireEvent.change(container.querySelector('input[type=file]') as HTMLInputElement, { target: { files: [file] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sostituisci' }))
+    await screen.findByText('Backup importato.')
+    expect(document.documentElement.dataset.theme).toBe('dark')
+  })
+
   test('import cancel leaves data untouched', async () => {
     await saveSettings(db, { newPerDay: 20 })
     const { container } = mount()
     await screen.findByLabelText('Livello')
-    const file = new File([JSON.stringify({ anything: 1 })], 'b.json', { type: 'application/json' })
+    const file = new File([JSON.stringify(await exportBackup(db, now))], 'b.json', { type: 'application/json' })
     const input = container.querySelector('input[type=file]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [file] } })
     await screen.findByText('Sostituire tutti i dati?')
@@ -120,4 +144,143 @@ describe('Settings', () => {
     await waitFor(() => expect(screen.queryByText('Sostituire tutti i dati?')).toBeNull())
     expect((await getSettings(db)).newPerDay).toBe(20)
   })
+
+  const tryKey = async (res: () => Response | Promise<Response>) => {
+    const f = vi.fn(async () => res()) as unknown as typeof fetch
+    mount(f)
+    fireEvent.input(await screen.findByLabelText('Chiave API'), { target: { value: 'K' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+    return f
+  }
+
+  test('offline: dice che la chiave non è stata provata, senza chiamare la rete', async () => {
+    Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+    try {
+      const f = await tryKey(okBody)
+      await screen.findByText('Sei offline: la chiave non è stata provata né salvata.')
+      expect(f).not.toHaveBeenCalled()
+    } finally {
+      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+    }
+  })
+
+  test('rete che cade durante la prova: non dice «chiave non valida»', async () => {
+    await tryKey(() => { throw new TypeError('Failed to fetch') })
+    await screen.findByText('Gemini non risponde. Controlla la connessione e riprova. Nulla è stato salvato.')
+  })
+
+  test('Gemini occupato (429): la chiave è buona, si salva subito e lo dice', async () => {
+    const f = await tryKey(() => new Response('', { status: 429 }))
+    await screen.findByText(/^Chiave salvata\. Gemini però è occupato/)
+    expect(f).toHaveBeenCalledTimes(1)
+    expect((await getSettings(db)).apiKey).toBe('K')
+  })
+
+  test('modello inesistente: lo nomina e non salva', async () => {
+    await tryKey(() => new Response('{}', { status: 404 }))
+    await screen.findByText(/^Il modello «gemini-flash-lite-latest» non esiste\./)
+    expect((await getSettings(db)).apiKey).toBe('')
+  })
+
+  test('durante la prova lo dice', async () => {
+    await tryKey(() => new Promise<Response>(() => {}))
+    await screen.findByText('Provo la chiave…')
+  })
+
+  test('un file che non è un backup viene scartato subito, con un messaggio chiaro', async () => {
+    const { container } = mount()
+    await screen.findByLabelText('Livello')
+    const input = container.querySelector('input[type=file]') as HTMLInputElement
+    for (const body of ['{"anything":1}', 'not json at all']) {
+      fireEvent.change(input, { target: { files: [new File([body], 'x.json')] } })
+      await screen.findByText(/^Questo file non è un backup di Singlish\./)
+      expect(screen.queryByText('Sostituire tutti i dati?')).toBeNull()
+    }
+  })
+
+  test('importazione riuscita e non riuscita: messaggi completi', async () => {
+    const { container } = mount()
+    await screen.findByLabelText('Livello')
+    const good = await exportBackup(db, now)
+    const input = container.querySelector('input[type=file]') as HTMLInputElement
+    fireEvent.change(input, { target: { files: [new File([JSON.stringify(good)], 'b.json')] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sostituisci' }))
+    await screen.findByText('Backup importato.')
+
+    // Due canzoni con lo stesso id: il database rifiuta, la transazione torna indietro.
+    const song = { id: 's', kind: 'song', title: 'T', artist: '', spotifyUrl: null, lines: [], status: 'studying', level: 'B1',
+      difficultyKnownPct: null, comprehensionBefore: null, grammarPoint: null, connectedSpeech: [], addedAt: now.toISOString(), analyzedAt: null }
+    const broken = { ...good, tables: { ...good.tables, songs: [song, song] } }
+    fireEvent.change(input, { target: { files: [new File([JSON.stringify(broken)], 'b.json')] } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sostituisci' }))
+    await screen.findByText(/^Importazione non riuscita: i tuoi dati non sono cambiati\./)
+  })
+})
+
+describe('nessun valore perso nelle Impostazioni', () => {
+  test('il modello si salva da solo, senza spazi, anche senza Prova', async () => {
+    mount()
+    const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
+    fireEvent.input(model, { target: { value: ' gemini-2.5-flash ' } })
+    fireEvent.change(model, { target: { value: ' gemini-2.5-flash ' } })
+    await waitFor(async () => expect((await getSettings(db)).model).toBe('gemini-2.5-flash'))
+  })
+  test('un modello cancellato non si salva vuoto: torna quello salvato', async () => {
+    await saveSettings(db, { model: 'gemini-a' })
+    mount()
+    const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
+    fireEvent.input(model, { target: { value: '  ' } })
+    fireEvent.change(model, { target: { value: '  ' } })
+    await waitFor(() => expect(model.value).toBe('gemini-a'))
+    expect((await getSettings(db)).model).toBe('gemini-a')
+  })
+  test('un numero cancellato torna al valore salvato; fuori limite si ferma al limite', async () => {
+    await saveSettings(db, { newPerDay: 16 })
+    mount()
+    const n = (await screen.findByLabelText('Nuove al giorno')) as HTMLInputElement
+    fireEvent.change(n, { target: { value: '' } })
+    expect(n.value).toBe('16')
+    fireEvent.change(n, { target: { value: '500' } })
+    await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(40))
+    expect(n.value).toBe('40')
+    fireEvent.change(n, { target: { value: '0' } })
+    await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(1))
+    const study = screen.getByLabelText('Studio') as HTMLInputElement
+    const before = study.value
+    fireEvent.change(study, { target: { value: '' } })
+    expect(study.value).toBe(before)
+  })
+  test('scrivendo durante la prova della chiave, si salva la chiave provata e il testo nuovo resta nel campo', async () => {
+    let release!: () => void
+    const slow = vi.fn(() => new Promise<Response>((r) => { release = () => r(okBody()) })) as unknown as typeof fetch
+    mount(slow)
+    const key = (await screen.findByLabelText('Chiave API')) as HTMLInputElement
+    fireEvent.input(key, { target: { value: 'KEY-A' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+    fireEvent.input(key, { target: { value: 'KEY-B' } })
+    expect((screen.getByRole('button', { name: 'Prova' }) as HTMLButtonElement).disabled).toBe(true)
+    release()
+    await waitFor(async () => expect((await getSettings(db)).apiKey).toBe('KEY-A'))
+    expect(key.value).toBe('KEY-B')
+  })
+})
+
+test('memoria obiettivo: l\'etichetta segue il cursore mentre lo si trascina', async () => {
+  mount()
+  const slider = (await screen.findByLabelText(/Memoria obiettivo/)) as HTMLInputElement
+  fireEvent.input(slider, { target: { value: '93' } })
+  expect(screen.getByText(/Memoria obiettivo: 0,93/)).toBeTruthy()
+})
+
+test('memoria obiettivo: due scatti di fila salvano il secondo e l\'etichetta non torna indietro', async () => {
+  mount()
+  const slider = (await screen.findByLabelText(/Memoria obiettivo/)) as HTMLInputElement
+  fireEvent.input(slider, { target: { value: '91' } })
+  fireEvent.change(slider, { target: { value: '91' } })
+  expect(slider.value).toBe('91')
+  fireEvent.input(slider, { target: { value: '92' } })
+  fireEvent.change(slider, { target: { value: '92' } })
+  expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
+  await waitFor(async () => expect((await getSettings(db)).desiredRetention).toBe(0.92))
+  expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
 })
