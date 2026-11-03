@@ -14,7 +14,8 @@ export function BottomNav({ route }: { route: Route }) {
   const onToday = route.name === 'today'
   const songRoutes: Route['name'][] = ['songs', 'addSong', 'analyzing', 'study', 'triage']
   const onSongs = songRoutes.includes(route.name)
-  const active = onToday ? 0 : onSongs ? 1 : -1
+  const onLexicon = route.name === 'lexicon'
+  const active = onToday ? 0 : onSongs ? 1 : onLexicon ? 2 : -1
   return (
     <nav class="bottom-nav" aria-label="Navigazione principale">
       <div class="nav-inner" style={{ '--active': active }}>
@@ -27,10 +28,10 @@ export function BottomNav({ route }: { route: Route }) {
           <Icon name="songs" />
           Canzoni
         </a>
-        <span class="disabled" aria-disabled="true">
+        <a href={href({ name: 'lexicon' })} onClick={toTop} aria-current={onLexicon ? 'page' : undefined}>
           <Icon name="lexicon" />
-          <span>Lessico <small>Presto</small></span>
-        </span>
+          Lessico
+        </a>
       </div>
     </nav>
   )

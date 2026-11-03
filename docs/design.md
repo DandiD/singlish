@@ -168,8 +168,9 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 11 | Card Completa | `#/session` |
 | 14 | Timer scaduto | foglio su `#/session` |
 | 18 | Impostazioni | `#/settings` |
+| — | Lessico (canvas: Lexicon) | `#/lexicon` |
 
-Navigazione in basso: Oggi, Canzoni, Lessico (Lessico disabilitato nell'MVP con etichetta "Presto"). Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
+Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
 ## Movimento
 Regole in `src/styles/motion.css` (curve `--ease-out`, `--ease-spring`; durate `--t-fast/med/slow`).
@@ -203,6 +204,9 @@ Ogni numero si calcola in un solo punto, così due schermate non possono contrad
 - Parole da smistare: `pendingWords` in `src/domain/triage.ts` (in un verso della canzone, anche se nate altrove, non sospese) per il banner dello Studio, Smista e l'esito dell'Analisi.
 - Canzone «tenuta per più avanti»: resta `analyzed`, in Canzoni e in Oggi si chiama «Da studiare» e non porta card nuove nel ripasso; aprirne lo Studio la porta a `studying`. Le card già in ripasso continuano.
 - Testi che descrivono un effetto dicono quello vero: chiudendo la sessione allo scadere le card restanti restano su Oggi; Escludi toglie la voce, che torna se ricompare in una canzone nuova.
+
+## Lessico
+Tutte le voci (chunk e parole non note) da `lexicon()` in `src/domain/lexicon.ts`: prima i chunk, poi le parole, in ordine alfabetico. Ricerca in inglese e in italiano (senza maiuscole né accenti), filtri Tutti, B1, B2, C1, Attivi, Solo canzone, Parole e Tema; «Aree scoperte» dai temi con meno voci in studio (`coverage`). Stato: nuovo (card R mai vista), impara, attivo (card C in ripasso), sospeso, da smistare. Ogni riga apre la scheda della voce nella sua canzone; da lì una voce sospesa si riattiva.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

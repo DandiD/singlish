@@ -10,6 +10,7 @@ import { Study } from './ui/screens/Study'
 import { Triage } from './ui/screens/Triage'
 import { Today } from './ui/screens/Today'
 import { Session } from './ui/screens/Session'
+import { Lexicon } from './ui/screens/Lexicon'
 import { OfflineBadge } from './ui/components/OfflineBadge'
 import { UpdateToast } from './ui/components/UpdateToast'
 import { ErrorToast } from './ui/components/ErrorToast'
@@ -28,6 +29,7 @@ function title(route: Route): string {
     case 'triage': return 'Smista parole'
     case 'session': return 'Ripasso'
     case 'settings': return 'Impostazioni'
+    case 'lexicon': return 'Lessico'
     case 'notFound': return 'Pagina non trovata'
   }
 }
@@ -64,6 +66,8 @@ export function App({ swStore }: { swStore?: SwStore }) {
               <Today />
             ) : route.name === 'session' ? (
               <Session />
+            ) : route.name === 'lexicon' ? (
+              <Lexicon />
             ) : (
               <main class="screen not-found">
                 <h1>{title(route)}</h1>

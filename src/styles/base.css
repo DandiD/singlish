@@ -276,3 +276,30 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .screen.not-found { display: flex; flex-direction: column; gap: 14px; }
 .screen.not-found h1, .screen.not-found p { margin: 0; }
 .screen.not-found .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* Lessico */
+.lexicon { display: flex; flex-direction: column; gap: 12px; }
+.lexicon-head { display: flex; flex-direction: column; gap: 12px; }
+.lexicon-title { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--muted); }
+.search input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: transparent; color: var(--text); font-size: 16px; outline: none; }
+.search:focus-within { border-color: var(--accent); }
+.chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.filter-chip { min-height: 44px; padding: 0 14px; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); color: var(--text-2); font-size: 14px; cursor: pointer; display: inline-flex; align-items: center; }
+.filter-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-tint); color: var(--accent-text-2); }
+.filter-chip.select { padding: 0 4px 0 10px; }
+.filter-chip select { min-height: 42px; border: 0; background: transparent; color: inherit; font: inherit; }
+.coverage { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+.coverage-title { font-size: 14px; font-weight: 600; }
+.lex-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.lex-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--divider); color: var(--text); text-decoration: none; }
+.lex-bar { width: 4px; align-self: stretch; min-height: 36px; border-radius: 2px; background: var(--text-2); }
+.lex-bar.pv { background: var(--blue); }
+.lex-bar.id { background: var(--accent); }
+.lex-bar.co, .lex-bar.fp { background: var(--green); }
+.lex-bar.sl { background: var(--violet); }
+.lex-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lex-title { font-weight: 600; font-size: 16px; overflow-wrap: anywhere; }
+.lex-status { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+.lex-status.on { color: var(--green-text); }
+.lexicon .empty { display: flex; flex-direction: column; gap: 14px; }
