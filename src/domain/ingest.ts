@@ -44,7 +44,13 @@ const contextOf = (songId: string, lineIndex: number, surface: string, itemSurfa
   surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
 
 const addContext = (contexts: Context[], ctx: Context): boolean => {
-  if (contexts.some((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)) return false
+  const same = contexts.find((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)
+  if (same) {
+    // Un contesto salvato prima senza la forma del verso la prende ora.
+    if (!ctx.surfaceForm || same.surfaceForm === ctx.surfaceForm) return false
+    same.surfaceForm = ctx.surfaceForm
+    return true
+  }
   contexts.push(ctx)
   return true
 }

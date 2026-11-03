@@ -251,17 +251,29 @@ describe('Oggi e Studio sulla stessa canzone', () => {
   })
 })
 
-describe('voce di un verso vecchio la cui forma non compare nel verso', () => {
-  test('non è contata né evidenziata in Studio, né contata da Oggi per quella canzone', async () => {
-    // «ran out of» nel verso, ma salvata solo come «running out of» / «run out of»: nessuna forma nota è nel verso
+describe('voce salvata senza la forma del verso (dati vecchi)', () => {
+  const shown = () => new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+  const counted = () => {
+    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+    return +m[1] + +m[2]
+  }
+  test('verbo irregolare: «run out of» si evidenzia come «ran out of» e si conta', async () => {
     await db.songs.update('s2', { lines: ['we ran out of words past the harbour', 'the gulls wander low'] })
     await db.chunks.add(chunk('c3', 's1', 'running out of', [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }], { baseForm: 'run out of', key: 'run out of' }))
     mount(<Study songId="s2" />)
     await screen.findByRole('heading', { name: 'Harbour Lights' })
-    const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+    const link = [...document.querySelectorAll('.lyrics a')].find((a) => a.getAttribute('href')!.endsWith('item=c3'))
+    expect(link?.textContent).toBe('ran out of')
+    expect(counted()).toBe(shown().size)
+  })
+  test('forma che non si riesce a trovare: né evidenziata né contata, in Studio come in Oggi', async () => {
+    await db.songs.update('s2', { lines: ['you forsook me by the harbour', 'the gulls wander low'] })
+    await db.chunks.add(chunk('c3', 's1', 'forsaking me', [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }], { baseForm: 'forsake me', key: 'forsake me' }))
+    mount(<Study songId="s2" />)
+    await screen.findByRole('heading', { name: 'Harbour Lights' })
+    const ids = shown()
     expect(ids.has('c3')).toBe(false)
-    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
-    expect(+m[1] + +m[2]).toBe(ids.size)
+    expect(counted()).toBe(ids.size)
     cleanup()
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Harbour Lights' })).closest('a')!

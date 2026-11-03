@@ -5,11 +5,55 @@ export type Segment = { text: string } | Span
 
 const fold = (s: string): string => s.replace(/[’‘]/g, "'").toLowerCase()
 
-/** La prima forma che compare davvero nel verso (es. forma del verso, forma originale, forma base); altrimenti la prima. */
+// Forme irregolari comuni (verbi e plurali): servono solo per i dati salvati senza la forma del verso,
+// per riconoscere «ran out of» quando la voce è «run out of». Corrispondenza esatta, parola intera.
+const IRREGULAR_LIST = `be:am,is,are,was,were,been,being;become:became;begin:began,begun;bend:bent;bet:bet;bite:bit,bitten;
+bleed:bled;blow:blew,blown;break:broke,broken;bring:brought;build:built;burn:burnt;buy:bought;catch:caught;
+choose:chose,chosen;come:came;cost:cost;creep:crept;cut:cut;deal:dealt;dig:dug;do:did,done,does;draw:drew,drawn;
+dream:dreamt;drink:drank,drunk;drive:drove,driven;eat:ate,eaten;fall:fell,fallen;feed:fed;feel:felt;fight:fought;
+find:found;flee:fled;fly:flew,flown;forget:forgot,forgotten;forgive:forgave,forgiven;freeze:froze,frozen;
+get:got,gotten;give:gave,given;go:went,gone,goes;grow:grew,grown;hang:hung;have:had,has;hear:heard;hide:hid,hidden;
+hit:hit;hold:held;hurt:hurt;keep:kept;kneel:knelt;know:knew,known;lay:laid;lead:led;lean:leant;leap:leapt;
+learn:learnt;leave:left;lend:lent;let:let;lie:lay,lain;light:lit;lose:lost;make:made;mean:meant;meet:met;pay:paid;
+put:put;quit:quit;read:read;ride:rode,ridden;ring:rang,rung;rise:rose,risen;run:ran;say:said;see:saw,seen;
+seek:sought;sell:sold;send:sent;set:set;shake:shook,shaken;shine:shone;shoot:shot;show:shown;shut:shut;
+sing:sang,sung;sink:sank,sunk;sit:sat;sleep:slept;slide:slid;speak:spoke,spoken;spend:spent;spin:spun;
+spit:spat;split:split;spread:spread;stand:stood;steal:stole,stolen;stick:stuck;sting:stung;strike:struck;
+swear:swore,sworn;sweep:swept;swim:swam,swum;swing:swung;take:took,taken;teach:taught;tear:tore,torn;tell:told;
+think:thought;throw:threw,thrown;understand:understood;wake:woke,woken;wear:wore,worn;weep:wept;win:won;
+wind:wound;write:wrote,written;child:children;man:men;woman:women;foot:feet;tooth:teeth;mouse:mice;
+person:people;life:lives;wife:wives;knife:knives;leaf:leaves;wolf:wolves;half:halves;self:selves`
+const IRREGULAR = new Map(
+  IRREGULAR_LIST.replace(/\s+/g, '').split(';').map((e) => {
+    const [lemma, forms] = e.split(':')
+    return [lemma, forms.split(',')] as const
+  }),
+)
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const hasWords = (hay: string, phrase: string) => new RegExp(`(^|[^a-z'])${escapeRe(phrase)}($|[^a-z'])`).test(hay)
+
+/** Le forme irregolari di una voce: il primo termine (verbo del chunk o parola) nelle sue forme irregolari. */
+function irregularVariants(base: string): string[] {
+  const [head, ...rest] = fold(base).trim().split(/\s+/)
+  return (IRREGULAR.get(head) ?? []).map((f) => [f, ...rest].join(' '))
+}
+
+/**
+ * La forma con cui la voce compare nel verso: una delle forme date a parola intera, poi una forma irregolare
+ * della forma base (parola intera), poi una delle forme date come pezzo di parola. Se nessuna compare, la prima.
+ */
 export function formIn(line: string, forms: (string | undefined)[]): string {
   const hay = fold(line)
   const list = forms.filter((f): f is string => !!f && !!f.trim())
-  return list.find((f) => hay.includes(fold(f).trim())) ?? list[0] ?? ''
+  const base = list[list.length - 1]
+  return (
+    list.find((f) => hasWords(hay, fold(f).trim())) ?? // parola intera: «children», non «child» dentro «children»
+    (base ? irregularVariants(base).find((v) => hasWords(hay, v)) : undefined) ??
+    list.find((f) => hay.includes(fold(f).trim())) ?? // pezzo di parola: «wander» dentro «wandered»
+    list[0] ??
+    ''
+  )
 }
 
 /** Divide la riga in segmenti: testo semplice e span evidenziati (primo match per span, il più lungo vince). */

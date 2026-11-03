@@ -71,6 +71,21 @@ describe('saveAnalysis', () => {
     expect(await db.chunks.count()).toBe(3)
   })
 
+  test('un contesto salvato senza forma prende la forma quando la canzone viene salvata di nuovo', async () => {
+    const s1 = await createSong(db, input, now)
+    const s2 = await createSong(db, input, now)
+    const c = analysis.chunks[0]
+    await saveAnalysis(db, s1.id, { ...analysis, chunks: [c], words: [] }, ranks, now)
+    const [old] = await db.chunks.toArray()
+    await db.chunks.update(old.id, { contexts: [...old.contexts, { songId: s2.id, lineIndex: 4 }] }) // dato vecchio
+    await saveAnalysis(db, s2.id, { ...analysis, chunks: [{ ...c, surface_form: 'ran out of', line_index: 4 }], words: [] }, ranks, now)
+    const [chunk] = await db.chunks.toArray()
+    expect(chunk.contexts).toEqual([
+      { songId: s1.id, lineIndex: c.line_index },
+      { songId: s2.id, lineIndex: 4, surfaceForm: 'ran out of' },
+    ])
+  })
+
   test('un verso dove la voce compare in un\'altra forma ricorda quella forma', async () => {
     const s1 = await createSong(db, input, now)
     const s2 = await createSong(db, input, now)
