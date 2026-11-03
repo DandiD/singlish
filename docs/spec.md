@@ -83,7 +83,8 @@ Solo per i chunk: una situazione in italiano per produrlo, nota di pronuncia se 
 si fonde o si accorcia.
 Aggiungi: un solo punto di grammatica, fino a 3 fenomeni di parlato connesso (solo canzoni),
 una stima della percentuale di testo che lo studente capisce già.
-Non tradurre il testo intero. Non inventare: se un significato dipende dal contesto, dillo.
+Traduci in italiano solo le righe che contengono un chunk o una parola estratti,
+una volta per riga; non tradurre le altre righe. Non inventare: se un significato dipende dal contesto, dillo.
 ```
 
 ### Messaggio utente
@@ -109,9 +110,11 @@ Testo (righe numerate):
     "production_prompt_it": "", "pronunciation_note_it": "" } ],
   "words": [ { "lemma": "", "surface_form": "", "line_index": 0,
     "pos": "noun | verb | adjective | adverb", "cefr": "B2", "register": "usable", "topic": "travel",
-    "meaning_it": "", "explanation_it": "", "extra_example_en": "" } ]
+    "meaning_it": "", "explanation_it": "", "extra_example_en": "" } ],
+  "line_translations": [ { "line_index": 0, "translation_it": "" } ]
 }
 ```
+`line_translations`: solo le righe con almeno un chunk o una parola estratti; la scheda dell'elemento mostra la traduzione del suo verso.
 Se `difficulty_known_pct` < 60 l'app suggerisce di rimandare la canzone (non la blocca).
 
 ## 9. Spotify

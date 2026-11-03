@@ -27,7 +27,7 @@ describe('gemini prompt', () => {
   test('schema required lists', () => {
     const s: any = RESPONSE_SCHEMA
     expect(s.type).toBe('OBJECT')
-    expect(s.required).toEqual(['difficulty_known_pct', 'grammar_point', 'connected_speech', 'chunks', 'words'])
+    expect(s.required).toEqual(['difficulty_known_pct', 'grammar_point', 'connected_speech', 'chunks', 'words', 'line_translations'])
     const chunk = s.properties.chunks.items
     expect(chunk.required).toEqual(Object.keys(chunk.properties).filter((k) => k !== 'pronunciation_note_it'))
     expect(chunk.properties.type.enum).toContain('phrasal_verb')
@@ -68,5 +68,32 @@ describe('parseAnalysis', () => {
   test('rejects garbage', () => {
     expect(() => parseAnalysis({ foo: 1 }, 10)).toThrow(GeminiError)
     try { parseAnalysis(null, 10) } catch (e) { expect((e as GeminiError).code).toBe('bad_json') }
+  })
+
+  test('traduzioni dei versi: tenute solo per righe valide, non vuote, una per riga', () => {
+    const f = structuredClone(fixture)
+    f.line_translations = [
+      { line_index: 3, translation_it: '  Ho capito che non saresti mai venuto  ' },
+      { line_index: 3, translation_it: 'doppione' },
+      { line_index: 99, translation_it: 'fuori dal testo' },
+      { line_index: 4, translation_it: '   ' },
+    ]
+    expect(parseAnalysis(f, 10).line_translations).toEqual([{ line_index: 3, translation_it: 'Ho capito che non saresti mai venuto' }])
+  })
+  test('una risposta senza traduzioni resta valida', () => {
+    const old = structuredClone(fixture)
+    delete old.line_translations
+    expect(parseAnalysis(old, 10).line_translations).toEqual([])
+  })
+})
+
+describe('traduzione dei versi nel prompt', () => {
+  test('lo schema chiede le traduzioni dei versi', () => {
+    expect(RESPONSE_SCHEMA.required).toContain('line_translations')
+    expect(RESPONSE_SCHEMA.properties.line_translations.items.required).toEqual(['line_index', 'translation_it'])
+  })
+  test('il prompt chiede di tradurre solo le righe con un elemento estratto', () => {
+    expect(SYSTEM_PROMPT).toContain('Traduci in italiano solo le righe che contengono un chunk o una parola estratti')
+    expect(SYSTEM_PROMPT).not.toContain('Non tradurre il testo intero.')
   })
 })

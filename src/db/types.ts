@@ -19,6 +19,8 @@ export interface Song {
   comprehensionBefore: number | null
   grammarPoint: { title: string; explanationIt: string; lineIndex: number } | null
   connectedSpeech: { lineIndex: number; written: string; sung: string; noteIt: string }[]
+  /** Traduzione italiana dei versi con un elemento da studiare. Assente nelle canzoni analizzate prima. */
+  lineTranslations?: { lineIndex: number; textIt: string }[]
   addedAt: Date
   analyzedAt: Date | null
 }

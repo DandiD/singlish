@@ -14,7 +14,8 @@ Solo per i chunk: una situazione in italiano per produrlo, nota di pronuncia se 
 si fonde o si accorcia.
 Aggiungi: un solo punto di grammatica, fino a 3 fenomeni di parlato connesso (solo canzoni),
 una stima della percentuale di testo che lo studente capisce già.
-Non tradurre il testo intero. Non inventare: se un significato dipende dal contesto, dillo.`
+Traduci in italiano solo le righe che contengono un chunk o una parola estratti,
+una volta per riga; non tradurre le altre righe. Non inventare: se un significato dipende dal contesto, dillo.`
 
 export function buildUserMessage(input: {
   level: Level
@@ -94,6 +95,14 @@ export const RESPONSE_SCHEMA = {
       type: 'ARRAY',
       items: { type: 'OBJECT', properties: wordProps, required: Object.keys(wordProps) },
     },
+    line_translations: {
+      type: 'ARRAY',
+      items: {
+        type: 'OBJECT',
+        properties: { line_index: int, translation_it: str },
+        required: ['line_index', 'translation_it'],
+      },
+    },
   },
-  required: ['difficulty_known_pct', 'grammar_point', 'connected_speech', 'chunks', 'words'],
+  required: ['difficulty_known_pct', 'grammar_point', 'connected_speech', 'chunks', 'words', 'line_translations'],
 } as const

@@ -109,3 +109,21 @@ test('modifica della scheda non salvata: resta in modifica e lo dice', async () 
   await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
   expect(screen.getByLabelText('Significato')).toBeTruthy()
 })
+
+test('la scheda mostra in fondo la traduzione del verso', async () => {
+  await db.songs.update('s1', { lineTranslations: [{ lineIndex: 0, textIt: 'Stanotte lascerò correre' }] })
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  const dialog = await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  const sections = [...dialog.querySelectorAll('.examples > div')]
+  const last = sections[sections.length - 1]
+  expect(last.querySelector('.section-label')!.textContent).toBe('TRADUZIONE DEL VERSO')
+  expect(last.textContent).toContain('Stanotte lascerò correre')
+})
+
+test('senza traduzione la sezione non compare', async () => {
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  expect(screen.queryByText('TRADUZIONE DEL VERSO')).toBeNull()
+})

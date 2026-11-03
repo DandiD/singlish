@@ -75,6 +75,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const own = item.contexts.find((c) => c.songId === song.id)
   const lineIdx = own?.lineIndex ?? item.lineIndex
   const line = song.lines[lineIdx]
+  const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }
   const save = async () => {
@@ -153,6 +154,12 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
             <div>
               <div class="section-label">PRONUNCIA</div>
               <p>{item.pronunciationNoteIt}</p>
+            </div>
+          )}
+          {translation && (
+            <div>
+              <div class="section-label">TRADUZIONE DEL VERSO</div>
+              <p>{translation}</p>
             </div>
           )}
         </div>

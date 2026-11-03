@@ -158,6 +158,7 @@ export async function saveAnalysis(
         sung: c.sung,
         noteIt: c.note_it,
       })),
+      lineTranslations: (analysis.line_translations ?? []).map((t) => ({ lineIndex: t.line_index, textIt: t.translation_it })),
       analyzedAt: now,
     })
     return { chunksAdded, contextsAdded, wordsPending: rows.length }

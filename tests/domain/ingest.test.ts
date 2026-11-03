@@ -84,6 +84,13 @@ describe('saveAnalysis', () => {
   })
 })
 
+test('saveAnalysis salva sulla canzone le traduzioni dei versi', async () => {
+  const song = await createSong(db, input, now)
+  const withT: Analysis = { ...analysis, line_translations: [{ line_index: 3, translation_it: 'Ho capito che non saresti mai venuto' }] }
+  await saveAnalysis(db, song.id, withT, ranks, now)
+  expect((await db.songs.get(song.id))!.lineTranslations).toEqual([{ lineIndex: 3, textIt: 'Ho capito che non saresti mai venuto' }])
+})
+
 describe('analyzeSong', () => {
   test('success analyzes the song', async () => {
     await saveSettings(db, { apiKey: 'k' })
