@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { href, goBackTo, onBack } from '../../router'
 import { applyTriage, pendingWords } from '../../domain/triage'
 import type { Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -31,13 +31,13 @@ export function Triage({ songId }: { songId: string }) {
   const confirm = async () => {
     setBusy(true)
     await applyTriage(db, choice, now())
-    window.location.hash = href({ name: 'study', songId })
+    goBackTo({ name: 'study', songId })
   }
 
   return (
-    <main class="screen triage">
+    <main class="screen triage" aria-busy={words === null ? 'true' : undefined}>
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'study', songId })} aria-label="Indietro"><Icon name="back" /></a>
+        <a class="icon-btn" href={href({ name: 'study', songId })} onClick={onBack({ name: 'study', songId })} aria-label="Indietro"><Icon name="back" /></a>
         <div>
           <h1>Smista parole</h1>
           {song && <p class="note">{song.title}</p>}

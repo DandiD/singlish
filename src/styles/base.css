@@ -27,6 +27,8 @@ a { color: var(--accent-text); }
 }
 .app.with-nav .screen { padding-bottom: calc(104px + env(safe-area-inset-bottom)); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Il titolo riceve il fuoco a ogni cambio di pagina (per chi usa lettore di schermo o tastiera): non è un comando. */
+main[tabindex="-1"]:focus, main h1[tabindex="-1"]:focus { outline: none; }
 .icon { flex: none; display: block; }
 
 .bottom-nav {

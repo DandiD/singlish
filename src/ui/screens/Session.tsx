@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { buildSessionQueue, startOfLocalDay, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { getSettings } from '../../domain/settings'
@@ -35,9 +35,7 @@ interface Loaded {
   doneNew: number
 }
 
-const goToday = () => {
-  window.location.hash = href({ name: 'today' })
-}
+const goToday = () => goBackTo({ name: 'today' })
 
 export function Session() {
   const { db, now } = useDeps()
@@ -179,7 +177,7 @@ export function Session() {
         {noSongs && (
           <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         )}
-        <a class={noSongs ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })}>Torna a Oggi</a>
+        <a class={noSongs ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
   }
@@ -190,7 +188,7 @@ export function Session() {
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
-        <a class="btn primary cta" href={href({ name: 'today' })}>Torna a Oggi</a>
+        <a class="btn primary cta" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
   }
@@ -203,7 +201,7 @@ export function Session() {
   return (
     <main class="screen session">
       <header class="session-head">
-        <a class="icon-btn" href={href({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
+        <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
           <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${position / total})` }} /></div>

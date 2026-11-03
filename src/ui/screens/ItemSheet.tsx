@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { goBackTo } from '../../router'
 import { Highlighted } from '../components/Highlighted'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -34,7 +34,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const ref = useRef<HTMLElement>(null)
   const [closing, setClosing] = useState(false)
   const close = () => {
-    const go = () => { window.location.hash = href({ name: 'study', songId: song.id }) }
+    const go = () => goBackTo({ name: 'study', songId: song.id })
     // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
     setClosing(true)

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
+import { createNavHistory, type NavHistory } from './nav-history'
 
 export type Route =
   | { name: 'today' }
@@ -99,34 +100,113 @@ function settled(maxMs = 250): Promise<void> {
   })
 }
 
+let nav: NavHistory | null = null
+function getNav(): NavHistory {
+  if (!nav) {
+    let storage: Storage
+    try { storage = window.sessionStorage } catch { storage = memory() }
+    nav = createNavHistory(window, storage)
+  }
+  return nav
+}
+function memory(): Storage {
+  const m = new Map<string, string>()
+  return {
+    getItem: (k) => m.get(k) ?? null, setItem: (k, v) => void m.set(k, v), removeItem: (k) => void m.delete(k),
+    clear: () => m.clear(), key: () => null, get length() { return m.size },
+  }
+}
+
+/** Torna alla pagina precedente dell'app (come il tasto Indietro); senza, va a `fallback`. */
+export function goBack(fallback: Route): void { getNav().back(href(fallback)) }
+/** Torna a `target` ripercorrendo la cronologia se è la voce precedente, altrimenti la sostituisce. */
+export function goBackTo(target: Route): void { getNav().backTo(href(target)) }
+/** Va a `target` al posto della pagina corrente: il ritorno non ci ripassa. */
+export function goReplace(target: Route): void { getNav().replace(href(target)) }
+
+/** onClick per i link «Indietro»: l'href resta come riserva (apertura in nuova scheda, link diretti). */
+export function onBack(fallback: Route) {
+  return (e: MouseEvent) => { if (plainClick(e)) goBack(fallback) }
+}
+/** onClick per i link che chiudono un percorso tornando a `target` (per esempio «Torna a Oggi»). */
+export function onBackTo(target: Route) {
+  return (e: MouseEvent) => { if (plainClick(e)) goBackTo(target) }
+}
+function plainClick(e: MouseEvent): boolean {
+  if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false
+  e.preventDefault()
+  return true
+}
+
+/** Riporta lo scroll a `y` quando la pagina è abbastanza alta (i dati arrivano dopo). */
+function restoreScroll(y: number) {
+  window.scrollTo(0, y)
+  if (y <= 0) return
+  const start = performance.now()
+  const retry = () => {
+    if (Math.abs(window.scrollY - y) < 2 || performance.now() - start > 1000) return
+    window.scrollTo(0, y)
+    setTimeout(retry, 50)
+  }
+  setTimeout(retry, 50)
+}
+
+/** Il fuoco va sul titolo della nuova pagina, a meno che la pagina non l'abbia già messo altrove. */
+function focusHeading() {
+  const main = document.querySelector('main')
+  const active = document.activeElement
+  if (!main || (active && active !== document.body && main.contains(active))) return
+  const target = main.querySelector<HTMLElement>('h1') ?? main
+  if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1')
+  target.focus({ preventScroll: true })
+}
+
 export function useRoute(): Route {
   const [hash, setHash] = useState(() => window.location.hash)
   const current = useRef(hash)
   useEffect(() => {
+    const appHistory = getNav()
+    if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual'
+    let initial = true
     const onChange = () => {
       const next = window.location.hash
-      const dir = navDirection(parseRoute(current.current), parseRoute(next))
+      const first = initial
+      initial = false
+      if (!first) appHistory.remember(window.scrollY)
+      const step = appHistory.sync()
+      const dir = first ? 'none' : navDirection(parseRoute(current.current), parseRoute(next))
       current.current = next
       const doc = document as ViewTransitionDoc
       const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-      // La nuova schermata parte dall'alto; dentro la transizione, dopo la foto della vecchia.
+      // La nuova schermata parte dall'alto, o dal punto in cui la si era lasciata se ci si torna.
+      const y = step.kind === 'pop' ? step.y : 0
       const show = () => {
         setHash(next)
         if (dir !== 'none') window.scrollTo(0, 0)
       }
+      const after = () => {
+        if (dir === 'none') return
+        if (y > 0) restoreScroll(y)
+        focusHeading()
+      }
       if (dir === 'none' || !doc.startViewTransition || reduce) {
         show()
+        if (dir !== 'none') void settled(1000).then(after)
         return
       }
       const root = document.documentElement
       root.dataset.nav = dir
-      const vt = doc.startViewTransition(() => {
+      const vt = doc.startViewTransition(async () => {
         show()
-        return settled()
+        await settled()
+        if (y > 0) window.scrollTo(0, y)
       })
       // Una transizione interrotta (un'altra navigazione, la finestra che cambia) non è un errore.
       vt.ready.catch(() => {})
-      vt.finished.catch(() => {}).finally(() => { if (root.dataset.nav === dir) delete root.dataset.nav })
+      vt.finished.catch(() => {}).finally(() => {
+        if (root.dataset.nav === dir) delete root.dataset.nav
+        if (current.current === next) after()
+      })
     }
     onChange()
     window.addEventListener('hashchange', onChange)

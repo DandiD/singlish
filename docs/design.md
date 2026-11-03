@@ -178,5 +178,12 @@ Regole in `src/styles/motion.css` (curve `--ease-out`, `--ease-spring`; durate `
 - La barra in basso resta ferma durante le transizioni; l'indicatore scivola fra le schede.
 - `prefers-reduced-motion: reduce`: restano gli stati finali, senza spostamenti.
 
+## Navigazione
+Cronologia dell'app in `src/nav-history.ts`, usata dal router (`goBack`, `goBackTo`, `goReplace`, `onBack`, `onBackTo`).
+- «Indietro» e ✕ ripercorrono la cronologia (come il tasto Indietro del telefono); senza pagine precedenti nell'app sostituiscono la voce con la pagina di riserva. Il tasto Indietro non riapre mai una pagina appena chiusa.
+- Gli esiti di un'azione (canzone salvata → analisi → smistamento → studio, scheda chiusa, sessione finita) sostituiscono la voce: tornando indietro non si ripassa da moduli e passaggi già conclusi.
+- Tornando a una pagina si ritrova lo scroll; una pagina nuova parte dall'alto. La scheda attiva della barra, toccata di nuovo, riporta in cima.
+- A ogni cambio di pagina il fuoco va sul titolo (`h1`) e la scheda del browser prende il titolo della pagina. Le schermate che caricano dati segnano `main` con `aria-busy` finché non sono pronte.
+
 ## PWA
 Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

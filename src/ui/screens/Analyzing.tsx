@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { href, goReplace, onBack, onBackTo } from '../../router'
 import { analyzeSong } from '../../domain/ingest'
 import { loadRanks } from '../../domain/freq'
 import { GeminiError } from '../../domain/gemini/client'
@@ -77,13 +77,13 @@ export function Analyzing({ songId }: { songId: string }) {
   const studyNow = async () => {
     if (state.kind !== 'analyzed') return
     await db.songs.update(songId, { status: 'studying' })
-    window.location.hash = href({ name: state.pending > 0 ? 'triage' : 'study', songId })
+    goReplace({ name: state.pending > 0 ? 'triage' : 'study', songId })
   }
 
   return (
     <main class="screen analyzing">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'addSong' })} aria-label="Indietro"><Icon name="back" /></a>
+        <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>{title || 'Analisi'}</h1>
       </header>
 
@@ -107,7 +107,7 @@ export function Analyzing({ songId }: { songId: string }) {
           <>
             <h2>In coda</h2>
             <p>La analizzo alla prossima apertura</p>
-            <a class="btn outline" href={href({ name: 'songs' })}>Vai alle canzoni</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
           </>
         )}
 
@@ -124,7 +124,7 @@ export function Analyzing({ songId }: { songId: string }) {
             {state.song.status !== 'done' && (
               <button type="button" class="btn primary cta" onClick={studyNow}>Studiala ora</button>
             )}
-            <a class="btn outline" href={href({ name: 'songs' })}>Tienila per più avanti</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Tienila per più avanti</a>
           </>
         )}
 
@@ -150,7 +150,7 @@ export function Analyzing({ songId }: { songId: string }) {
                 <button type="button" class="btn outline" onClick={() => setAttempt((n) => n + 1)}>Riprova</button>
               </>
             )}
-            <a class="btn outline" href={href({ name: 'songs' })}>Torna alle canzoni</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
           </div>
         )}
       </section>

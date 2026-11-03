@@ -1,4 +1,5 @@
-import { href, useRoute, type Route } from './router'
+import { useEffect } from 'preact/hooks'
+import { href, onBackTo, useRoute, type Route } from './router'
 import { BottomNav } from './ui/components/BottomNav'
 import { AppDepsProvider, useDeps } from './ui/deps'
 import { Settings } from './ui/screens/Settings'
@@ -32,6 +33,10 @@ const NO_NAV: Route['name'][] = ['settings', 'addSong', 'analyzing', 'study', 't
 export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
   const withNav = !NO_NAV.includes(route.name)
+  const pageTitle = title(route)
+  useEffect(() => {
+    document.title = route.name === 'today' ? 'Singlish' : `${pageTitle} · Singlish`
+  }, [pageTitle])
   return (
     <AppDepsProvider value={useDeps()}>
       <div class={withNav ? 'app with-nav' : 'app'}>
@@ -56,7 +61,7 @@ export function App({ swStore }: { swStore?: SwStore }) {
           <main class="screen not-found">
             <h1>{title(route)}</h1>
             <p class="note">Questa pagina non esiste.</p>
-            <a class="btn primary" href={href({ name: 'today' })}>Torna a Oggi</a>
+            <a class="btn primary" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
           </main>
         )}
         {withNav && <BottomNav route={route} />}

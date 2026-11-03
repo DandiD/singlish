@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { getSettings } from '../../domain/settings'
 import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
@@ -57,13 +57,14 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     return { song, chunks, words }
   }, [db, songId])
 
-  if (!data) return <main class="screen" />
+  if (!data) return <main class="screen" aria-busy="true" />
   const { song, chunks, words } = data
   if (!song) {
     return (
       <main class="screen">
-        <p>Canzone non trovata.</p>
-        <a class="btn outline" href={href({ name: 'songs' })}>Torna alle canzoni</a>
+        <h1>Canzone non trovata</h1>
+        <p class="note">Forse è stata eliminata, o il link è sbagliato.</p>
+        <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
       </main>
     )
   }
@@ -98,7 +99,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   return (
     <main class="screen study">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
+        <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <div class="grow">
           <h1>{song.title}</h1>
           <p class="note">{`Studio · ${chunkCount} chunk · ${wordCount} parole`}</p>
@@ -157,7 +158,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 class="btn primary"
                 onClick={async () => {
                   await db.songs.update(songId, { status: 'done' })
-                  window.location.hash = href({ name: 'songs' })
+                  goBackTo({ name: 'songs' })
                 }}
               >
                 Conferma

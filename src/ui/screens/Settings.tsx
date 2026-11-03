@@ -1,6 +1,7 @@
 import { useRef, useState } from 'preact/hooks'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
+import { href, onBack } from '../../router'
 import { getSettings, saveSettings } from '../../domain/settings'
 import { callGemini } from '../../domain/gemini/client'
 import { downloadOrShare, exportBackup, importBackup } from '../../domain/backup'
@@ -115,7 +116,7 @@ export function Settings() {
   return (
     <main class="screen settings">
       <header class="settings-head">
-        <a class="icon-btn" href="#/" aria-label="Indietro"><Icon name="back" /></a>
+        <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>Impostazioni</h1>
       </header>
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useDeps } from '../deps'
-import { href } from '../../router'
+import { href, goReplace, onBack } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
 import { createSong, activeSongCount } from '../../domain/ingest'
@@ -63,7 +63,7 @@ export function AddSong() {
         },
         now(),
       )
-      window.location.hash = href({ name: 'analyzing', songId: song.id })
+      goReplace({ name: 'analyzing', songId: song.id })
     } catch {
       setError('Non sono riuscito a salvare la canzone')
       setBusy(false)
@@ -73,7 +73,7 @@ export function AddSong() {
   return (
     <main class="screen add-song">
       <header class="settings-head">
-        <a class="icon-btn" href={href({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
+        <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
         <h1>Aggiungi canzone</h1>
       </header>
       <form class="add-form" onSubmit={submit}>
