@@ -11,6 +11,7 @@ import { Triage } from './ui/screens/Triage'
 import { Today } from './ui/screens/Today'
 import { Session } from './ui/screens/Session'
 import { Lexicon } from './ui/screens/Lexicon'
+import { Progress } from './ui/screens/Progress'
 import { OfflineBadge } from './ui/components/OfflineBadge'
 import { UpdateToast } from './ui/components/UpdateToast'
 import { ErrorToast } from './ui/components/ErrorToast'
@@ -30,11 +31,12 @@ function title(route: Route): string {
     case 'session': return 'Ripasso'
     case 'settings': return 'Impostazioni'
     case 'lexicon': return 'Lessico'
+    case 'progress': return 'Progressi'
     case 'notFound': return 'Pagina non trovata'
   }
 }
 
-const NO_NAV: Route['name'][] = ['settings', 'addSong', 'analyzing', 'study', 'triage', 'session']
+const NO_NAV: Route['name'][] = ['settings', 'progress', 'addSong', 'analyzing', 'study', 'triage', 'session']
 
 export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
@@ -68,6 +70,8 @@ export function App({ swStore }: { swStore?: SwStore }) {
               <Session />
             ) : route.name === 'lexicon' ? (
               <Lexicon />
+            ) : route.name === 'progress' ? (
+              <Progress />
             ) : (
               <main class="screen not-found">
                 <h1>{title(route)}</h1>

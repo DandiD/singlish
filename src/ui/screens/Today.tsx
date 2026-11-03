@@ -50,7 +50,10 @@ export function Today() {
     <main class="screen today">
       <header class="today-head">
         <span class="wordmark">Singlish</span>
-        <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
+        <span class="head-actions">
+          <a class="icon-btn" href={href({ name: 'progress' })} aria-label="Progressi"><Icon name="chart" /></a>
+          <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
+        </span>
       </header>
       <p class="note">{capitalize(dateFmt.format(now()))}</p>
 

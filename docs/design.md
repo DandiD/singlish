@@ -169,6 +169,7 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 14 | Timer scaduto | foglio su `#/session` |
 | 18 | Impostazioni | `#/settings` |
 | — | Lessico (canvas: Lexicon) | `#/lexicon` |
+| — | Progressi (canvas: Progress), da Oggi | `#/progress` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -207,6 +208,9 @@ Ogni numero si calcola in un solo punto, così due schermate non possono contrad
 
 ## Lessico
 Tutte le voci (chunk e parole non note) da `lexicon()` in `src/domain/lexicon.ts`: prima i chunk, poi le parole, in ordine alfabetico. Ricerca in inglese e in italiano (senza maiuscole né accenti), filtri Tutti, B1, B2, C1, Attivi, Solo canzone, Parole e Tema; «Aree scoperte» dai temi con meno voci in studio (`coverage`). Stato: nuovo (card R mai vista), impara, attivo (card C in ripasso), sospeso, da smistare. Ogni riga apre la scheda della voce nella sua canzone; da lì una voce sospesa si riattiva.
+
+## Progressi
+Numeri da `progressStats` in `src/domain/progress.ts`: comprensione al primo ascolto per canzone (grafico a una serie, asse adattato ai valori, soglia del 70%, tabella per lo screen reader), lessico attivo (card Completa in ripasso; quelle del livello attuale contano per salire), memoria reale (ripassi non nuovi degli ultimi 30 giorni non dimenticati), carico medio dei prossimi 7 giorni, avanzamento verso il livello successivo (150 voci attive e 70%). Senza dati si mostra «—» e cosa fare, mai numeri inventati.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.
