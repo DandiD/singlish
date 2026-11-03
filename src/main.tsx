@@ -2,7 +2,7 @@ import { render } from 'preact'
 import { App } from './app'
 import { db } from './db/db'
 import { registerSW } from 'virtual:pwa-register'
-import { getSettings, saveSettings } from './domain/settings'
+import { getSettings, saveSettings, seedApiKey } from './domain/settings'
 import { retryQueuedSongs } from './domain/ingest'
 import { defaultDeps } from './ui/deps'
 import { createSwStore } from './pwa/sw-store'
@@ -18,6 +18,7 @@ const swStore = createSwStore((hooks) => registerSW({ immediate: true, ...hooks 
 errors.listen(window)
 applyTheme('auto')
 render(<App swStore={swStore} />, document.getElementById('app')!)
+seedApiKey(db, import.meta.env.VITE_GEMINI_API_KEY).catch(() => {})
 getSettings(db)
   .then((s) => applyTheme(s.theme))
   .catch(() => {})

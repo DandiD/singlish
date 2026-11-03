@@ -4,3 +4,8 @@ test-results
 playwright-report
 .superpowers/
 .claude/
+
+# Chiavi locali (mai nel repo)
+.env
+.env.*
+!.env.example

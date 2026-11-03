@@ -49,3 +49,12 @@ export async function saveSettings(
   await db.settings.put(next)
   return next
 }
+
+/** Copia in IndexedDB la chiave locale di sviluppo, solo se non ce n'è già una salvata. */
+export async function seedApiKey(db: SinglishDB, envKey: string | undefined): Promise<void> {
+  const key = envKey?.trim() ?? ''
+  if (key === '') return
+  const current = await getSettings(db)
+  if (current.apiKey.trim() !== '') return
+  await saveSettings(db, { apiKey: key })
+}
