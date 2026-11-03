@@ -221,4 +221,5 @@ Niente di ciò che l'utente inserisce si perde in silenzio.
 - Installazione: accettata dal pulsante o dal menu (`appinstalled`), la scheda dice «App installata».
 
 ## PWA
+Chiave Gemini da `.env.local` (`VITE_GEMINI_API_KEY`): letta solo con `npm run dev`. `npm run build` termina con `scripts/check-build-secrets.mjs`, che fallisce se la chiave compare nei file costruiti.
 Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

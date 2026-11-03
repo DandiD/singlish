@@ -18,7 +18,8 @@ const swStore = createSwStore((hooks) => registerSW({ immediate: true, ...hooks 
 errors.listen(window)
 applyTheme('auto')
 render(<App swStore={swStore} />, document.getElementById('app')!)
-seedApiKey(db, import.meta.env.VITE_GEMINI_API_KEY).catch(() => {})
+// La chiave da .env.local solo in sviluppo: Vite copierebbe le variabili VITE_* nel codice costruito.
+seedApiKey(db, import.meta.env.DEV ? import.meta.env.VITE_GEMINI_API_KEY : undefined).catch(() => {})
 getSettings(db)
   .then((s) => applyTheme(s.theme))
   .catch(() => {})
