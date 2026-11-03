@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
 import { goBackTo } from '../../router'
 import { Highlighted } from '../components/Highlighted'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
@@ -19,7 +20,7 @@ type Found = { kind: 'chunk'; item: Chunk } | { kind: 'word'; item: Word } | nul
 
 export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const { db } = useDeps()
-  const found = useLiveQuery(
+  const found = useLive(
     async (): Promise<Found> => {
       const c = await db.chunks.get(itemId)
       if (c) return { kind: 'chunk', item: c }
@@ -77,16 +78,27 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }
   const save = async () => {
-    await (table as typeof db.chunks).update(item.id, { meaningIt: meaning.trim(), explanationIt: explanation.trim(), userEdited: true })
-    setMode('view')
+    try {
+      await (table as typeof db.chunks).update(item.id, { meaningIt: meaning.trim(), explanationIt: explanation.trim(), userEdited: true })
+      setMode('view')
+    } catch (e) {
+      reportError(e)
+    }
   }
-  const suspend = async () => { await (table as typeof db.chunks).update(item.id, { suspended: true }) }
+  const suspend = async () => {
+    try { await (table as typeof db.chunks).update(item.id, { suspended: true }) } catch (e) { reportError(e) }
+  }
   const exclude = async () => {
-    await db.transaction('rw', db.chunks, db.words, db.cards, async () => {
-      await db.cards.where('itemId').equals(item.id).delete()
-      await table.delete(item.id)
-    })
-    close()
+    try {
+      await db.transaction('rw', db.chunks, db.words, db.cards, async () => {
+        await db.cards.where('itemId').equals(item.id).delete()
+        await table.delete(item.id)
+      })
+      close()
+    } catch (e) {
+      reportError(e)
+      setMode('view')
+    }
   }
 
   const label = kind === 'chunk' ? 'Scheda del chunk' : 'Scheda della parola'

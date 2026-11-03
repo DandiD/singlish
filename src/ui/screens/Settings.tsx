@@ -1,10 +1,12 @@
 import { useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
 import { getSettings, saveSettings } from '../../domain/settings'
-import { callGemini } from '../../domain/gemini/client'
-import { downloadOrShare, exportBackup, importBackup } from '../../domain/backup'
+import { callGemini, GeminiError } from '../../domain/gemini/client'
+import { geminiProblem } from '../errors'
+import { reportError } from '../report'
+import { downloadOrShare, exportBackup, importBackup, isBackup } from '../../domain/backup'
 import type { Level, Settings as SettingsRow } from '../../db/types'
 import { useInstall } from '../../pwa/install'
 import { applyTheme } from '../theme'
@@ -18,17 +20,20 @@ const THEMES: { value: SettingsRow['theme']; label: string }[] = [
   { value: 'dark', label: 'Scuro' },
 ]
 
-type KeyStatus = 'idle' | 'running' | 'valid' | 'invalid'
+/** Esito della prova della chiave: `tone` decide il colore, `text` è la frase per l'utente. */
+type KeyStatus = { tone: 'idle' | 'running' | 'ok' | 'error'; text: string }
+type Msg = { tone: 'ok' | 'error'; text: string } | null
+const IDLE: KeyStatus = { tone: 'idle', text: '' }
 
 export function Settings() {
   const { db, fetch, sleep, now } = useDeps()
-  const settings = useLiveQuery(() => getSettings(db), [db])
+  const settings = useLive(() => getSettings(db), [db])
   const [typedKey, setTypedKey] = useState('')
   const [typedModel, setTypedModel] = useState<string | null>(null)
-  const [keyStatus, setKeyStatus] = useState<KeyStatus>('idle')
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>(IDLE)
   const [pending, setPending] = useState<unknown>(undefined)
   const [hasPending, setHasPending] = useState(false)
-  const [backupMsg, setBackupMsg] = useState('')
+  const [backupMsg, setBackupMsg] = useState<Msg>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const install = useInstall()
 
@@ -42,9 +47,12 @@ export function Settings() {
     apply(n)
   }
 
+  /** Ogni modifica si salva subito; se il salvataggio non riesce, l'avviso lo dice. */
+  const store = (patch: Parameters<typeof saveSettings>[1]) => { saveSettings(db, patch).catch(reportError) }
+
   const setTheme = (theme: SettingsRow['theme']) => {
     applyTheme(theme)
-    void saveSettings(db, { theme })
+    store({ theme })
   }
 
   const hasStored = settings.apiKey.trim() !== ''
@@ -52,7 +60,15 @@ export function Settings() {
   const effectiveKey = (typedKey.trim() !== '' ? typedKey : settings.apiKey).trim()
 
   const probe = async () => {
-    setKeyStatus('running')
+    if (!navigator.onLine) {
+      setKeyStatus({ tone: 'error', text: 'Sei offline: la chiave non è stata provata né salvata.' })
+      return
+    }
+    setKeyStatus({ tone: 'running', text: 'Provo la chiave…' })
+    const save = () => saveSettings(db, { apiKey: effectiveKey, model }).then(() => {
+      setTypedKey('')
+      setTypedModel(null)
+    })
     try {
       await callGemini(
         {
@@ -62,38 +78,61 @@ export function Settings() {
           user: 'ping',
           schema: { type: 'OBJECT', properties: { ok: { type: 'BOOLEAN' } } },
         },
-        { fetch, sleep },
+        { fetch, sleep, retry: false },
       )
-      await saveSettings(db, { apiKey: effectiveKey, model })
-      setTypedKey('')
-      setTypedModel(null)
-      setKeyStatus('valid')
-    } catch {
-      setKeyStatus('invalid')
+      await save()
+      setKeyStatus({ tone: 'ok', text: 'Chiave valida, salvata.' })
+    } catch (e) {
+      const code = e instanceof GeminiError ? e.code : null
+      try {
+        // La chiave è stata accettata: Gemini ha risposto, anche se in modo strano o con il limite raggiunto.
+        if (code === 'bad_json' || code === 'blocked') {
+          await save()
+          setKeyStatus({ tone: 'ok', text: 'Chiave valida, salvata.' })
+        } else if (code === 'rate_limited') {
+          await save()
+          setKeyStatus({ tone: 'ok', text: 'Chiave salvata. Gemini però è occupato in questo momento: l\'analisi potrebbe dover aspettare qualche minuto.' })
+        } else {
+          const p = geminiProblem(e, model)
+          setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} Nulla è stato salvato.` })
+        }
+      } catch (saveError) {
+        reportError(saveError)
+        setKeyStatus(IDLE)
+      }
     }
   }
 
   const doExport = async () => {
     try {
       await downloadOrShare(await exportBackup(db, now()))
-      setBackupMsg('')
+      setBackupMsg(null)
     } catch {
-      setBackupMsg('Esportazione non riuscita')
+      setBackupMsg({ tone: 'error', text: 'Esportazione non riuscita. Riprova.' })
     }
   }
+
+  const NOT_BACKUP = 'Questo file non è un backup di Singlish. Scegli il file singlish-backup che hai esportato.'
 
   const onFile = async (e: Event) => {
     const input = e.currentTarget as HTMLInputElement
     const file = input.files?.[0]
     input.value = ''
     if (!file) return
+    let data: unknown
     try {
-      setPending(JSON.parse(await file.text()))
-      setHasPending(true)
-      setBackupMsg('')
+      data = JSON.parse(await file.text())
     } catch {
-      setBackupMsg('Backup non valido')
+      data = null
     }
+    if (!isBackup(data)) {
+      setHasPending(false)
+      setBackupMsg({ tone: 'error', text: NOT_BACKUP })
+      return
+    }
+    setPending(data)
+    setHasPending(true)
+    setBackupMsg(null)
   }
 
   const confirmImport = async () => {
@@ -102,9 +141,9 @@ export function Settings() {
     setPending(undefined)
     try {
       await importBackup(db, data)
-      setBackupMsg('Backup importato')
+      setBackupMsg({ tone: 'ok', text: 'Backup importato.' })
     } catch {
-      setBackupMsg('Backup non valido')
+      setBackupMsg({ tone: 'error', text: 'Importazione non riuscita: i tuoi dati non sono cambiati. Il file potrebbe essere danneggiato.' })
     }
   }
 
@@ -148,7 +187,7 @@ export function Settings() {
             placeholder={settings.apiKey ? 'Chiave salvata' : ''}
             onInput={(e) => {
               setTypedKey((e.currentTarget as HTMLInputElement).value)
-              setKeyStatus('idle')
+              setKeyStatus(IDLE)
             }}
           />
         </label>
@@ -166,16 +205,13 @@ export function Settings() {
           <button
             type="button"
             class="btn outline"
-            disabled={keyStatus === 'running' || (typedKey.trim() === '' && !hasStored)}
+            disabled={keyStatus.tone === 'running' || (typedKey.trim() === '' && !hasStored)}
             onClick={probe}
           >
             Prova
           </button>
         </div>
-        <p role="status" class={keyStatus === 'invalid' ? 'note danger' : 'note'}>
-          {keyStatus === 'valid' && 'Chiave valida'}
-          {keyStatus === 'invalid' && 'Chiave non valida, nulla salvato'}
-        </p>
+        <p role="status" class={keyStatus.tone === 'error' ? 'note danger' : 'note'}>{keyStatus.text}</p>
         <p class="note">La chiave resta su questo telefono.</p>
       </section>
 
@@ -185,7 +221,7 @@ export function Settings() {
           <span>Livello</span>
           <select
             value={settings.level}
-            onChange={(e) => void saveSettings(db, { level: (e.currentTarget as HTMLSelectElement).value as Level })}
+            onChange={(e) => store({ level: (e.currentTarget as HTMLSelectElement).value as Level })}
           >
             <option value="B1">B1</option>
             <option value="B2">B2</option>
@@ -201,7 +237,7 @@ export function Settings() {
             max={40}
             value={settings.newPerDay}
             onChange={(e) =>
-              numeric((e.currentTarget as HTMLInputElement).value, (n) => void saveSettings(db, { newPerDay: n }))
+              numeric((e.currentTarget as HTMLInputElement).value, (n) => store({ newPerDay: n }))
             }
           />
         </label>
@@ -216,7 +252,7 @@ export function Settings() {
             onChange={(e) =>
               numeric(
                 (e.currentTarget as HTMLInputElement).value,
-                (n) => void saveSettings(db, { desiredRetention: n / 100 }),
+                (n) => store({ desiredRetention: n / 100 }),
               )
             }
           />
@@ -237,7 +273,7 @@ export function Settings() {
                 numeric(
                   (e.currentTarget as HTMLInputElement).value,
                   (n) =>
-                    void saveSettings(db, {
+                    store({
                       timerMinutes: { ...settings.timerMinutes, study: Math.max(1, Math.round(n)) },
                     }),
                 )
@@ -255,7 +291,7 @@ export function Settings() {
                 numeric(
                   (e.currentTarget as HTMLInputElement).value,
                   (n) =>
-                    void saveSettings(db, {
+                    store({
                       timerMinutes: { ...settings.timerMinutes, review: Math.max(1, Math.round(n)) },
                     }),
                 )
@@ -288,7 +324,7 @@ export function Settings() {
             </div>
           </div>
         )}
-        <p role="status" class={backupMsg.includes('non') ? 'note danger' : 'note'}>{backupMsg}</p>
+        <p role="status" class={backupMsg?.tone === 'error' ? 'note danger' : 'note'}>{backupMsg?.text}</p>
       </section>
 
       <section aria-labelledby="s-app">

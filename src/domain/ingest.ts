@@ -219,6 +219,9 @@ export async function analyzeSong(
   }
 }
 
+/** Quando si è al limite di canzoni aperte: cosa succede e cosa fare. */
+export const LIMIT_NOTE = "Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un'altra."
+
 export async function openSongCount(db: SinglishDB): Promise<number> {
   return db.songs.where('status').anyOf('analyzed', 'studying').count()
 }

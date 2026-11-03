@@ -1,7 +1,7 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { activeSongCount } from '../../domain/ingest'
+import { activeSongCount, LIMIT_NOTE } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 
@@ -24,8 +24,8 @@ const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long'
 
 export function Songs() {
   const { db } = useDeps()
-  const songs = useLiveQuery(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
-  const open = useLiveQuery(() => activeSongCount(db), [db])
+  const songs = useLive(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
+  const open = useLive(() => activeSongCount(db), [db])
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
   const full = open >= MAX_OPEN
@@ -45,7 +45,7 @@ export function Songs() {
           <Icon name="plus" size={18} />Aggiungi
         </button>
       </header>
-      {full && <p class="note">Massimo 4 canzoni aperte</p>}
+      {full && <p class="note">{LIMIT_NOTE}</p>}
       {songs.length === 0 && <p class="note">Nessuna canzone. Aggiungine una per cominciare.</p>}
       <ul class="song-list">
         {songs.map((s) => (

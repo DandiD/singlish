@@ -7,6 +7,7 @@ import { retryQueuedSongs } from './domain/ingest'
 import { defaultDeps } from './ui/deps'
 import { createSwStore } from './pwa/sw-store'
 import { applyTheme } from './ui/theme'
+import { errors } from './ui/report'
 import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -14,6 +15,7 @@ import './styles/motion.css'
 
 const swStore = createSwStore((hooks) => registerSW({ immediate: true, ...hooks }))
 
+errors.listen(window)
 applyTheme('auto')
 render(<App swStore={swStore} />, document.getElementById('app')!)
 getSettings(db)

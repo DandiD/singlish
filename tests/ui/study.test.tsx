@@ -107,3 +107,14 @@ test('closing the sheet focuses the item link even when the tap did not focus it
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   expect(document.activeElement).toBe(screen.getByRole('link', { name: 'let it slide' }))
 })
+
+test('completamento non salvato: avviso e si resta sulla canzone', async () => {
+  const { errors } = await import('../../src/ui/report')
+  errors.dismiss()
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: 'Segna come completata' }))
+  db.songs.update = (() => Promise.reject(new Error('disk'))) as never
+  fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
+  await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
+  expect(window.location.hash).toBe('#/songs/s1')
+})

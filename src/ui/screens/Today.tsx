@@ -1,4 +1,4 @@
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { State } from 'ts-fsrs'
 import { useDeps } from '../deps'
 import { href } from '../../router'
@@ -14,7 +14,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export function Today() {
   const { db, now } = useDeps()
-  const data = useLiveQuery(async () => {
+  const data = useLive(async () => {
     const [queue, settings, songs, chunks, words] = await Promise.all([
       buildSessionQueue(db, now()),
       getSettings(db),

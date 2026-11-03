@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
+import { failedMessage } from '../errors'
 import { href, goReplace, onBack } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
-import { createSong, activeSongCount } from '../../domain/ingest'
+import { createSong, activeSongCount, LIMIT_NOTE } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
 
 const MAX_OPEN = 4
 
 export function AddSong() {
   const { db, fetch, now } = useDeps()
-  const open = useLiveQuery(() => activeSongCount(db), [db])
+  const open = useLive(() => activeSongCount(db), [db])
   const [link, setLink] = useState('')
   const [title, setTitle] = useState('')
   const [artist, setArtist] = useState('')
@@ -19,14 +20,18 @@ export function AddSong() {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [linkLeft, setLinkLeft] = useState(false)
 
   const linkRef = useRef<HTMLInputElement>(null)
 
   const full = (open ?? 0) >= MAX_OPEN
   const canSubmit = splitLines(text).length > 0 && !full && !busy
   const canonical = parseSpotifyTrackUrl(link)
+  // Si segnala solo dopo aver lasciato il campo: mentre si incolla o si scrive non disturba.
+  const badLink = linkLeft && link.trim() !== '' && !canonical
 
   const onLinkBlur = async (e: Event) => {
+    setLinkLeft(true)
     const url = parseSpotifyTrackUrl((e.currentTarget as HTMLInputElement).value)
     if (!url) return
     const found = await fetchTrackTitle(url, fetch)
@@ -64,8 +69,8 @@ export function AddSong() {
         now(),
       )
       goReplace({ name: 'analyzing', songId: song.id })
-    } catch {
-      setError('Non sono riuscito a salvare la canzone')
+    } catch (e) {
+      setError(failedMessage('Canzone non salvata', e))
       setBusy(false)
     }
   }
@@ -87,10 +92,20 @@ export function AddSong() {
               autocomplete="off"
               placeholder="https://open.spotify.com/track/…"
               value={link}
-              onInput={(e) => setLink((e.currentTarget as HTMLInputElement).value)}
+              onInput={(e) => {
+                setLink((e.currentTarget as HTMLInputElement).value)
+                setLinkLeft(false)
+              }}
               ref={linkRef}
+              aria-invalid={badLink ? 'true' : undefined}
+              aria-describedby={badLink ? 'link-error' : undefined}
             />
           </label>
+          {badLink && (
+            <p class="note danger" id="link-error">
+              Questo non è il link di un brano Spotify. In Spotify tocca Condividi → Copia link del brano, oppure lascia il campo vuoto.
+            </p>
+          )}
           <div class="grid2">
             <label class="field">
               <span>Titolo</span>
@@ -145,7 +160,7 @@ export function AddSong() {
           </label>
         </section>
 
-        {full && <p class="note danger" role="status">Massimo 4 canzoni aperte</p>}
+        {full && <p class="note danger" role="status">{LIMIT_NOTE}</p>}
         {error && <p class="note danger" role="alert">{error}</p>}
         <button type="submit" class="btn primary cta" disabled={!canSubmit}>Analizza con Gemini</button>
         <p class="note center">1 chiamata · offline? La salviamo e la analizziamo dopo</p>

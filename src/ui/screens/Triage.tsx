@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
+import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack } from '../../router'
 import { applyTriage, pendingWords } from '../../domain/triage'
 import type { Song, Word } from '../../db/types'
@@ -8,6 +10,7 @@ import { plural } from '../plural'
 
 export function Triage({ songId }: { songId: string }) {
   const { db, now } = useDeps()
+  const fail = useFailure()
   const [song, setSong] = useState<Song | null>(null)
   const [words, setWords] = useState<Word[] | null>(null)
   const [choice, setChoice] = useState<Record<string, 'known' | 'learn'>>({})
@@ -21,7 +24,7 @@ export function Triage({ songId }: { songId: string }) {
       setSong(s ?? null)
       setWords(w)
       setChoice(Object.fromEntries(w.map((x) => [x.id, 'learn' as const])))
-    })()
+    })().catch(fail)
     return () => { alive = false }
   }, [db, songId])
 
@@ -30,8 +33,13 @@ export function Triage({ songId }: { songId: string }) {
 
   const confirm = async () => {
     setBusy(true)
-    await applyTriage(db, choice, now())
-    goBackTo({ name: 'study', songId })
+    try {
+      await applyTriage(db, choice, now())
+      goBackTo({ name: 'study', songId })
+    } catch (e) {
+      reportError(e)
+      setBusy(false)
+    }
   }
 
   return (

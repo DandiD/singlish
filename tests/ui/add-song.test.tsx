@@ -82,7 +82,7 @@ describe('AddSong', () => {
       await db.songs.update(s.id, { status })
     }
     mount(<AddSong />)
-    await screen.findByText('Massimo 4 canzoni aperte')
+    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
     fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'hello there' } })
     expect((screen.getByRole('button', { name: 'Analizza con Gemini' }) as HTMLButtonElement).disabled).toBe(true)
   })
@@ -108,7 +108,7 @@ describe('Songs', () => {
       await db.songs.update(s.id, { status: 'studying' })
     }
     mount(<Songs />)
-    await screen.findByText('Massimo 4 canzoni aperte')
+    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -118,7 +118,7 @@ describe('Songs', () => {
       await db.songs.update(s.id, { status })
     }
     mount(<Songs />)
-    await screen.findByText('Massimo 4 canzoni aperte')
+    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -148,5 +148,37 @@ describe('Songs', () => {
     expect(screen.getByText('40% prima')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Analizza ora' }).getAttribute('href')).toBe(`#/songs/${s.id}/analyzing`)
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  test('salvataggio non riuscito: messaggio completo, il pulsante torna attivo', async () => {
+    mount(<AddSong />)
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'one\ntwo' } })
+    db.songs.add = (() => Promise.reject(Object.assign(new Error('q'), { name: 'QuotaExceededError' }))) as never
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toBe('Canzone non salvata. Spazio esaurito: il telefono non ha più spazio per i dati dell\'app. Libera spazio e riprova.')
+    expect((screen.getByRole('button', { name: 'Analizza con Gemini' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  test('errore generico nel salvataggio: dice di riprovare', async () => {
+    mount(<AddSong />)
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'one\ntwo' } })
+    db.songs.add = (() => Promise.reject(new Error('x'))) as never
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('Canzone non salvata. Riprova.')
+  })
+
+  test('un link che non è di un brano Spotify lo dice, dopo aver lasciato il campo', async () => {
+    mount(<AddSong />)
+    const input = screen.getByLabelText('Link Spotify') as HTMLInputElement
+    fireEvent.input(input, { target: { value: 'https://open.spotify.com/album/abc' } })
+    expect(screen.queryByText(/non è il link di un brano/)).toBeNull()
+    fireEvent.blur(input)
+    const msg = await screen.findByText('Questo non è il link di un brano Spotify. In Spotify tocca Condividi → Copia link del brano, oppure lascia il campo vuoto.')
+    expect(input.getAttribute('aria-invalid')).toBe('true')
+    expect(input.getAttribute('aria-describedby')).toBe(msg.id)
+    fireEvent.input(input, { target: { value: 'https://open.spotify.com/track/1BwrMGGhPA6GarWIYaFrW8' } })
+    expect(screen.queryByText(/non è il link di un brano/)).toBeNull()
+    expect(input.getAttribute('aria-invalid')).toBeNull()
   })
 })

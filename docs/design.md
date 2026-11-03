@@ -185,5 +185,13 @@ Cronologia dell'app in `src/nav-history.ts`, usata dal router (`goBack`, `goBack
 - Tornando a una pagina si ritrova lo scroll; una pagina nuova parte dall'alto. La scheda attiva della barra, toccata di nuovo, riporta in cima.
 - A ogni cambio di pagina il fuoco va sul titolo (`h1`) e la scheda del browser prende il titolo della pagina. Le schermate che caricano dati segnano `main` con `aria-busy` finché non sono pronte.
 
+## Errori
+Testi in `src/ui/errors.ts` (`geminiProblem`, `storageProblem`, `failedMessage`, `actionMessage`), uno per causa: cosa è successo (titolo, senza punto), perché e cosa fare (frasi complete). Mai codici tecnici a schermo, salvo lo status HTTP dove aiuta («errore 503»).
+- Gemini: chiave mancante o rifiutata e modello inesistente portano a Impostazioni; testo bloccato dai filtri, risposta incompleta, servizio occupato o irraggiungibile offrono «Riprova». In coda si dice il motivo (offline o Gemini occupato).
+- Prova della chiave: un solo tentativo; offline o rete assente non diventano mai «chiave non valida»; con 429 la chiave è buona e si salva.
+- Azioni non riuscite (voto, smistamento, modifica, completamento, impostazioni): avviso in basso (`reportError`, `ErrorToast`), il pulsante torna usabile. Anche le promesse rifiutate senza gestione arrivano all'avviso.
+- Pagine: `ErrorBoundary` al posto dello schermo bianco; `DbGate`, `useLive` e `useFailure` portano lì anche il database che non si apre e i caricamenti falliti, con un testo dedicato per spazio esaurito e dati del browser bloccati.
+- Moduli: errori sotto il campo con `aria-invalid` e `aria-describedby`, mostrati dopo aver lasciato il campo.
+
 ## PWA
 Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

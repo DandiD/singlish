@@ -81,7 +81,8 @@ describe('Analyzing', () => {
       throw new TypeError('offline')
     }) as unknown as typeof fetch
     mount(song.id, f)
-    await screen.findByText('La analizzo alla prossima apertura')
+    await screen.findByRole('heading', { name: 'Sei offline' })
+    expect(screen.getByText(/La canzone è salvata\. La analizzo quando riapri l'app con la connessione\./)).toBeTruthy()
     expect((await db.songs.get(song.id))!.status).toBe('queued')
   })
 
@@ -91,8 +92,48 @@ describe('Analyzing', () => {
       throw new TypeError('down')
     }) as unknown as typeof fetch
     mount(song.id, f)
-    await screen.findByText('La analizzo alla prossima apertura')
+    await screen.findByRole('heading', { name: 'Sei offline' })
     expect((await db.songs.get(song.id))!.status).toBe('queued')
+  })
+
+  test('Gemini occupato (429 dopo i ritentativi): in coda, con il motivo e «Riprova ora»', async () => {
+    const song = await createSong(db, input, now)
+    let busy = true
+    const f = makeFetch(() => (busy ? new Response('', { status: 429 }) : okAnalysis(80)()))
+    mount(song.id, f)
+    await screen.findByRole('heading', { name: 'Gemini è occupato' })
+    expect(screen.getByText(/La canzone è salvata e resta in coda/)).toBeTruthy()
+    expect((await db.songs.get(song.id))!.status).toBe('queued')
+    busy = false
+    fireEvent.click(screen.getByRole('button', { name: 'Riprova ora' }))
+    await screen.findByText('Analisi completata')
+  })
+
+  test('chiave rifiutata: lo dice e porta alle Impostazioni', async () => {
+    const song = await createSong(db, input, now)
+    mount(song.id, makeFetch(() => new Response('{"error":{"details":[{"reason":"API_KEY_INVALID"}]}}', { status: 400 })))
+    await screen.findByRole('heading', { name: 'La chiave Gemini non funziona' })
+    expect(screen.getByRole('link', { name: 'Vai a Impostazioni' }).getAttribute('href')).toBe('#/settings')
+    expect(screen.queryByRole('button', { name: 'Riprova' })).toBeNull()
+  })
+
+  test('modello inesistente: nomina il modello', async () => {
+    await saveSettings(db, { model: 'gemini-zzz' })
+    const song = await createSong(db, input, now)
+    mount(song.id, makeFetch(() => new Response('{}', { status: 404 })))
+    await screen.findByRole('heading', { name: 'Il modello «gemini-zzz» non esiste' })
+  })
+
+  test('testo bloccato dai filtri: lo spiega e permette di riprovare', async () => {
+    const song = await createSong(db, input, now)
+    mount(song.id, makeFetch(() => new Response(JSON.stringify({ candidates: [{ finishReason: 'RECITATION' }] }))))
+    await screen.findByRole('heading', { name: 'Gemini non ha analizzato questo testo' })
+    expect(screen.getByRole('button', { name: 'Riprova' })).toBeTruthy()
+  })
+
+  test('canzone eliminata nel frattempo: lo dice', async () => {
+    mount('non-esiste', makeFetch(okAnalysis(80)))
+    await screen.findByRole('heading', { name: 'Canzone non trovata' })
   })
 
   test('no_key shows link to settings', async () => {
@@ -106,7 +147,7 @@ describe('Analyzing', () => {
   test('bad_json shows retry message', async () => {
     const song = await createSong(db, input, now)
     mount(song.id, makeFetch(() => new Response(JSON.stringify({ candidates: [] }), { status: 200 })))
-    await screen.findByText('Risposta non valida, riprova')
+    await screen.findByRole('heading', { name: 'Risposta di Gemini incompleta' })
     expect(screen.getByRole('button', { name: 'Riprova' })).toBeTruthy()
   })
 

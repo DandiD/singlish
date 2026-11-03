@@ -12,6 +12,10 @@ import { Today } from './ui/screens/Today'
 import { Session } from './ui/screens/Session'
 import { OfflineBadge } from './ui/components/OfflineBadge'
 import { UpdateToast } from './ui/components/UpdateToast'
+import { ErrorToast } from './ui/components/ErrorToast'
+import { ErrorBoundary } from './ui/components/ErrorBoundary'
+import { DbGate } from './ui/components/DbGate'
+import { errors } from './ui/report'
 import type { SwStore } from './pwa/sw-store'
 
 function title(route: Route): string {
@@ -41,31 +45,37 @@ export function App({ swStore }: { swStore?: SwStore }) {
     <AppDepsProvider value={useDeps()}>
       <div class={withNav ? 'app with-nav' : 'app'}>
         <OfflineBadge />
-        {route.name === 'settings' ? (
-          <Settings />
-        ) : route.name === 'songs' ? (
-          <Songs />
-        ) : route.name === 'addSong' ? (
-          <AddSong />
-        ) : route.name === 'analyzing' ? (
-          <Analyzing key={route.songId} songId={route.songId} />
-        ) : route.name === 'study' ? (
-          <Study key={route.songId} songId={route.songId} itemId={route.itemId} />
-        ) : route.name === 'triage' ? (
-          <Triage key={route.songId} songId={route.songId} />
-        ) : route.name === 'today' ? (
-          <Today />
-        ) : route.name === 'session' ? (
-          <Session />
-        ) : (
-          <main class="screen not-found">
-            <h1>{title(route)}</h1>
-            <p class="note">Questa pagina non esiste.</p>
-            <a class="btn primary" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
-          </main>
-        )}
+        {/* Una nuova pagina riparte pulita anche se la precedente si era rotta. */}
+        <ErrorBoundary key={'songId' in route ? `${route.name}:${route.songId}` : route.name}>
+          <DbGate>
+            {route.name === 'settings' ? (
+              <Settings />
+            ) : route.name === 'songs' ? (
+              <Songs />
+            ) : route.name === 'addSong' ? (
+              <AddSong />
+            ) : route.name === 'analyzing' ? (
+              <Analyzing key={route.songId} songId={route.songId} />
+            ) : route.name === 'study' ? (
+              <Study key={route.songId} songId={route.songId} itemId={route.itemId} />
+            ) : route.name === 'triage' ? (
+              <Triage key={route.songId} songId={route.songId} />
+            ) : route.name === 'today' ? (
+              <Today />
+            ) : route.name === 'session' ? (
+              <Session />
+            ) : (
+              <main class="screen not-found">
+                <h1>{title(route)}</h1>
+                <p class="note">Questa pagina non esiste.</p>
+                <a class="btn primary" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
+              </main>
+            )}
+          </DbGate>
+        </ErrorBoundary>
         {withNav && <BottomNav route={route} />}
         {swStore && <UpdateToast store={swStore} />}
+        <ErrorToast store={errors} />
       </div>
     </AppDepsProvider>
   )

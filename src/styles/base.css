@@ -259,3 +259,15 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .steps li { display: flex; align-items: center; gap: 10px; }
 .step-dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong-2); }
 .timer-pill { transition: background-color .3s, color .3s; }
+
+/* Avviso di errore: può andare a capo, resta leggibile su due righe. */
+.toast.error-toast { border-radius: 20px; align-items: center; padding: 6px 4px 6px 18px; max-width: min(520px, calc(100% - 24px)); }
+.toast.error-toast > span { white-space: normal; line-height: 1.35; padding: 6px 0; }
+.toast-btn.icon-only { min-width: 44px; padding: 0; display: grid; place-items: center; }
+.app:has(.toast:not(.error-toast)) .toast.error-toast { bottom: calc(80px + env(safe-area-inset-bottom)); }
+.app.with-nav:has(.toast:not(.error-toast)) .toast.error-toast { bottom: calc(148px + env(safe-area-inset-bottom)); }
+/* Stati di errore: stessa colonna e stessi spazi delle altre schede. */
+.analyzing .card > [role="alert"] { display: flex; flex-direction: column; gap: 14px; }
+.screen.not-found { display: flex; flex-direction: column; gap: 14px; }
+.screen.not-found h1, .screen.not-found p { margin: 0; }
+.screen.not-found .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }

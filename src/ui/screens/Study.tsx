@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
-import { useLiveQuery } from 'dexie-react-hooks'
+import { useLive } from '../useLive'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { getSettings } from '../../domain/settings'
 import { startTimer } from '../../domain/timer'
@@ -50,7 +51,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   timerRef.current = timer
   useEffect(() => () => { timerRef.current.pause() }, [])
 
-  const data = useLiveQuery(async () => {
+  const data = useLive(async () => {
     const song = (await db.songs.get(songId)) ?? null
     const chunks = (await db.chunks.toArray()).filter((c) => c.contexts.some((x) => x.songId === songId))
     const words = (await db.words.toArray()).filter((w) => w.contexts.some((x) => x.songId === songId) || w.songId === songId)
@@ -157,8 +158,13 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn primary"
                 onClick={async () => {
-                  await db.songs.update(songId, { status: 'done' })
-                  goBackTo({ name: 'songs' })
+                  try {
+                    await db.songs.update(songId, { status: 'done' })
+                    goBackTo({ name: 'songs' })
+                  } catch (e) {
+                    reportError(e)
+                    setConfirming(false)
+                  }
                 }}
               >
                 Conferma

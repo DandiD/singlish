@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
+import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { buildSessionQueue, startOfLocalDay, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
@@ -39,6 +41,7 @@ const goToday = () => goBackTo({ name: 'today' })
 
 export function Session() {
   const { db, now } = useDeps()
+  const fail = useFailure()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
@@ -95,7 +98,7 @@ export function Session() {
         settings, sessionId: queue.items.length === 0 ? '' : sessionId, items: queue.items, itemById, songById,
         doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0,
       })
-    })()
+    })().catch(fail)
     return () => { alive = false }
   }, [db])
 
@@ -137,7 +140,11 @@ export function Session() {
 
   const closeSession = async () => {
     timerRef.current.stop()
-    await db.sessions.update(sessionId, { endedAt: now() })
+    try {
+      await db.sessions.update(sessionId, { endedAt: now() })
+    } catch (e) {
+      reportError(e)
+    }
     goToday()
   }
 
@@ -156,6 +163,8 @@ export function Session() {
       setCounts(next)
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
+    } catch (e) {
+      reportError(e)
     } finally {
       busy.current = false
     }

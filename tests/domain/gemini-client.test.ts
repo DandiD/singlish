@@ -50,4 +50,39 @@ describe('callGemini', () => {
     const g = vi.fn().mockImplementation(resp(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'nope' }] } }] })))
     await expect(callGemini(req, { fetch: g, sleep })).rejects.toMatchObject({ code: 'bad_json' })
   })
+
+  test('chiave rifiutata: 400 API_KEY_INVALID, 401 e 403 diventano bad_key senza ritentare', async () => {
+    const invalid = JSON.stringify({ error: { code: 400, message: 'API key not valid.', status: 'INVALID_ARGUMENT', details: [{ reason: 'API_KEY_INVALID' }] } })
+    for (const [body, status] of [[invalid, 400], ['{}', 401], ['{"error":{"status":"PERMISSION_DENIED"}}', 403]] as const) {
+      const f = vi.fn().mockImplementation(resp(body, status))
+      await expect(callGemini(req, { fetch: f, sleep })).rejects.toMatchObject({ code: 'bad_key', status })
+      expect(f).toHaveBeenCalledTimes(1)
+    }
+  })
+  test('modello inesistente: 404 diventa bad_model', async () => {
+    const f = vi.fn().mockImplementation(resp('{"error":{"code":404,"status":"NOT_FOUND"}}', 404))
+    await expect(callGemini(req, { fetch: f, sleep })).rejects.toMatchObject({ code: 'bad_model', status: 404 })
+  })
+  test('un 400 qualsiasi resta http', async () => {
+    const f = vi.fn().mockImplementation(resp('{"error":{"status":"INVALID_ARGUMENT","message":"bad schema"}}', 400))
+    await expect(callGemini(req, { fetch: f, sleep })).rejects.toMatchObject({ code: 'http', status: 400 })
+  })
+  test('testo bloccato dai filtri di Gemini: blocked', async () => {
+    const bodies = [
+      { promptFeedback: { blockReason: 'SAFETY' } },
+      { candidates: [{ finishReason: 'SAFETY' }] },
+      { candidates: [{ finishReason: 'RECITATION', content: { parts: [] } }] },
+    ]
+    for (const b of bodies) {
+      const f = vi.fn().mockImplementation(resp(JSON.stringify(b)))
+      await expect(callGemini(req, { fetch: f, sleep })).rejects.toMatchObject({ code: 'blocked' })
+    }
+  })
+  test('retry: false prova una volta sola (per la prova della chiave)', async () => {
+    const f = vi.fn().mockImplementation(resp('', 429))
+    const s = vi.fn().mockResolvedValue(undefined)
+    await expect(callGemini(req, { fetch: f, sleep: s, retry: false })).rejects.toMatchObject({ code: 'rate_limited' })
+    expect(f).toHaveBeenCalledTimes(1)
+    expect(s).not.toHaveBeenCalled()
+  })
 })

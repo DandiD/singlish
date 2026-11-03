@@ -270,3 +270,28 @@ test('C card: Enter on the keyboard checks the answer, Enter again confirms', as
   await waitFor(async () => expect(await db.reviews.count()).toBe(1))
   expect((await db.reviews.toArray())[0]).toMatchObject({ rating: 3, auto: true, answer: 'let it slide' })
 })
+
+test('voto non salvato: avviso, la card resta e si può votare di nuovo', async () => {
+  const { errors } = await import('../../src/ui/report')
+  errors.dismiss()
+  await seedCOnly()
+  renderSession()
+  await typeAndCheck('let it slid')
+  await screen.findByText('Quasi: un errore di battitura')
+  const realAdd = db.reviews.add.bind(db.reviews)
+  db.reviews.add = (() => Promise.reject(new Error('disk'))) as never
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
+  expect(screen.getByRole('button', { name: 'Conferma' })).toBeTruthy()
+  db.reviews.add = realAdd as never
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+})
+
+test('caricamento della sessione fallito: non resta in attesa per sempre', async () => {
+  const { ErrorBoundary } = await import('../../src/ui/components/ErrorBoundary')
+  db.cards.toArray = (() => Promise.reject(new Error('disk'))) as never
+  db.cards.where = (() => { throw new Error('disk') }) as never
+  render(<AppDepsProvider value={deps()}><ErrorBoundary><Session /></ErrorBoundary></AppDepsProvider>)
+  expect(await screen.findByRole('heading', { name: 'Questa pagina si è bloccata' })).toBeTruthy()
+})
