@@ -61,3 +61,9 @@ test('seedApiKey does nothing without an env key', async () => {
   await seedApiKey(db, '   ')
   expect(await db.settings.count()).toBe(0)
 })
+test('concurrent saves do not clobber the seeded key', async () => {
+  await Promise.all([seedApiKey(db, 'fake-env-key'), saveSettings(db, { persistAsked: true })])
+  const s = await getSettings(db)
+  expect(s.apiKey).toBe('fake-env-key')
+  expect(s.persistAsked).toBe(true)
+})
