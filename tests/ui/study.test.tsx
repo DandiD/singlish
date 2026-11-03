@@ -230,3 +230,34 @@ test('nella scheda il chunk è evidenziato con il colore del suo tipo', async ()
   const dialog = await screen.findByRole('dialog')
   expect(dialog.querySelector('.examples .hl')!.className).toContain('id')
 })
+
+test('dallo Studio: Elimina canzone chiede conferma, poi elimina e porta a Canzoni', async () => {
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" />
+    </AppDepsProvider>,
+  )
+  fireEvent.click(await screen.findByRole('button', { name: 'Elimina canzone' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Sì, elimina' }))
+  await waitFor(async () => expect(await db.songs.get('s1')).toBeUndefined())
+  await waitFor(() => expect(window.location.hash).toBe('#/songs'))
+})
+
+test('una voce sospesa si riattiva dalla sua scheda', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: true, userEdited: false,
+  })
+  window.location.hash = '#/songs/s1?item=c1'
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" itemId="c1" />
+    </AppDepsProvider>,
+  )
+  await screen.findByRole('dialog')
+  fireEvent.click(screen.getByRole('button', { name: 'Riattiva' }))
+  await waitFor(async () => expect((await db.chunks.get('c1'))!.suspended).toBe(false))
+  expect(await screen.findByRole('button', { name: 'Sospendi' })).toBeTruthy()
+})

@@ -64,8 +64,9 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
     }
   }
   editing.current = mode === 'edit' && canSave && changed ? save : null
-  const suspend = async () => {
-    try { await (table as typeof db.chunks).update(item.id, { suspended: true }) } catch (e) { reportError(e) }
+  // Sospendere è reversibile: una voce sospesa esce dal ripasso finché non la si riattiva.
+  const setSuspended = async (suspended: boolean) => {
+    try { await (table as typeof db.chunks).update(item.id, { suspended }) } catch (e) { reportError(e) }
   }
   const exclude = async () => {
     try {
@@ -154,8 +155,8 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
           mode === 'view' && (
             <div class="grid3">
               <button type="button" class="btn outline" onClick={startEdit}>Modifica</button>
-              <button type="button" class="btn outline" disabled={item.suspended} onClick={() => void suspend()}>
-                {item.suspended ? 'Sospesa' : 'Sospendi'}
+              <button type="button" class="btn outline" onClick={() => void setSuspended(!item.suspended)}>
+                {item.suspended ? 'Riattiva' : 'Sospendi'}
               </button>
               <button type="button" class="btn outline danger" onClick={() => setMode('confirm')}>Escludi</button>
             </div>
