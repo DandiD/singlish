@@ -282,3 +282,31 @@ export async function retryQueuedSongs(
     }
   }
 }
+
+/**
+ * Elimina una canzone. Le voci solo sue spariscono con le loro card (e le parole da smistare); quelle condivise
+ * con altre canzoni restano e perdono solo i versi di questa: se era la loro canzone d'origine, l'origine passa
+ * al primo verso che resta, con la forma di quel verso. I ripassi già fatti restano come storico.
+ */
+export async function deleteSong(db: SinglishDB, songId: string): Promise<void> {
+  await db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
+    for (const table of [db.chunks, db.words] as const) {
+      const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
+      for (const item of items.filter((i) => i.songId === songId || i.contexts.some((x) => x.songId === songId))) {
+        const rest = item.contexts.filter((x) => x.songId !== songId)
+        if (rest.length === 0) {
+          await db.cards.where('itemId').equals(item.id).delete()
+          await table.delete(item.id)
+          continue
+        }
+        const patch: Partial<Chunk & Word> = { contexts: rest }
+        if (item.songId === songId) {
+          const [first] = rest
+          Object.assign(patch, { songId: first.songId, lineIndex: first.lineIndex, surfaceForm: first.surfaceForm ?? item.surfaceForm })
+        }
+        await (table as typeof db.chunks).update(item.id, patch)
+      }
+    }
+    await db.songs.delete(songId)
+  })
+}

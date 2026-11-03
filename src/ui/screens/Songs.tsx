@@ -5,7 +5,7 @@ import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { LINK_ERROR } from './AddSong'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
+import { activeSongCount, deleteSong, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 
@@ -24,6 +24,9 @@ export function statusLabel(status: Song['status']): string {
   }
 }
 
+/** Cosa succede alle voci di una canzone eliminata. */
+export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni restano.'
+
 const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 
 export function Songs() {
@@ -31,6 +34,7 @@ export function Songs() {
   const songs = useLive(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
   const open = useLive(() => activeSongCount(db), [db])
   const [editing, setEditing] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
   const full = open >= MAX_OPEN_SONGS
@@ -78,7 +82,30 @@ export function Songs() {
                 <a class="btn outline" href={s.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
               )}
               <button type="button" class="btn outline" onClick={() => setEditing(s.id)}>Modifica</button>
+              <button type="button" class="btn outline danger" onClick={() => setDeleting(s.id)}>Elimina</button>
             </div>
+            {deleting === s.id && (
+              <div class="confirm" role="alertdialog" aria-label="Conferma eliminazione">
+                <p>{`Eliminare «${s.title}»? ${DELETE_NOTE}`}</p>
+                <div class="grid2">
+                  <button
+                    type="button"
+                    class="btn outline danger"
+                    onClick={async () => {
+                      try {
+                        await deleteSong(db, s.id)
+                      } catch (e) {
+                        reportError(e)
+                      }
+                      setDeleting(null)
+                    }}
+                  >
+                    Sì, elimina
+                  </button>
+                  <button type="button" class="btn outline" onClick={() => setDeleting(null)}>Annulla</button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>

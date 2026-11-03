@@ -399,3 +399,28 @@ test('in Canzoni il link Spotify di una canzone si apre con un tocco', async () 
   const noLink = screen.getByRole('heading', { name: 'Senza link' }).closest('li')!
   expect(within(noLink).queryByRole('link', { name: /Apri in Spotify/ })).toBeNull()
 })
+
+describe('elimina canzone', () => {
+  test('in Canzoni: Elimina chiede conferma, Annulla non tocca niente, Sì elimina', async () => {
+    const s = await createSong(db, { title: 'Da togliere', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+    mount(<Songs />)
+    const card = (await screen.findByRole('heading', { name: 'Da togliere' })).closest('li')!
+    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    expect(within(card).getByText(/Eliminare «Da togliere»\?/)).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: 'Annulla' }))
+    expect(await db.songs.get(s.id)).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Sì, elimina' }))
+    await waitFor(async () => expect(await db.songs.get(s.id)).toBeUndefined())
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Da togliere' })).toBeNull())
+  })
+  test('eliminare una canzone libera un posto tra le canzoni aperte', async () => {
+    for (let i = 0; i < 4; i++) await createSong(db, { title: `C${i}`, artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+    mount(<Songs />)
+    expect(((await screen.findByRole('button', { name: 'Aggiungi' })) as HTMLButtonElement).disabled).toBe(true)
+    const card = screen.getByRole('heading', { name: 'C0' }).closest('li')!
+    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Sì, elimina' }))
+    await waitFor(() => expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(false))
+  })
+})

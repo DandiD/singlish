@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { href, goBackTo, onBack, onBackTo } from '../../router'
+import { href, goBackTo, goReplace, onBack, onBackTo } from '../../router'
+import { deleteSong } from '../../domain/ingest'
+import { DELETE_NOTE } from './Songs'
 import { getSettings } from '../../domain/settings'
 import { pendingWords } from '../../domain/triage'
 import { startTimer } from '../../domain/timer'
@@ -23,7 +25,7 @@ const LEGEND: [string, string][] = [
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const { db, now } = useDeps()
   const [sessionId, setSessionId] = useState('')
-  const [confirming, setConfirming] = useState(false)
+  const [confirming, setConfirming] = useState<false | 'done' | 'delete'>(false)
 
   useEffect(() => {
     let alive = true
@@ -152,7 +154,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       )}
 
       <footer class="study-foot">
-        {confirming ? (
+        {confirming === 'done' ? (
           <div class="confirm" role="alertdialog" aria-label="Conferma completamento">
             <p>Segnare questa canzone come completata? Libera un posto tra le canzoni aperte.</p>
             <div class="grid2">
@@ -174,8 +176,33 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
               </button>
             </div>
           </div>
+        ) : confirming === 'delete' ? (
+          <div class="confirm" role="alertdialog" aria-label="Conferma eliminazione">
+            <p>{`Eliminare «${song.title}»? ${DELETE_NOTE}`}</p>
+            <div class="grid2">
+              <button
+                type="button"
+                class="btn outline danger"
+                onClick={async () => {
+                  try {
+                    await deleteSong(db, songId)
+                    goReplace({ name: 'songs' })
+                  } catch (e) {
+                    reportError(e)
+                    setConfirming(false)
+                  }
+                }}
+              >
+                Sì, elimina
+              </button>
+              <button type="button" class="btn outline" onClick={() => setConfirming(false)}>Annulla</button>
+            </div>
+          </div>
         ) : (
-          <button type="button" class="btn outline" onClick={() => setConfirming(true)}>Segna come completata</button>
+          <div class="grid2">
+            <button type="button" class="btn outline" onClick={() => setConfirming('done')}>Segna come completata</button>
+            <button type="button" class="btn outline danger" onClick={() => setConfirming('delete')}>Elimina canzone</button>
+          </div>
         )}
       </footer>
 
