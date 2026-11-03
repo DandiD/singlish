@@ -211,6 +211,14 @@ Niente di ciò che l'utente inserisce si perde in silenzio.
 - Impostazioni: ogni campo si salva da solo, modello compreso (senza spazi; vuoto torna quello salvato). I numeri vuoti tornano al valore salvato, quelli fuori limite si fermano al limite, e il campo mostra il valore salvato. La prova della chiave salva la chiave provata, anche se intanto si è scritto altro.
 - Scheda: chiudendola mentre si modifica (velo, Esc, X) la modifica si salva; un significato vuoto non si salva.
 - Ripasso: voto e contatori della sessione in una sola transazione. Le sessioni di Studio si chiudono uscendo.
+- Canzoni: «Modifica» su ogni canzone, in qualunque stato, per titolo, artista e link Spotify. Titolo vuoto non salvabile; link non di un brano bloccato con lo stesso messaggio di Aggiungi canzone; link vuoto toglie il link; se il titolo è ancora «Senza titolo», arriva da Spotify lasciando il campo del link.
+- Link Spotify che non è di un brano: l'invio si ferma, lo dice e torna al campo (non si salva senza link in silenzio).
+
+## Contenuti e interazioni
+- Forme nel verso: `findForm` cerca la parola intera, poi il pezzo di parola («end» non diventa «fri*end*s»); Studio, scheda e card R/C della sessione usano la stessa forma (`formIn`), e la card C chiede quella.
+- Parlato connesso: le parole con sottolineatura puntinata aprono la scheda «Pronuncia» (scritto, cantato, spiegazione, verso).
+- Avvisi: nella sessione stanno in alto, sotto l'intestazione, per non coprire i voti; altrove in basso.
+- Installazione: accettata dal pulsante o dal menu (`appinstalled`), la scheda dice «App installata».
 
 ## PWA
 Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

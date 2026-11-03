@@ -11,6 +11,7 @@ import { gradeAnswer } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
+import { findForm, formIn } from '../../domain/songItems'
 import { RatingBar, RATING_LABEL } from '../components/RatingBar'
 import type { Chunk, ChunkType, Rating, Settings, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -280,7 +281,8 @@ function SessionCard({ card, isNew, found, song, onRate }: {
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   const verse = song?.lines[ctx.lineIndex] ?? ''
-  const surface = ctx.surfaceForm ?? item.surfaceForm
+  // La stessa forma che lo Studio evidenzia: salvata per il verso, originale, base o irregolare.
+  const surface = formIn(verse, [ctx.surfaceForm, item.surfaceForm, found.kind === 'chunk' ? found.item.baseForm : found.item.lemma])
   const [revealed, setRevealed] = useState(false)
   const [answer, setAnswer] = useState('')
   const [proposed, setProposed] = useState<Rating | null>(null)
@@ -299,7 +301,8 @@ function SessionCard({ card, isNew, found, song, onRate }: {
     setSelected(g.rating)
   }
 
-  const idxGap = verse.toLowerCase().replace(/[’‘]/g, "'").indexOf(surface.toLowerCase().replace(/[’‘]/g, "'"))
+  const at = findForm(verse, surface)
+  const idxGap = at ? at.start : -1
 
   return (
     <section class="card session-card">
@@ -310,7 +313,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
             <>
               {verse.slice(0, idxGap)}
               <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
-              {verse.slice(idxGap + surface.length)}
+              {verse.slice(at ? at.end : 0)}
             </>
           ) : (
             <Highlighted line={verse} spans={[{ text: surface, id: item.id, className: `${cls} sweep` }]} />
@@ -352,7 +355,7 @@ function SessionCard({ card, isNew, found, song, onRate }: {
               autocapitalize="off"
               ref={noAutocorrect}
               enterKeyHint="go"
-              placeholder="scrivi il chunk"
+              placeholder={found.kind === 'chunk' ? 'scrivi il chunk' : 'scrivi la parola'}
               value={answer}
               readOnly={proposed !== null}
               onInput={(e) => setAnswer((e.target as HTMLInputElement).value)}

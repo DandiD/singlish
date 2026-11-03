@@ -180,3 +180,53 @@ test('uscendo dallo Studio la sua sessione si chiude', async () => {
   unmount()
   await waitFor(async () => expect((await db.sessions.toArray())[0].endedAt).toEqual(now))
 })
+
+test('parlato connesso: toccandolo si apre la scheda con forma scritta, cantata e spiegazione', async () => {
+  await db.songs.update('s1', { connectedSpeech: [{ lineIndex: 0, written: 'let it', sung: 'leddit', noteIt: 'La t tra vocali diventa una d leggera.' }] })
+  const { unmount } = render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" />
+    </AppDepsProvider>,
+  )
+  const link = await screen.findByRole('link', { name: 'let it' })
+  expect(link.getAttribute('href')).toBe('#/songs/s1?item=cs%3A0')
+  unmount()
+  window.location.hash = '#/songs/s1?item=cs%3A0'
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" itemId="cs:0" />
+    </AppDepsProvider>,
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'Pronuncia' })
+  expect(dialog.textContent).toContain('let it')
+  expect(dialog.textContent).toContain('leddit')
+  expect(dialog.textContent).toContain('La t tra vocali diventa una d leggera.')
+  expect(dialog.textContent).toContain('RIGA 1')
+})
+
+test('legenda: ogni tipo di evidenziazione ha la sua voce, espressione fissa compresa', async () => {
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" />
+    </AppDepsProvider>,
+  )
+  const legend = await screen.findByRole('list', { name: 'Legenda' })
+  expect(legend.textContent).toContain('espressione fissa')
+})
+
+test('nella scheda il chunk è evidenziato con il colore del suo tipo', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: false, userEdited: false,
+  })
+  window.location.hash = '#/songs/s1?item=c1'
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" itemId="c1" />
+    </AppDepsProvider>,
+  )
+  const dialog = await screen.findByRole('dialog')
+  expect(dialog.querySelector('.examples .hl')!.className).toContain('id')
+})

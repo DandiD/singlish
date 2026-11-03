@@ -10,14 +10,14 @@ import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
-import { ItemSheet } from './ItemSheet'
+import { ItemSheet, SpeechSheet } from './ItemSheet'
 
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
 
 const LEGEND: [string, string][] = [
-  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
+  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['fp', 'espressione fissa'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
 ]
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
@@ -79,8 +79,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
   // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa (e per Oggi).
   const placed = itemsInSong(song, chunks, words)
-  const hrefFor = (id: string) =>
-    id.startsWith('cs:') ? undefined : href({ name: 'study', songId, itemId: id })
+  const hrefFor = (id: string) => href({ name: 'study', songId, itemId: id })
 
   const chunkCount = placed.chunks.size
   const wordCount = placed.words.size
@@ -180,7 +179,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         )}
       </footer>
 
-      {itemId && <ItemSheet song={song} itemId={itemId} />}
+      {itemId && (itemId.startsWith('cs:') ? <SpeechSheet song={song} itemId={itemId} /> : <ItemSheet song={song} itemId={itemId} />)}
     </main>
   )
 }

@@ -9,6 +9,9 @@ import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../d
 import { Icon } from '../components/Icon'
 
 
+/** Un link che non è di un brano Spotify: cosa fare. */
+export const LINK_ERROR = 'Questo non è il link di un brano Spotify. In Spotify tocca Condividi → Copia link del brano, oppure lascia il campo vuoto.'
+
 // Bozza del modulo: per ascoltare la canzone o copiare il testo si esce dall'app, e iOS può chiuderla.
 const DRAFT_KEY = 'singlish:add-song-draft'
 type Draft = { link: string; title: string; artist: string; known: number | null; text: string; auto: { url: string; title: string } | null }
@@ -92,6 +95,12 @@ export function AddSong() {
   const submit = async (e: Event) => {
     e.preventDefault()
     if (!canSubmit) return
+    // Un link che non è di un brano non si scarta in silenzio: lo si dice e si torna al campo.
+    if (link.trim() !== '' && !canonical) {
+      setLinkLeft(true)
+      linkRef.current?.focus()
+      return
+    }
     setBusy(true)
     setError('')
     const page = window.location.hash
@@ -160,7 +169,7 @@ export function AddSong() {
           </label>
           {badLink && (
             <p class="note danger" id="link-error">
-              Questo non è il link di un brano Spotify. In Spotify tocca Condividi → Copia link del brano, oppure lascia il campo vuoto.
+              {LINK_ERROR}
             </p>
           )}
           <div class="grid2">

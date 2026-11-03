@@ -70,6 +70,8 @@ main[tabindex="-1"]:focus, main h1[tabindex="-1"]:focus { outline: none; }
 .toast > span { padding-right: 6px; white-space: nowrap; }
 .toast-btn { white-space: nowrap; }
 .app.with-nav .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+/* Nella sessione i voti stanno in basso, sotto il pollice: l'avviso va in alto, sotto l'intestazione. */
+.app:has(.session:not(.session-done)) .toast { bottom: auto; top: calc(76px + env(safe-area-inset-top)); }
 .toast-btn { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 0; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: 14px; cursor: pointer; }
 .toast-btn.ghost { background: transparent; color: inherit; font-weight: 500; }
 .toast-btn:disabled { opacity: .7; cursor: default; }
@@ -132,7 +134,8 @@ main[tabindex="-1"]:focus, main h1[tabindex="-1"]:focus { outline: none; }
 .song-card p { margin: 0; }
 .song-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .badge { font-size: 12px; font-weight: 600; color: var(--accent-text-2); text-transform: uppercase; letter-spacing: .4px; }
-.song-actions { display: flex; gap: 8px; }
+.song-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.song-edit { display: flex; flex-direction: column; gap: 12px; }
 .song-actions .btn, .analyzing .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .add-song { display: flex; flex-direction: column; gap: 14px; }
 .add-form { display: flex; flex-direction: column; gap: 16px; }

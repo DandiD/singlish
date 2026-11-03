@@ -44,18 +44,26 @@ export const INSTALL_EVENT = 'singlish:installable'
 
 export function useInstall(): { state: InstallState; install(): Promise<void> } {
   const [env, setEnv] = useState(readInstallEnv)
+  // Nella scheda del browser l'app installata non gira in standalone: lo si sa dall'esito o da `appinstalled`.
+  const [installed, setInstalled] = useState(false)
   useEffect(() => {
     const refresh = () => setEnv(readInstallEnv())
+    const done = () => setInstalled(true)
     window.addEventListener(INSTALL_EVENT, refresh)
-    return () => window.removeEventListener(INSTALL_EVENT, refresh)
+    window.addEventListener('appinstalled', done)
+    return () => {
+      window.removeEventListener(INSTALL_EVENT, refresh)
+      window.removeEventListener('appinstalled', done)
+    }
   }, [])
   const install = async () => {
     const p = env.prompt
     if (!p) return
     await p.prompt()
-    await p.userChoice
+    const { outcome } = await p.userChoice
     window.__singlishInstall = null // un prompt si usa una volta sola
+    if (outcome === 'accepted') setInstalled(true)
     setEnv(readInstallEnv())
   }
-  return { state: installState(env), install }
+  return { state: installed ? 'installed' : installState(env), install }
 }

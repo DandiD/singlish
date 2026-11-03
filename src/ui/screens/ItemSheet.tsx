@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goBackTo } from '../../router'
 import { Highlighted } from '../components/Highlighted'
-import { formIn } from '../../domain/songItems'
+import { CHUNK_CLASS, formIn } from '../../domain/songItems'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
 
@@ -33,40 +33,9 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'confirm'>('view')
   const [meaning, setMeaning] = useState('')
   const [explanation, setExplanation] = useState('')
-  const ref = useRef<HTMLElement>(null)
-  const [closing, setClosing] = useState(false)
   // Chiudendo la scheda mentre si modifica (velo, Esc, X), la modifica si salva invece di perdersi.
-  // Il tasto Esc ascolta da un effetto: legge lo stato attuale da qui.
   const editing = useRef<(() => Promise<void>) | null>(null)
-  const close = async () => {
-    await editing.current?.()
-    const go = () => goBackTo({ name: 'study', songId: song.id })
-    // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
-    setClosing(true)
-    setTimeout(go, 200)
-  }
-
-  // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
-  // in quel caso si torna al link dell'elemento nel testo.
-  useEffect(() => {
-    const active = document.activeElement
-    const opener = active instanceof HTMLElement && active !== document.body ? active : null
-    return () => {
-      const target = opener?.isConnected
-        ? opener
-        : document.querySelector<HTMLElement>(`.lyrics a[href$="item=${encodeURIComponent(itemId)}"], .other-items a[href$="item=${encodeURIComponent(itemId)}"]`)
-      target?.focus()
-    }
-  }, [])
-  // Il foglio compare solo quando i dati sono arrivati: il fuoco va spostato allora.
-  const loaded = !!found
-  useEffect(() => { if (loaded) ref.current?.focus() }, [loaded])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') void close() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [song.id])
+  const { ref, closing, close } = useSheet(song.id, itemId, !!found, () => editing.current?.())
 
   useEffect(() => {
     if (found === null) void close() // elemento inesistente o appena eliminato
@@ -150,7 +119,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
           {line && (
             <div>
               <div class="section-label">{`NELLA CANZONE · RIGA ${lineIdx + 1}`}</div>
-              <p><Highlighted line={line} spans={[{ text: surface, id: item.id, className: 'w' }]} /></p>
+              <p><Highlighted line={line} spans={[{ text: surface, id: item.id, className: kind === 'chunk' ? CHUNK_CLASS[item.type] : 'w' }]} /></p>
             </div>
           )}
           {item.extraExampleEn && (
@@ -191,6 +160,76 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <button type="button" class="btn outline danger" onClick={() => setMode('confirm')}>Escludi</button>
             </div>
           )
+        )}
+      </section>
+    </div>
+  )
+}
+
+/**
+ * Comportamento comune dei fogli dal basso: chiusura animata (una sola volta), Esc, fuoco dentro all'apertura
+ * e di nuovo su chi l'ha aperto alla chiusura. `beforeClose` gira prima di chiudere (es. salvare una modifica).
+ */
+export function useSheet(songId: string, itemId: string, loaded: boolean, beforeClose?: () => Promise<void> | undefined) {
+  const ref = useRef<HTMLElement>(null)
+  const [closing, setClosing] = useState(false)
+  const done = useRef(false)
+  const before = useRef(beforeClose)
+  before.current = beforeClose
+  const close = async () => {
+    if (done.current) return // Escludi e «voce sparita» chiedono entrambi di chiudere: si chiude una volta
+    done.current = true
+    await before.current?.()
+    const go = () => goBackTo({ name: 'study', songId })
+    // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
+    setClosing(true)
+    setTimeout(go, 200)
+  }
+  // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
+  // in quel caso si torna al link dell'elemento nel testo.
+  useEffect(() => {
+    const active = document.activeElement
+    const opener = active instanceof HTMLElement && active !== document.body ? active : null
+    return () => {
+      const sel = `a[href$="item=${encodeURIComponent(itemId)}"]`
+      const target = opener?.isConnected ? opener : document.querySelector<HTMLElement>(`.lyrics ${sel}, .other-items ${sel}`)
+      target?.focus()
+    }
+  }, [])
+  // Il foglio compare solo quando i dati sono arrivati: il fuoco va spostato allora. Fuoco ed Esc partono
+  // insieme al disegno del foglio (layout effect): nessun istante in cui il foglio è visibile ma sordo.
+  useLayoutEffect(() => { if (loaded) ref.current?.focus() }, [loaded])
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') void close() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [songId])
+  return { ref, closing, close }
+}
+
+/** Foglio di un fenomeno di parlato connesso: come si scrive, come si canta, perché. */
+export function SpeechSheet({ song, itemId }: { song: Song; itemId: string }) {
+  const cs = song.connectedSpeech[Number(itemId.slice(3))]
+  const { ref, closing, close } = useSheet(song.id, itemId, !!cs)
+  useEffect(() => { if (!cs) void close() }, [cs])
+  if (!cs) return null
+  return (
+    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) void close() }}>
+      <section class="sheet" role="dialog" aria-modal="true" aria-label="Pronuncia" tabIndex={-1} ref={ref}>
+        <div class="sheet-handle" aria-hidden="true" />
+        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={() => void close()}><Icon name="close" /></button>
+        <div class="chips"><span class="chip">Pronuncia</span></div>
+        <h2 class="sheet-title" lang="en">{cs.written}</h2>
+        <p class="sheet-meaning">Si canta <strong lang="en">{cs.sung}</strong></p>
+        {cs.noteIt && <p class="sheet-expl">{cs.noteIt}</p>}
+        {song.lines[cs.lineIndex] && (
+          <div class="examples">
+            <div>
+              <div class="section-label">{`NELLA CANZONE · RIGA ${cs.lineIndex + 1}`}</div>
+              <p lang="en"><Highlighted line={song.lines[cs.lineIndex]} spans={[{ text: cs.written, id: itemId, className: 'cs' }]} /></p>
+            </div>
+          </div>
         )}
       </section>
     </div>

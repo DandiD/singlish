@@ -1,4 +1,4 @@
-import { useRef, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
@@ -32,11 +32,19 @@ export function Settings() {
   const [typedModel, setTypedModel] = useState<string | null>(null)
   const [keyStatus, setKeyStatus] = useState<KeyStatus>(IDLE)
   const [probing, setProbing] = useState(false)
+  // Mentre si trascina il cursore della memoria l'etichetta lo segue; si salva al rilascio.
+  const [dragRetention, setDragRetention] = useState<number | null>(null)
   const [pending, setPending] = useState<unknown>(undefined)
   const [hasPending, setHasPending] = useState(false)
   const [backupMsg, setBackupMsg] = useState<Msg>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const install = useInstall()
+
+  // Il valore trascinato resta finché quello salvato non lo raggiunge: niente salto indietro al rilascio.
+  const savedRetention = settings ? Math.round(settings.desiredRetention * 100) : null
+  useEffect(() => {
+    if (dragRetention !== null && dragRetention === savedRetention) setDragRetention(null)
+  }, [dragRetention, savedRetention])
 
   if (!settings) return <main class="screen settings" aria-busy="true" />
 
@@ -267,13 +275,14 @@ export function Settings() {
           />
         </label>
         <label class="field">
-          <span>Memoria obiettivo: {settings.desiredRetention.toFixed(2).replace('.', ',')}</span>
+          <span>Memoria obiettivo: {((dragRetention ?? Math.round(settings.desiredRetention * 100)) / 100).toFixed(2).replace('.', ',')}</span>
           <input
             type="range"
             min={85}
             max={95}
             step={1}
-            value={Math.round(settings.desiredRetention * 100)}
+            value={dragRetention ?? Math.round(settings.desiredRetention * 100)}
+            onInput={(e) => setDragRetention(Number((e.currentTarget as HTMLInputElement).value))}
             onChange={(e) =>
               numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))
             }

@@ -264,3 +264,23 @@ describe('nessun valore perso nelle Impostazioni', () => {
     expect(key.value).toBe('KEY-B')
   })
 })
+
+test('memoria obiettivo: l\'etichetta segue il cursore mentre lo si trascina', async () => {
+  mount()
+  const slider = (await screen.findByLabelText(/Memoria obiettivo/)) as HTMLInputElement
+  fireEvent.input(slider, { target: { value: '93' } })
+  expect(screen.getByText(/Memoria obiettivo: 0,93/)).toBeTruthy()
+})
+
+test('memoria obiettivo: due scatti di fila salvano il secondo e l\'etichetta non torna indietro', async () => {
+  mount()
+  const slider = (await screen.findByLabelText(/Memoria obiettivo/)) as HTMLInputElement
+  fireEvent.input(slider, { target: { value: '91' } })
+  fireEvent.change(slider, { target: { value: '91' } })
+  expect(slider.value).toBe('91')
+  fireEvent.input(slider, { target: { value: '92' } })
+  fireEvent.change(slider, { target: { value: '92' } })
+  expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
+  await waitFor(async () => expect((await getSettings(db)).desiredRetention).toBe(0.92))
+  expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
+})

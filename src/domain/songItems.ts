@@ -56,15 +56,22 @@ export function formIn(line: string, forms: (string | undefined)[]): string {
   )
 }
 
+/** Dove compare una forma nel verso: prima come parola intera, altrimenti come pezzo di parola. */
+export function findForm(line: string, form: string): { start: number; end: number } | null {
+  const hay = fold(line)
+  const needle = fold(form).trim()
+  if (!needle) return null
+  const whole = new RegExp(`(^|[^a-z'])(${escapeRe(needle)})(?=$|[^a-z'])`).exec(hay)
+  const start = whole ? whole.index + whole[1].length : hay.indexOf(needle)
+  return start >= 0 ? { start, end: start + needle.length } : null
+}
+
 /** Divide la riga in segmenti: testo semplice e span evidenziati (primo match per span, il più lungo vince). */
 export function highlightLine(line: string, spans: Span[]): Segment[] {
-  const hay = fold(line)
   const found: { start: number; end: number; span: Span }[] = []
   for (const span of spans) {
-    const needle = fold(span.text).trim()
-    if (!needle) continue
-    const start = hay.indexOf(needle)
-    if (start >= 0) found.push({ start, end: start + needle.length, span })
+    const at = findForm(line, span.text)
+    if (at) found.push({ ...at, span })
   }
   found.sort((a, b) => (b.end - b.start) - (a.end - a.start) || a.start - b.start)
   const chosen: typeof found = []

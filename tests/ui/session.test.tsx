@@ -311,3 +311,21 @@ test('voto e contatori della sessione si salvano insieme: se uno fallisce, non r
   expect(await db.reviews.count()).toBe(0)
   expect((await db.cards.get('k2'))!.fsrs.reps).toBe(2)
 })
+
+test('card C: il buco è sulla parola intera e la risposta attesa è la forma del verso', async () => {
+  await db.songs.update('s1', { lines: ['My friends never end the night', 'We wait beside the harbour wall'] })
+  await db.chunks.add({ ...chunk('c3', 'end', 0), surfaceForm: 'end' })
+  await db.cards.add(reviewCard('k3', 'c3', 'C', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await screen.findByRole('textbox')
+  expect(container.querySelector('.verse')!.textContent!.replace(/ +/g, '_')).toBe('My friends never _ the night')
+})
+
+test('card C su dati vecchi: forma salvata non nel verso, si usa quella che c\'è (forma base)', async () => {
+  await db.chunks.add({ ...chunk('c4', 'let it slide', 0), surfaceForm: 'letting it slide', baseForm: 'let it slide' })
+  await db.cards.add(reviewCard('k4', 'c4', 'C', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await typeAndCheck('let it slide')
+  await screen.findByText('Esatto')
+  expect(container.querySelector('.gap')).not.toBeNull()
+})

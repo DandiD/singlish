@@ -39,7 +39,7 @@ Voti FSRS: Again, Hard, Good, Easy (etichette UI: Di nuovo, Difficile, Bene, Fac
 Card dello stesso chunk/parola non escono nella stessa sessione.
 
 ## 5. Confronto delle risposte
-Minuscole; apostrofi tipografici ’ ‘ → '; spazi multipli → uno; trim; contrazioni equivalenti: I'm = I am, you're = you are, it's = it is, don't = do not, can't = cannot, won't = will not, gonna = going to, wanna = want to. Errore di battitura = distanza di Levenshtein ≤ 1 dopo la normalizzazione.
+Minuscole; apostrofi tipografici ’ ‘ → '; spazi multipli → uno; trim; contrazioni equivalenti: I'm = I am, you're = you are, it's = it is, don't = do not, can't = cannot, won't = will not, gonna = going to, wanna = want to. Errore di battitura = distanza di Levenshtein ≤ 1 dopo la normalizzazione; si confrontano anche le forme senza espansione delle contrazioni e vale la distanza minore («dont» per «don't» è un errore di battitura). Forma e buco si cercano nel verso come parola intera, poi come pezzo di parola.
 
 ## 6. Timer
 | Attività | Durata predefinita | Uscendo dall'app (`visibilitychange`) |
