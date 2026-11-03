@@ -28,16 +28,23 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   useEffect(() => {
     let alive = true
     const id = newId()
-    void (async () => {
+    const created = (async () => {
       const s = await getSettings(db)
+      if (!alive) return false // uscito prima: nessuna sessione
       const t = Date.now()
       await db.sessions.add({
         id, kind: 'study', songId, startedAt: now(), endedAt: null,
         timer: startTimer(s.timerMinutes.study * 60_000, t), reviewsDone: 0, newDone: 0,
       })
       if (alive) setSessionId(id)
+      return true
     })()
-    return () => { alive = false }
+    created.catch(reportError)
+    return () => {
+      alive = false
+      // Uscendo dallo Studio la sua sessione si chiude.
+      void created.then(async (made) => { if (made) await db.sessions.update(id, { endedAt: now() }) }).catch(reportError)
+    }
   }, [db, songId])
 
   // Aprire lo Studio di una canzone tenuta per più avanti la mette in studio: da qui le sue card nuove entrano nel ripasso.

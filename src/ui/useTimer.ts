@@ -1,3 +1,4 @@
+import { reportError } from './report'
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { db as defaultDb } from '../db/db'
 import type { SinglishDB } from '../db/db'
@@ -23,7 +24,7 @@ export function useTimer(sessionId: string, opts: UseTimerOpts, db: SinglishDB =
     stateRef.current = next
     setState(next)
     setNow(Date.now())
-    void db.sessions.update(sessionId, { timer: next })
+    db.sessions.update(sessionId, { timer: next }).catch(reportError)
   }, [db, sessionId])
 
   useEffect(() => {

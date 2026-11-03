@@ -297,3 +297,17 @@ test('caricamento della sessione fallito: non resta in attesa per sempre', async
   render(<AppDepsProvider value={deps()}><ErrorBoundary><Session /></ErrorBoundary></AppDepsProvider>)
   expect(await screen.findByRole('heading', { name: 'Questa pagina si è bloccata' })).toBeTruthy()
 })
+
+test('voto e contatori della sessione si salvano insieme: se uno fallisce, non resta un voto a metà', async () => {
+  await seedCOnly()
+  renderSession()
+  await typeAndCheck('let it slide')
+  await screen.findByText('Esatto')
+  const original = db.sessions.update.bind(db.sessions)
+  db.sessions.update = (async () => { throw new Error('disco pieno') }) as unknown as typeof db.sessions.update
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  await new Promise((r) => setTimeout(r, 50))
+  db.sessions.update = original
+  expect(await db.reviews.count()).toBe(0)
+  expect((await db.cards.get('k2'))!.fsrs.reps).toBe(2)
+})

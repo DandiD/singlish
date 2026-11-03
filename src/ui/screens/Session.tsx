@@ -114,7 +114,7 @@ export function Session() {
     if (!timerReady) return
     ended.current = true
     timerRef.current.stop()
-    void db.sessions.update(sessionId, { endedAt: now() })
+    db.sessions.update(sessionId, { endedAt: now() }).catch(reportError)
   }, [finished, sessionId, timerReady])
 
   // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
@@ -144,11 +144,14 @@ export function Session() {
     busy.current = true
     try {
       const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
-      await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
       const next = current.isNew
         ? { reviews: counts.reviews, news: counts.news + 1 }
         : { reviews: counts.reviews + 1, news: counts.news }
-      await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
+      // Voto e contatori della sessione in una sola transazione: o tutti e due, o nessuno.
+      await db.transaction('rw', db.cards, db.reviews, db.sessions, async () => {
+        await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
+        await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
+      })
       setCounts(next)
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)

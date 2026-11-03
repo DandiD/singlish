@@ -31,6 +31,7 @@ export function Settings() {
   const [typedKey, setTypedKey] = useState('')
   const [typedModel, setTypedModel] = useState<string | null>(null)
   const [keyStatus, setKeyStatus] = useState<KeyStatus>(IDLE)
+  const [probing, setProbing] = useState(false)
   const [pending, setPending] = useState<unknown>(undefined)
   const [hasPending, setHasPending] = useState(false)
   const [backupMsg, setBackupMsg] = useState<Msg>(null)
@@ -41,10 +42,21 @@ export function Settings() {
 
   const model = typedModel ?? settings.model
 
-  const numeric = (raw: string, apply: (n: number) => void) => {
+  /**
+   * Un campo numerico: un valore vuoto o non valido torna a quello salvato; uno fuori limite si ferma al limite.
+   * Il campo mostra sempre il valore che è stato davvero salvato.
+   */
+  const numeric = (e: Event, current: number, min: number, max: number, apply: (n: number) => void) => {
+    const input = e.currentTarget as HTMLInputElement
+    const raw = input.value
     const n = Number(raw)
-    if (raw.trim() === '' || !Number.isFinite(n)) return
-    apply(n)
+    if (raw.trim() === '' || !Number.isFinite(n)) {
+      input.value = String(current)
+      return
+    }
+    const v = Math.min(max, Math.max(min, Math.round(n)))
+    input.value = String(v)
+    if (v !== current) apply(v)
   }
 
   /** Ogni modifica si salva subito; se il salvataggio non riesce, l'avviso lo dice. */
@@ -65,15 +77,19 @@ export function Settings() {
       return
     }
     setKeyStatus({ tone: 'running', text: 'Provo la chiave…' })
-    const save = () => saveSettings(db, { apiKey: effectiveKey, model }).then(() => {
-      setTypedKey('')
+    setProbing(true)
+    // Si salva la chiave provata; se intanto nel campo è stato scritto altro, quel testo resta lì.
+    const probed = effectiveKey
+    const probedModel = model.trim() || settings.model
+    const save = () => saveSettings(db, { apiKey: probed, model: probedModel }).then(() => {
+      setTypedKey((cur) => (cur.trim() === probed ? '' : cur))
       setTypedModel(null)
     })
     try {
       await callGemini(
         {
-          apiKey: effectiveKey,
-          model,
+          apiKey: probed,
+          model: probedModel,
           system: 'Rispondi con {"ok": true}.',
           user: 'ping',
           schema: { type: 'OBJECT', properties: { ok: { type: 'BOOLEAN' } } },
@@ -93,13 +109,15 @@ export function Settings() {
           await save()
           setKeyStatus({ tone: 'ok', text: 'Chiave salvata. Gemini però è occupato in questo momento: l\'analisi potrebbe dover aspettare qualche minuto.' })
         } else {
-          const p = geminiProblem(e, model)
+          const p = geminiProblem(e, probedModel)
           setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} Nulla è stato salvato.` })
         }
       } catch (saveError) {
         reportError(saveError)
         setKeyStatus(IDLE)
       }
+    } finally {
+      setProbing(false)
     }
   }
 
@@ -188,7 +206,7 @@ export function Settings() {
             placeholder={settings.apiKey ? 'Chiave salvata' : ''}
             onInput={(e) => {
               setTypedKey((e.currentTarget as HTMLInputElement).value)
-              setKeyStatus(IDLE)
+              if (!probing) setKeyStatus(IDLE)
             }}
           />
         </label>
@@ -201,12 +219,20 @@ export function Settings() {
               autocapitalize="off"
               ref={noAutocorrect}
               onInput={(e) => setTypedModel((e.currentTarget as HTMLInputElement).value)}
+              onChange={(e) => {
+                // Si salva da solo come le altre impostazioni; vuoto non vale, torna quello salvato.
+                const input = e.currentTarget as HTMLInputElement
+                const v = input.value.trim()
+                setTypedModel(null)
+                input.value = v || settings.model
+                if (v && v !== settings.model) store({ model: v })
+              }}
             />
           </label>
           <button
             type="button"
             class="btn outline"
-            disabled={keyStatus.tone === 'running' || (typedKey.trim() === '' && !hasStored)}
+            disabled={probing || (typedKey.trim() === '' && !hasStored)}
             onClick={probe}
           >
             Prova
@@ -237,9 +263,7 @@ export function Settings() {
             min={1}
             max={40}
             value={settings.newPerDay}
-            onChange={(e) =>
-              numeric((e.currentTarget as HTMLInputElement).value, (n) => store({ newPerDay: n }))
-            }
+            onChange={(e) => numeric(e, settings.newPerDay, 1, 40, (n) => store({ newPerDay: n }))}
           />
         </label>
         <label class="field">
@@ -251,10 +275,7 @@ export function Settings() {
             step={1}
             value={Math.round(settings.desiredRetention * 100)}
             onChange={(e) =>
-              numeric(
-                (e.currentTarget as HTMLInputElement).value,
-                (n) => store({ desiredRetention: n / 100 }),
-              )
+              numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))
             }
           />
         </label>
@@ -271,13 +292,7 @@ export function Settings() {
               min={1}
               value={settings.timerMinutes.study}
               onChange={(e) =>
-                numeric(
-                  (e.currentTarget as HTMLInputElement).value,
-                  (n) =>
-                    store({
-                      timerMinutes: { ...settings.timerMinutes, study: Math.max(1, Math.round(n)) },
-                    }),
-                )
+                numeric(e, settings.timerMinutes.study, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, study: n } }))
               }
             />
           </label>
@@ -289,13 +304,7 @@ export function Settings() {
               min={1}
               value={settings.timerMinutes.review}
               onChange={(e) =>
-                numeric(
-                  (e.currentTarget as HTMLInputElement).value,
-                  (n) =>
-                    store({
-                      timerMinutes: { ...settings.timerMinutes, review: Math.max(1, Math.round(n)) },
-                    }),
-                )
+                numeric(e, settings.timerMinutes.review, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, review: n } }))
               }
             />
           </label>

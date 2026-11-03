@@ -35,7 +35,11 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const [explanation, setExplanation] = useState('')
   const ref = useRef<HTMLElement>(null)
   const [closing, setClosing] = useState(false)
-  const close = () => {
+  // Chiudendo la scheda mentre si modifica (velo, Esc, X), la modifica si salva invece di perdersi.
+  // Il tasto Esc ascolta da un effetto: legge lo stato attuale da qui.
+  const editing = useRef<(() => Promise<void>) | null>(null)
+  const close = async () => {
+    await editing.current?.()
     const go = () => goBackTo({ name: 'study', songId: song.id })
     // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
     if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
@@ -59,13 +63,13 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const loaded = !!found
   useEffect(() => { if (loaded) ref.current?.focus() }, [loaded])
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') void close() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [song.id])
 
   useEffect(() => {
-    if (found === null) close() // elemento inesistente o appena eliminato
+    if (found === null) void close() // elemento inesistente o appena eliminato
   }, [found])
 
   if (!found) return null
@@ -79,7 +83,10 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }
+  const canSave = meaning.trim() !== ''
+  const changed = meaning.trim() !== item.meaningIt || explanation.trim() !== item.explanationIt
   const save = async () => {
+    if (!canSave) return
     try {
       await (table as typeof db.chunks).update(item.id, { meaningIt: meaning.trim(), explanationIt: explanation.trim(), userEdited: true })
       setMode('view')
@@ -87,6 +94,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
       reportError(e)
     }
   }
+  editing.current = mode === 'edit' && canSave && changed ? save : null
   const suspend = async () => {
     try { await (table as typeof db.chunks).update(item.id, { suspended: true }) } catch (e) { reportError(e) }
   }
@@ -96,7 +104,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
         await db.cards.where('itemId').equals(item.id).delete()
         await table.delete(item.id)
       })
-      close()
+      void close()
     } catch (e) {
       reportError(e)
       setMode('view')
@@ -105,10 +113,10 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
   const label = kind === 'chunk' ? 'Scheda del chunk' : 'Scheda della parola'
   return (
-    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div class={closing ? 'sheet-scrim closing' : 'sheet-scrim'} onClick={(e) => { if (e.target === e.currentTarget) void close() }}>
       <section class="sheet" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} ref={ref}>
         <div class="sheet-handle" aria-hidden="true" />
-        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={close}><Icon name="close" /></button>
+        <button type="button" class="icon-btn sheet-close" aria-label="Chiudi" onClick={() => void close()}><Icon name="close" /></button>
         <div class="chips">
           {kind === 'chunk' && <span class={`chip t-${item.type}`}>{TYPE_LABEL[item.type]}</span>}
           {kind === 'word' && <span class="chip">Parola</span>}
@@ -127,7 +135,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <textarea rows={4} value={explanation} onInput={(e) => setExplanation((e.target as HTMLTextAreaElement).value)} />
             </label>
             <div class="grid2">
-              <button type="submit" class="btn primary">Salva</button>
+              <button type="submit" class="btn primary" disabled={!canSave}>Salva</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>
             </div>
           </form>

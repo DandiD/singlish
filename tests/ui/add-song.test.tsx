@@ -14,6 +14,7 @@ const URL_OK = 'https://open.spotify.com/track/abc123'
 beforeEach(() => {
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = ''
+  localStorage.clear()
 })
 afterEach(() => {
   cleanup()
@@ -214,5 +215,79 @@ describe('Songs', () => {
     fireEvent.input(input, { target: { value: 'https://open.spotify.com/track/1BwrMGGhPA6GarWIYaFrW8' } })
     expect(screen.queryByText(/non è il link di un brano/)).toBeNull()
     expect(input.getAttribute('aria-invalid')).toBeNull()
+  })
+})
+
+describe('niente si perde nel modulo', () => {
+  const fillAll = () => {
+    fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+    fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: 'Bozza' } })
+    fireEvent.input(screen.getByLabelText('Artista'), { target: { value: 'Qualcuno' } })
+    fireEvent.input(screen.getByLabelText('Quanto hai capito?'), { target: { value: '30' } })
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one\nline two' } })
+  }
+  test('uscendo dall\'app (pagina ricaricata) il modulo si ritrova com\'era', async () => {
+    mount(<AddSong />, oembed('X'))
+    fillAll()
+    cleanup()
+    mount(<AddSong />, oembed('X'))
+    expect((screen.getByLabelText('Link Spotify') as HTMLInputElement).value).toBe(URL_OK)
+    expect((screen.getByLabelText('Titolo') as HTMLInputElement).value).toBe('Bozza')
+    expect((screen.getByLabelText('Artista') as HTMLInputElement).value).toBe('Qualcuno')
+    expect((screen.getByLabelText('Quanto hai capito?') as HTMLInputElement).value).toBe('30')
+    expect((screen.getByLabelText('Testo') as HTMLTextAreaElement).value).toBe('line one\nline two')
+  })
+  test('salvata la canzone, il modulo riparte vuoto', async () => {
+    mount(<AddSong />, oembed('X'))
+    fillAll()
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    cleanup()
+    mount(<AddSong />, oembed('X'))
+    expect((screen.getByLabelText('Titolo') as HTMLInputElement).value).toBe('')
+    expect((screen.getByLabelText('Testo') as HTMLTextAreaElement).value).toBe('')
+  })
+  test('la comprensione non indicata non si salva come 50%', async () => {
+    mount(<AddSong />)
+    expect(screen.getByText('—')).toBeTruthy()
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    expect((await db.songs.toArray())[0].comprehensionBefore).toBeNull()
+  })
+  test('la comprensione indicata si salva', async () => {
+    mount(<AddSong />)
+    fireEvent.input(screen.getByLabelText('Quanto hai capito?'), { target: { value: '50' } })
+    expect(screen.getByText('50%')).toBeTruthy()
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await waitFor(async () => expect(await db.songs.count()).toBe(1))
+    expect((await db.songs.toArray())[0].comprehensionBefore).toBe(50)
+  })
+  test('correggendo il link, il titolo preso da Spotify si aggiorna', async () => {
+    const f = vi.fn(async (u: string) => new Response(JSON.stringify({ title: u.includes('abc123') ? 'Sbagliata' : 'Giusta' }), { status: 200 })) as unknown as typeof fetch
+    mount(<AddSong />, f)
+    const link = screen.getByLabelText('Link Spotify')
+    fireEvent.input(link, { target: { value: URL_OK } })
+    fireEvent.blur(link)
+    await waitFor(() => expect((screen.getByLabelText('Titolo') as HTMLInputElement).value).toBe('Sbagliata'))
+    fireEvent.input(link, { target: { value: 'https://open.spotify.com/track/xyz789' } })
+    fireEvent.blur(link)
+    await waitFor(() => expect((screen.getByLabelText('Titolo') as HTMLInputElement).value).toBe('Giusta'))
+  })
+  test('tornando indietro mentre aspetta il titolo, la canzone non viene creata', async () => {
+    let release!: () => void
+    const slow = vi.fn(() => new Promise<Response>((r) => { release = () => r(new Response(JSON.stringify({ title: 'T' }), { status: 200 })) })) as unknown as typeof fetch
+    mount(<AddSong />, slow)
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
+    fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+    await new Promise((r) => setTimeout(r, 10))
+    window.location.hash = '#/songs'
+    cleanup()
+    release()
+    await new Promise((r) => setTimeout(r, 30))
+    expect(await db.songs.count()).toBe(0)
+    expect(window.location.hash).toBe('#/songs')
   })
 })

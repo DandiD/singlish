@@ -204,5 +204,13 @@ Ogni numero si calcola in un solo punto, così due schermate non possono contrad
 - Canzone «tenuta per più avanti»: resta `analyzed`, in Canzoni e in Oggi si chiama «Da studiare» e non porta card nuove nel ripasso; aprirne lo Studio la porta a `studying`. Le card già in ripasso continuano.
 - Testi che descrivono un effetto dicono quello vero: chiudendo la sessione allo scadere le card restanti restano su Oggi; Escludi toglie la voce, che torna se ricompare in una canzone nuova.
 
+## Salvataggi
+Niente di ciò che l'utente inserisce si perde in silenzio.
+- Aggiungi canzone: il modulo è una bozza in `localStorage` (si esce dall'app per ascoltare e copiare il testo, e iOS può chiuderla); si svuota a canzone salvata. Senza titolo scritto, l'invio aspetta il titolo di Spotify (al massimo 4 s); correggendo il link, il titolo preso da Spotify si aggiorna; uno scritto a mano vince. La comprensione non indicata si salva vuota («—»), non 50%. Se l'utente va altrove mentre si aspetta, la canzone non si crea.
+- Analisi: l'esito si salva solo se la canzone non è già analizzata; una seconda analisi (doppio avvio, coda all'apertura) non cambia stato né dati.
+- Impostazioni: ogni campo si salva da solo, modello compreso (senza spazi; vuoto torna quello salvato). I numeri vuoti tornano al valore salvato, quelli fuori limite si fermano al limite, e il campo mostra il valore salvato. La prova della chiave salva la chiave provata, anche se intanto si è scritto altro.
+- Scheda: chiudendola mentre si modifica (velo, Esc, X) la modifica si salva; un significato vuoto non si salva.
+- Ripasso: voto e contatori della sessione in una sola transazione. Le sessioni di Studio si chiudono uscendo.
+
 ## PWA
 Manifest con icone `any` e `maskable` (generate da `scripts/make-icons.mjs`), scorciatoie (Ripasso, Aggiungi canzone) e screenshot. Aggiornamento su richiesta: pillola «Nuova versione» → «Aggiorno…» → «App aggiornata» (fallisce in modo visibile dopo 8 s). Installazione dalle Impostazioni (pulsante su Chrome/Android, istruzioni su iOS). Segnale «Offline» in alto quando manca la rete.

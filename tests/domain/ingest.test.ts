@@ -185,6 +185,36 @@ describe('analyzeSong', () => {
   })
 })
 
+describe('analisi lanciata due volte sulla stessa canzone', () => {
+  test('la seconda analisi non tocca una canzone già analizzata (né stato né dati)', async () => {
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await db.songs.update(song.id, { status: 'studying' })
+    const before = { chunks: await db.chunks.count(), cards: await db.cards.count(), words: await db.words.count() }
+    const other = { ...analysis, chunks: [{ ...analysis.chunks[0], base_form: 'something else' }], grammar_point: null }
+    await saveAnalysis(db, song.id, other, ranks, now)
+    const s = (await db.songs.get(song.id))!
+    expect(s.status).toBe('studying')
+    expect(s.grammarPoint).not.toBeNull()
+    expect({ chunks: await db.chunks.count(), cards: await db.cards.count(), words: await db.words.count() }).toEqual(before)
+  })
+  test('un 429 arrivato dopo non rimette in coda una canzone già analizzata', async () => {
+    await saveSettings(db, { apiKey: 'k' })
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await db.songs.update(song.id, { status: 'studying' })
+    const busy = vi.fn().mockResolvedValue(new Response('{}', { status: 429 }))
+    await analyzeSong(db, song.id, deps({ fetch: busy }))
+    expect((await db.songs.get(song.id))!.status).toBe('studying')
+  })
+  test('offline non rimette in coda una canzone già analizzata', async () => {
+    const song = await createSong(db, input, now)
+    await saveAnalysis(db, song.id, analysis, ranks, now)
+    await analyzeSong(db, song.id, deps({ online: false }))
+    expect((await db.songs.get(song.id))!.status).toBe('analyzed')
+  })
+})
+
 describe('retryQueuedSongs', () => {
   test('re-analyzes queued songs sequentially and ignores per-song errors', async () => {
     await saveSettings(db, { apiKey: 'k' })

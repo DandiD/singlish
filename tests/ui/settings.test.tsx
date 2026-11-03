@@ -94,7 +94,7 @@ describe('Settings', () => {
     expect(container.innerHTML).not.toContain('STORED')
   })
 
-  test('stored key + empty field: failing Prova saves nothing', async () => {
+  test('stored key + empty field: failing Prova does not touch the key', async () => {
     await saveSettings(db, { apiKey: 'STORED', model: 'old-model' })
     const f = vi.fn(async () => new Response('{"error":{"details":[{"reason":"API_KEY_INVALID"}]}}', { status: 400 })) as unknown as typeof fetch
     mount(f)
@@ -102,9 +102,8 @@ describe('Settings', () => {
     fireEvent.input(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
     await screen.findByText(/^La chiave Gemini non funziona\. .*Nulla è stato salvato\.$/)
-    const s = await getSettings(db)
-    expect(s.apiKey).toBe('STORED')
-    expect(s.model).toBe('old-model')
+    // il modello è una preferenza e si salva da solo (come le altre); la chiave rifiutata no
+    expect((await getSettings(db)).apiKey).toBe('STORED')
   })
 
   test('no stored key and empty field: Prova stays disabled', async () => {
@@ -215,5 +214,53 @@ describe('Settings', () => {
     fireEvent.change(input, { target: { files: [new File([JSON.stringify(broken)], 'b.json')] } })
     fireEvent.click(await screen.findByRole('button', { name: 'Sostituisci' }))
     await screen.findByText(/^Importazione non riuscita: i tuoi dati non sono cambiati\./)
+  })
+})
+
+describe('nessun valore perso nelle Impostazioni', () => {
+  test('il modello si salva da solo, senza spazi, anche senza Prova', async () => {
+    mount()
+    const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
+    fireEvent.input(model, { target: { value: ' gemini-2.5-flash ' } })
+    fireEvent.change(model, { target: { value: ' gemini-2.5-flash ' } })
+    await waitFor(async () => expect((await getSettings(db)).model).toBe('gemini-2.5-flash'))
+  })
+  test('un modello cancellato non si salva vuoto: torna quello salvato', async () => {
+    await saveSettings(db, { model: 'gemini-a' })
+    mount()
+    const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
+    fireEvent.input(model, { target: { value: '  ' } })
+    fireEvent.change(model, { target: { value: '  ' } })
+    await waitFor(() => expect(model.value).toBe('gemini-a'))
+    expect((await getSettings(db)).model).toBe('gemini-a')
+  })
+  test('un numero cancellato torna al valore salvato; fuori limite si ferma al limite', async () => {
+    await saveSettings(db, { newPerDay: 16 })
+    mount()
+    const n = (await screen.findByLabelText('Nuove al giorno')) as HTMLInputElement
+    fireEvent.change(n, { target: { value: '' } })
+    expect(n.value).toBe('16')
+    fireEvent.change(n, { target: { value: '500' } })
+    await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(40))
+    expect(n.value).toBe('40')
+    fireEvent.change(n, { target: { value: '0' } })
+    await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(1))
+    const study = screen.getByLabelText('Studio') as HTMLInputElement
+    const before = study.value
+    fireEvent.change(study, { target: { value: '' } })
+    expect(study.value).toBe(before)
+  })
+  test('scrivendo durante la prova della chiave, si salva la chiave provata e il testo nuovo resta nel campo', async () => {
+    let release!: () => void
+    const slow = vi.fn(() => new Promise<Response>((r) => { release = () => r(okBody()) })) as unknown as typeof fetch
+    mount(slow)
+    const key = (await screen.findByLabelText('Chiave API')) as HTMLInputElement
+    fireEvent.input(key, { target: { value: 'KEY-A' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+    fireEvent.input(key, { target: { value: 'KEY-B' } })
+    expect((screen.getByRole('button', { name: 'Prova' }) as HTMLButtonElement).disabled).toBe(true)
+    release()
+    await waitFor(async () => expect((await getSettings(db)).apiKey).toBe('KEY-A'))
+    expect(key.value).toBe('KEY-B')
   })
 })

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -117,4 +117,66 @@ test('completamento non salvato: avviso e si resta sulla canzone', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
   await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
   expect(window.location.hash).toBe('#/songs/s1')
+})
+
+describe('modifiche nella scheda', () => {
+  const addChunk = () => db.chunks.add({
+    id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'let it slide', surfaceForm: 'let it slide', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'informal', topic: 'other',
+    meaningIt: 'lasciar correre', explanationIt: 'vecchia', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+    suspended: false, userEdited: false,
+  })
+  const openEdit = async () => {
+    window.location.hash = '#/songs/s1?item=c1'
+    render(
+      <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+        <Study songId="s1" itemId="c1" />
+      </AppDepsProvider>,
+    )
+    await screen.findByRole('dialog')
+    fireEvent.click(screen.getByRole('button', { name: 'Modifica' }))
+    fireEvent.input(screen.getByLabelText('Significato'), { target: { value: 'non darci peso' } })
+  }
+  for (const [how, act] of [
+    ['Esc', () => fireEvent.keyDown(document, { key: 'Escape' })],
+    ['X', () => fireEvent.click(screen.getByRole('button', { name: 'Chiudi' }))],
+    ['velo', () => fireEvent.click(document.querySelector('.sheet-scrim')!)],
+  ] as const) {
+    test(`chiudendo con ${how} mentre si modifica, la modifica si salva`, async () => {
+      await addChunk()
+      await openEdit()
+      act()
+      await waitFor(async () => expect((await db.chunks.get('c1'))!.meaningIt).toBe('non darci peso'))
+      expect((await db.chunks.get('c1'))!.userEdited).toBe(true)
+    })
+  }
+  test('Annulla non salva', async () => {
+    await addChunk()
+    await openEdit()
+    fireEvent.click(screen.getByRole('button', { name: 'Annulla' }))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await new Promise((r) => setTimeout(r, 30))
+    expect((await db.chunks.get('c1'))!.meaningIt).toBe('lasciar correre')
+  })
+  test('un significato vuoto non si salva', async () => {
+    await addChunk()
+    await openEdit()
+    fireEvent.input(screen.getByLabelText('Significato'), { target: { value: '   ' } })
+    expect((screen.getByRole('button', { name: 'Salva' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await new Promise((r) => setTimeout(r, 30))
+    expect((await db.chunks.get('c1'))!.meaningIt).toBe('lasciar correre')
+  })
+})
+
+test('uscendo dallo Studio la sua sessione si chiude', async () => {
+  const { unmount } = render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" />
+    </AppDepsProvider>,
+  )
+  await waitFor(async () => expect(await db.sessions.count()).toBe(1))
+  await new Promise((r) => setTimeout(r, 20))
+  unmount()
+  await waitFor(async () => expect((await db.sessions.toArray())[0].endedAt).toEqual(now))
 })

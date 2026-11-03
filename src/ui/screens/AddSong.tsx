@@ -9,14 +9,45 @@ import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../d
 import { Icon } from '../components/Icon'
 
 
+// Bozza del modulo: per ascoltare la canzone o copiare il testo si esce dall'app, e iOS può chiuderla.
+const DRAFT_KEY = 'singlish:add-song-draft'
+type Draft = { link: string; title: string; artist: string; known: number | null; text: string; auto: { url: string; title: string } | null }
+const EMPTY: Draft = { link: '', title: '', artist: '', known: null, text: '', auto: null }
+function readDraft(): Draft {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Partial<Draft> | null
+    return d && typeof d === 'object' ? { ...EMPTY, ...d } : EMPTY
+  } catch {
+    return EMPTY
+  }
+}
+function writeDraft(d: Draft | null) {
+  try {
+    if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
+    else localStorage.removeItem(DRAFT_KEY)
+  } catch {
+    // spazio pieno o storage bloccato: la bozza è un aiuto, non un dato
+  }
+}
+
 export function AddSong() {
   const { db, fetch, now } = useDeps()
   const open = useLive(() => activeSongCount(db), [db])
-  const [link, setLink] = useState('')
-  const [title, setTitle] = useState('')
-  const [artist, setArtist] = useState('')
-  const [known, setKnown] = useState(50)
-  const [text, setText] = useState('')
+  const [draft] = useState(readDraft)
+  const [link, setLink] = useState(draft.link)
+  const [title, setTitle] = useState(draft.title)
+  const [artist, setArtist] = useState(draft.artist)
+  // null = non indicata: non si salva un 50% che l'utente non ha scelto
+  const [known, setKnown] = useState<number | null>(draft.known)
+  const [text, setText] = useState(draft.text)
+  // Il titolo messo da Spotify, e per quale link: se si corregge il link, si aggiorna anche lui.
+  const auto = useRef(draft.auto)
+  const mounted = useRef(true)
+  const saved = useRef(false)
+  useEffect(() => () => { mounted.current = false }, [])
+  useEffect(() => {
+    if (!saved.current) writeDraft({ link, title, artist, known, text, auto: auto.current })
+  }, [link, title, artist, known, text])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [linkLeft, setLinkLeft] = useState(false)
@@ -41,7 +72,12 @@ export function AddSong() {
     const url = parseSpotifyTrackUrl((e.currentTarget as HTMLInputElement).value)
     if (!url) return
     const found = await titleFor(url)
-    if (found) setTitle((cur) => (cur.trim() === '' ? found : cur))
+    if (!found || !mounted.current) return
+    setTitle((cur) => {
+      if (cur.trim() !== '' && cur !== auto.current?.title) return cur // scritto a mano: vince
+      auto.current = { url, title: found }
+      return found
+    })
   }
 
   // addEventListener diretto: 'blur' non risale e così funziona anche con eventi sintetici.
@@ -58,6 +94,9 @@ export function AddSong() {
     if (!canSubmit) return
     setBusy(true)
     setError('')
+    const page = window.location.hash
+    // Se mentre si aspetta l'utente è andato altrove, la canzone non si crea e non lo si riporta indietro.
+    const left = () => !mounted.current || window.location.hash !== page
     try {
       if ((await activeSongCount(db)) >= MAX_OPEN_SONGS) {
         setBusy(false)
@@ -65,10 +104,14 @@ export function AddSong() {
       }
       // Link incollato per ultimo o Spotify lento: senza titolo scritto si aspetta quello di Spotify (massimo 4 s).
       let finalTitle = title.trim()
-      if (!finalTitle && canonical) {
+      const staleAuto = auto.current !== null && title === auto.current.title && auto.current.url !== canonical
+      if ((!finalTitle || staleAuto) && canonical) {
         const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000))
         finalTitle = ((await Promise.race([titleFor(canonical), timeout])) ?? '').trim()
+      } else if (staleAuto) {
+        finalTitle = '' // il titolo era di un link che non c'è più
       }
+      if (left()) return
       const song = await createSong(
         db,
         {
@@ -80,6 +123,8 @@ export function AddSong() {
         },
         now(),
       )
+      saved.current = true
+      writeDraft(null)
       goReplace({ name: 'analyzing', songId: song.id })
     } catch (e) {
       setError(failedMessage('Canzone non salvata', e))
@@ -148,11 +193,11 @@ export function AddSong() {
                 min={0}
                 max={100}
                 step={1}
-                value={known}
+                value={known ?? 50}
                 onInput={(e) => setKnown(Number((e.currentTarget as HTMLInputElement).value))}
               />
             </label>
-            <output class="mono range-value">{known}%</output>
+            <output class="mono range-value">{known === null ? '—' : `${known}%`}</output>
           </div>
           {canonical && (
             <a href={canonical} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>

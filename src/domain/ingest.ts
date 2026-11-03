@@ -67,6 +67,8 @@ export async function saveAnalysis(
   return db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
     const song = await db.songs.get(songId)
     if (!song) throw new Error(`Song not found: ${songId}`)
+    // Una seconda analisi della stessa canzone (doppio avvio, coda all'apertura) non tocca nulla.
+    if (isAnalyzed(song)) return { chunksAdded: 0, contextsAdded: 0, wordsPending: 0 }
     let chunksAdded = 0
     let contextsAdded = 0
 
@@ -174,6 +176,13 @@ export async function saveAnalysis(
   })
 }
 
+const isAnalyzed = (song: Song) => song.status === 'analyzed' || song.status === 'studying' || song.status === 'done'
+
+/** In coda solo se non è stata analizzata nel frattempo (un'altra analisi della stessa canzone può essere finita). */
+function markQueued(db: SinglishDB, songId: string) {
+  return db.songs.where('id').equals(songId).filter((s) => !isAnalyzed(s)).modify({ status: 'queued' })
+}
+
 export interface AnalyzeDeps {
   fetch: typeof fetch
   sleep: (ms: number) => Promise<void>
@@ -189,8 +198,9 @@ export async function analyzeSong(
 ): Promise<'analyzed' | 'queued'> {
   const song = await db.songs.get(songId)
   if (!song) throw new Error(`Song not found: ${songId}`)
+  if (isAnalyzed(song)) return 'analyzed'
   if (!deps.online) {
-    await db.songs.update(songId, { status: 'queued' })
+    await markQueued(db, songId)
     return 'queued'
   }
   const settings = await getSettings(db)
@@ -222,7 +232,7 @@ export async function analyzeSong(
         e.code === 'network' ||
         (e.code === 'http' && (e.status ?? 0) >= 500))
     ) {
-      await db.songs.update(songId, { status: 'queued' })
+      await markQueued(db, songId)
       return 'queued'
     }
     throw e
