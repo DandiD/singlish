@@ -51,7 +51,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
     return () => {
       const target = opener?.isConnected
         ? opener
-        : document.querySelector<HTMLElement>(`.lyrics a[href$="item=${encodeURIComponent(itemId)}"]`)
+        : document.querySelector<HTMLElement>(`.lyrics a[href$="item=${encodeURIComponent(itemId)}"], .other-items a[href$="item=${encodeURIComponent(itemId)}"]`)
       target?.focus()
     }
   }, [])

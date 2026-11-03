@@ -89,38 +89,42 @@ export const CHUNK_CLASS: Record<Chunk['type'], string> = {
 }
 
 /**
- * Le voci di una canzone, verso per verso: chunk non sospesi e parole non sospese e non note che compaiono
- * davvero nel verso (forma del verso, forma originale o forma base) e che l'evidenziazione mostra (fra voci
- * sovrapposte vince la più lunga, come nel testo). Lo Studio evidenzia e conta queste; Oggi conta queste.
+ * Le voci di una canzone: chunk non sospesi e parole non sospese e non note con un verso nella canzone.
+ * `spansByLine` sono le evidenziazioni (forma trovata nel verso; fra voci sovrapposte vince la più lunga, come
+ * nel testo); `unshown` le voci che il testo non riesce a evidenziare, da mostrare a parte perché restino
+ * raggiungibili. Lo Studio conta tutte le voci (evidenziate + a parte); Oggi conta le stesse.
  */
 export function itemsInSong(song: Song, chunks: Chunk[], words: Word[]): {
   spansByLine: Span[][]
   chunks: Set<string>
   words: Set<string>
+  unshown: (Chunk | Word)[]
 } {
+  const inSong = (i: Chunk | Word) => i.contexts.some((x) => x.songId === song.id)
+  const myChunks = chunks.filter((c) => !c.suspended && inSong(c))
+  const myWords = words.filter((w) => !w.suspended && w.triage !== 'known' && inSong(w))
+
   const spansByLine: Span[][] = song.lines.map(() => [])
   const place = (item: Chunk | Word, className: string) => {
     for (const ctx of item.contexts) {
       if (ctx.songId !== song.id || !spansByLine[ctx.lineIndex]) continue
-      const form = formIn(song.lines[ctx.lineIndex], [ctx.surfaceForm, item.surfaceForm, 'type' in item ? item.baseForm : item.lemma])
-      if (form && fold(song.lines[ctx.lineIndex]).includes(fold(form).trim())) {
-        spansByLine[ctx.lineIndex].push({ text: form, id: item.id, className })
-      }
+      const line = song.lines[ctx.lineIndex]
+      const form = formIn(line, [ctx.surfaceForm, item.surfaceForm, 'type' in item ? item.baseForm : item.lemma])
+      if (form && fold(line).includes(fold(form).trim())) spansByLine[ctx.lineIndex].push({ text: form, id: item.id, className })
     }
   }
-  for (const c of chunks) if (!c.suspended) place(c, CHUNK_CLASS[c.type])
-  for (const w of words) if (!w.suspended && w.triage !== 'known') place(w, 'w')
+  for (const c of myChunks) place(c, CHUNK_CLASS[c.type])
+  for (const w of myWords) place(w, 'w')
   song.connectedSpeech.forEach((cs, k) => spansByLine[cs.lineIndex]?.push({ text: cs.written, id: `cs:${k}`, className: 'cs' }))
 
   const shown = new Set<string>()
   spansByLine.forEach((spans, i) => {
     for (const seg of highlightLine(song.lines[i], spans)) if ('id' in seg) shown.add(seg.id)
   })
-  const chunkIds = new Set(chunks.map((c) => c.id))
-  const wordIds = new Set(words.map((w) => w.id))
   return {
     spansByLine,
-    chunks: new Set([...shown].filter((id) => chunkIds.has(id))),
-    words: new Set([...shown].filter((id) => wordIds.has(id))),
+    chunks: new Set(myChunks.map((c) => c.id)),
+    words: new Set(myWords.map((w) => w.id)),
+    unshown: [...myChunks, ...myWords].filter((i) => !shown.has(i.id)),
   }
 }

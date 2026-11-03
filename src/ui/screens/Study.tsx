@@ -9,7 +9,7 @@ import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
-import { itemsInSong } from '../../domain/songItems'
+import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
 import { ItemSheet } from './ItemSheet'
 
 import { Icon } from '../components/Icon'
@@ -123,6 +123,21 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           <p key={i}><Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} /></p>
         ))}
       </div>
+
+      {placed.unshown.length > 0 && (
+        <section class="other-items">
+          <h2 class="section-label" id="other-items">ALTRE VOCI DI QUESTA CANZONE</h2>
+          <ul aria-label="Altre voci di questa canzone">
+            {placed.unshown.map((i) => (
+              <li key={i.id}>
+                <a href={href({ name: 'study', songId, itemId: i.id })} lang="en">
+                  <span class={`hl ${'type' in i ? CHUNK_CLASS[i.type] : 'w'}`}>{'type' in i ? i.baseForm : i.lemma}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {song.spotifyUrl && (
         <footer class="study-foot">

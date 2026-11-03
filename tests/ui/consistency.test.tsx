@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -264,33 +264,40 @@ describe('voce salvata senza la forma del verso (dati vecchi)', () => {
     await screen.findByRole('heading', { name: 'Harbour Lights' })
     const link = [...document.querySelectorAll('.lyrics a')].find((a) => a.getAttribute('href')!.endsWith('item=c3'))
     expect(link?.textContent).toBe('ran out of')
-    expect(counted()).toBe(shown().size)
+    const listed = document.querySelectorAll('.other-items a').length
+    expect(counted()).toBe(shown().size + listed)
   })
-  test('forma che non si riesce a trovare: né evidenziata né contata, in Studio come in Oggi', async () => {
+  test('forma che non si riesce a trovare: elencata sotto il testo, contata in Studio come in Oggi', async () => {
     await db.songs.update('s2', { lines: ['you forsook me by the harbour', 'the gulls wander low'] })
     await db.chunks.add(chunk('c3', 's1', 'forsaking me', [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }], { baseForm: 'forsake me', key: 'forsake me' }))
     mount(<Study songId="s2" />)
     await screen.findByRole('heading', { name: 'Harbour Lights' })
-    const ids = shown()
-    expect(ids.has('c3')).toBe(false)
-    expect(counted()).toBe(ids.size)
+    const others = screen.getByRole('list', { name: 'Altre voci di questa canzone' })
+    const link = within(others).getByRole('link', { name: /forsake me/ })
+    expect(link.getAttribute('href')).toBe('#/songs/s2?item=c3')
+    const reachable = shown().size + within(others).getAllByRole('link').length
+    expect(counted()).toBe(reachable)
     cleanup()
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Harbour Lights' })).closest('a')!
-    expect(card.textContent).toContain(`${ids.size} chunk e parole`)
+    expect(card.textContent).toContain(`${reachable} chunk e parole`)
   })
 })
 
-test('una parola dentro un chunk dello stesso verso: conteggi = voci evidenziate, anche su Oggi', async () => {
+test('una parola dentro un chunk dello stesso verso: elencata sotto il testo, contata in Studio e Oggi', async () => {
   await db.words.add(word('w9', 's1', 'slide', 'learn', [{ songId: 's1', lineIndex: 0 }]))
   mount(<Study songId="s1" />)
   await screen.findByRole('heading', { name: 'Lantern Road' })
   const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+  expect(ids.has('w9')).toBe(false)
+  const others = screen.getByRole('list', { name: 'Altre voci di questa canzone' })
+  expect(within(others).getByRole('link', { name: /slide/ }).getAttribute('href')).toBe('#/songs/s1?item=w9')
+  const reachable = ids.size + within(others).getAllByRole('link').length
   const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
-  expect(+m[1] + +m[2]).toBe(ids.size)
+  expect(+m[1] + +m[2]).toBe(reachable)
   const pending = 1 // w2
   cleanup()
   mount(<Today />)
   const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
-  expect(card.textContent).toContain(`di ${ids.size - pending} chunk e parole`)
+  expect(card.textContent).toContain(`di ${reachable - pending} chunk e parole`)
 })

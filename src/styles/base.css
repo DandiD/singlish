@@ -169,6 +169,8 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .hl.sl { background: color-mix(in srgb, var(--violet) 16%, transparent); border-bottom-color: var(--violet); }
 .hl.w { border-bottom-color: var(--text-2); }
 .hl.cs { border-bottom: 2px dotted var(--muted); }
+.other-items ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.other-items a { display: inline-flex; align-items: center; min-height: 44px; font-size: 17px; color: inherit; text-decoration: none; }
 .study-foot { padding-top: 12px; border-top: 1px solid var(--line); }
 .study-foot .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
