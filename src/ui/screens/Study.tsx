@@ -8,20 +8,13 @@ import { pendingWords } from '../../domain/triage'
 import { startTimer } from '../../domain/timer'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
-import { formIn, Highlighted, type Span } from '../components/Highlighted'
+import { Highlighted } from '../components/Highlighted'
+import { itemsInSong } from '../../domain/songItems'
 import { ItemSheet } from './ItemSheet'
-import type { ChunkType, Context } from '../../db/types'
+
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
-
-const TYPE_CLASS: Record<ChunkType, string> = {
-  phrasal_verb: 'pv',
-  idiom: 'id',
-  collocation: 'co',
-  fixed_phrase: 'fp',
-  slang: 'sl',
-}
 
 const LEGEND: [string, string][] = [
   ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
@@ -77,31 +70,13 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     )
   }
 
-  // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa.
-  const here = (contexts: Context[]) => contexts.filter((x) => x.songId === songId)
-  const shownChunks = chunks.filter((c) => !c.suspended)
-  const shownWords = words.filter((w) => !w.suspended && w.triage !== 'known' && here(w.contexts).length > 0)
-
-  const spansFor = (i: number): Span[] => {
-    const spans: Span[] = []
-    for (const item of [...shownChunks, ...shownWords]) {
-      for (const x of here(item.contexts)) {
-        if (x.lineIndex !== i) continue
-        const className = 'type' in item ? TYPE_CLASS[item.type] : 'w'
-        const base = 'type' in item ? item.baseForm : item.lemma
-        spans.push({ text: formIn(song.lines[i] ?? '', [x.surfaceForm, item.surfaceForm, base]), id: item.id, className })
-      }
-    }
-    song.connectedSpeech.forEach((cs, k) => {
-      if (cs.lineIndex === i) spans.push({ text: cs.written, id: `cs:${k}`, className: 'cs' })
-    })
-    return spans
-  }
+  // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa (e per Oggi).
+  const placed = itemsInSong(song, chunks, words)
   const hrefFor = (id: string) =>
     id.startsWith('cs:') ? undefined : href({ name: 'study', songId, itemId: id })
 
-  const chunkCount = shownChunks.length
-  const wordCount = shownWords.length
+  const chunkCount = placed.chunks.size
+  const wordCount = placed.words.size
   const gp = song.grammarPoint
 
   return (
@@ -145,7 +120,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
       <div class="lyrics" lang="en">
         {song.lines.map((l, i) => (
-          <p key={i}><Highlighted line={l} spans={spansFor(i)} hrefFor={hrefFor} /></p>
+          <p key={i}><Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} /></p>
         ))}
       </div>
 

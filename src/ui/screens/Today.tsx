@@ -5,6 +5,7 @@ import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings } from '../../domain/settings'
 import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
+import { itemsInSong } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 
@@ -24,13 +25,13 @@ export function Today() {
     ])
     const rCards = await db.cards.where('kind').equals('R').toArray()
     const rState = new Map(rCards.map((c) => [c.itemId, c.fsrs.state]))
+    const pendingIds = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
     const progress = songs
       .sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())
       .map((song) => {
-        const ids = [
-          ...chunks.filter((c) => !c.suspended && (c.songId === song.id || c.contexts.some((x) => x.songId === song.id))).map((c) => c.id),
-          ...words.filter((w) => !w.suspended && w.triage === 'learn' && (w.songId === song.id || w.contexts.some((x) => x.songId === song.id))).map((w) => w.id),
-        ]
+        // Le voci che lo Studio evidenzia e conta, meno le parole ancora da smistare.
+        const placed = itemsInSong(song, chunks, words)
+        const ids = [...placed.chunks, ...[...placed.words].filter((id) => !pendingIds.has(id))]
         const done = ids.filter((id) => {
           const s = rState.get(id)
           return s !== undefined && s !== State.New

@@ -250,3 +250,35 @@ describe('Oggi e Studio sulla stessa canzone', () => {
     }
   })
 })
+
+describe('voce di un verso vecchio la cui forma non compare nel verso', () => {
+  test('non è contata né evidenziata in Studio, né contata da Oggi per quella canzone', async () => {
+    // «ran out of» nel verso, ma salvata solo come «running out of» / «run out of»: nessuna forma nota è nel verso
+    await db.songs.update('s2', { lines: ['we ran out of words past the harbour', 'the gulls wander low'] })
+    await db.chunks.add(chunk('c3', 's1', 'running out of', [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }], { baseForm: 'run out of', key: 'run out of' }))
+    mount(<Study songId="s2" />)
+    await screen.findByRole('heading', { name: 'Harbour Lights' })
+    const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+    expect(ids.has('c3')).toBe(false)
+    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+    expect(+m[1] + +m[2]).toBe(ids.size)
+    cleanup()
+    mount(<Today />)
+    const card = (await screen.findByRole('heading', { name: 'Harbour Lights' })).closest('a')!
+    expect(card.textContent).toContain(`${ids.size} chunk e parole`)
+  })
+})
+
+test('una parola dentro un chunk dello stesso verso: conteggi = voci evidenziate, anche su Oggi', async () => {
+  await db.words.add(word('w9', 's1', 'slide', 'learn', [{ songId: 's1', lineIndex: 0 }]))
+  mount(<Study songId="s1" />)
+  await screen.findByRole('heading', { name: 'Lantern Road' })
+  const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
+  const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+  expect(+m[1] + +m[2]).toBe(ids.size)
+  const pending = 1 // w2
+  cleanup()
+  mount(<Today />)
+  const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
+  expect(card.textContent).toContain(`di ${ids.size - pending} chunk e parole`)
+})

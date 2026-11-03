@@ -197,6 +197,7 @@ Testi in `src/ui/errors.ts` (`geminiProblem`, `storageProblem`, `failedMessage`,
 Ogni numero si calcola in un solo punto, così due schermate non possono contraddirsi.
 - Canzoni aperte: `activeSongs` / `activeSongCount` e `MAX_OPEN_SONGS` in `src/domain/ingest.ts` (tutte le non completate). Oggi le elenca tutte (bozze e in coda portano all'analisi) e, al limite, toglie «Aggiungi» e mostra `LIMIT_NOTE` come Canzoni e Aggiungi canzone.
 - Ripasso: `buildSessionQueue` esclude già le voci viste nella sessione lasciata a metà; Oggi annuncia esattamente le card che la Sessione mostrerà.
+- Voci di una canzone: `itemsInSong` in `src/domain/songItems.ts`, unica per lo Studio (evidenziazione e conteggi) e per l'avanzamento in Oggi. Conta solo le voci che il testo evidenzia davvero: forma presente nel verso, e fra voci sovrapposte la più lunga.
 - Studio: i conteggi in testa sono le voci evidenziate nel testo (non sospese, parole non note, anche quelle nate in un'altra canzone). In Oggi la stessa canzone conta quelle voci meno le parole ancora da smistare.
 - Una voce in un'altra canzone si evidenzia nella forma del suo verso (`contexts[].surfaceForm`): testo, scheda e card della sessione usano la stessa. Per i dati salvati prima, se la forma non è nel verso si prova la forma base (`formIn`).
 - Parole da smistare: `pendingWords` in `src/domain/triage.ts` (in un verso della canzone, anche se nate altrove, non sospese) per il banner dello Studio, Smista e l'esito dell'Analisi.
