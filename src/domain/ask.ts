@@ -89,6 +89,8 @@ export async function askGemini(
   const now = deps.now
 
   return db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
+    // Eliminata mentre Gemini rispondeva: nessuna voce con versi di una canzone che non c'è più.
+    if (!(await db.songs.get(songId))) throw new Error(`Song deleted during the request: ${songId}`)
     let added = 0
     let existing = 0
     // Le voci create in questa risposta: se Gemini le ripete, prendono il verso ma non contano come «c'era già».

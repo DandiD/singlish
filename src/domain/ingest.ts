@@ -332,7 +332,7 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
           // ripasso ma resta nota, così non torna in Smista con la prossima canzone.
           const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
           if ('triage' in item && (item.triage === 'known' || item.wasKnown || (item.triage === 'learn' && studied))) {
-            await db.words.update(item.id, { triage: 'known', contexts: [] })
+            await db.words.update(item.id, { triage: 'known', contexts: [], suspended: false })
           } else {
             await table.delete(item.id)
           }
@@ -363,7 +363,7 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
         await db.cards.where('itemId').equals(item.id).delete()
         const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
         if ('triage' in item && (item.triage === 'known' || item.wasKnown || studied)) {
-          await db.words.update(item.id, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
+          await db.words.update(item.id, { triage: 'known', contexts: [], suspended: false, origin: undefined, fromItemId: undefined })
         } else {
           await table.delete(item.id)
         }
@@ -387,14 +387,14 @@ export async function excludeItem(db: SinglishDB, itemId: string): Promise<{ chi
       await db.cards.where('itemId').equals(ch.id).delete()
       // Una parola che era nota prima di Espandi torna nel profilo: le parole che sai non tornano in Smista.
       const w = await db.words.get(ch.id)
-      if (w?.wasKnown) await db.words.update(ch.id, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
+      if (w?.wasKnown) await db.words.update(ch.id, { triage: 'known', contexts: [], suspended: false, origin: undefined, fromItemId: undefined })
       else await ch.table.delete(ch.id)
     }
     await db.cards.where('itemId').equals(itemId).delete()
     await db.chunks.delete(itemId)
     // Una parola che sapevi già torna nel profilo, come quando si esclude la sua parola d'origine.
     const self = await db.words.get(itemId)
-    if (self?.wasKnown) await db.words.update(itemId, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
+    if (self?.wasKnown) await db.words.update(itemId, { triage: 'known', contexts: [], suspended: false, origin: undefined, fromItemId: undefined })
     else await db.words.delete(itemId)
     return { children: children.length }
   })

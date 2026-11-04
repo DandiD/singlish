@@ -119,7 +119,9 @@ export function Settings() {
           setKeyStatus({ tone: 'ok', text: 'Chiave salvata. Gemini però è occupato in questo momento: l\'analisi potrebbe dover aspettare qualche minuto.' })
         } else {
           const p = geminiProblem(e, probedModel)
-          setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} Nulla è stato salvato.` })
+          // Il modello si salva da solo come le altre preferenze (anche toccando Prova): si dice quale è salvato.
+          const saved = await getSettings(db)
+          setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} La chiave non è stata salvata. Il modello salvato è «${saved.model}».` })
         }
       } catch (saveError) {
         reportError(saveError)

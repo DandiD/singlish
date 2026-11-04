@@ -199,13 +199,17 @@ export function Session() {
   // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
   if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0 && toCorrect === 0) {
     const noSongs = loaded.songById.size === 0
+    // Le card nuove di una canzone «Da studiare» entrano solo aprendone lo Studio: domani non cambierebbe nulla.
+    const toStudy = [...loaded.songById.values()].some((s) => s.status === 'analyzed')
     return (
       <main class="screen session session-done">
         <h1>Niente da ripassare</h1>
         <p class="note">
           {noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
-            : 'Per ora non ci sono card in scadenza. Torna domani.'}
+            : toStudy
+              ? 'Per ora non ci sono card in scadenza. Le card nuove arrivano quando apri lo Studio di una canzone «Da studiare».'
+              : 'Per ora non ci sono card in scadenza. Torna domani.'}
         </p>
         {noSongs && (
           <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>

@@ -69,7 +69,7 @@ describe('Settings', () => {
     const input = await screen.findByLabelText('Chiave API')
     fireEvent.input(input, { target: { value: 'BAD' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
-    await screen.findByText(/^La chiave Gemini non funziona\. .*Nulla è stato salvato\.$/)
+    await screen.findByText(/^La chiave Gemini non funziona\. .*La chiave non è stata salvata\. Il modello salvato è «.+»\.$/)
     expect((await getSettings(db)).apiKey).toBe('')
   })
 
@@ -100,10 +100,14 @@ describe('Settings', () => {
     mount(f)
     await screen.findByLabelText('Chiave API')
     fireEvent.input(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
+    // toccando Prova il campo perde il fuoco: il modello (una preferenza) si salva da solo, come le altre
+    fireEvent.change(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
-    await screen.findByText(/^La chiave Gemini non funziona\. .*Nulla è stato salvato\.$/)
-    // il modello è una preferenza e si salva da solo (come le altre); la chiave rifiutata no
+    // il messaggio dice il vero: la chiave rifiutata non si salva, il modello salvato è quello nuovo
+    await screen.findByText(/^La chiave Gemini non funziona\. .*La chiave non è stata salvata\. Il modello salvato è «new-model»\.$/)
+    expect(screen.queryByText(/Nulla è stato salvato/)).toBeNull()
     expect((await getSettings(db)).apiKey).toBe('STORED')
+    expect((await getSettings(db)).model).toBe('new-model')
   })
 
   test('no stored key and empty field: Prova stays disabled', async () => {
@@ -166,7 +170,7 @@ describe('Settings', () => {
 
   test('rete che cade durante la prova: non dice «chiave non valida»', async () => {
     await tryKey(() => { throw new TypeError('Failed to fetch') })
-    await screen.findByText('Gemini non risponde. Controlla la connessione e riprova. Nulla è stato salvato.')
+    await screen.findByText(/^Gemini non risponde\. Controlla la connessione e riprova\. La chiave non è stata salvata\. Il modello salvato è «.+»\.$/)
   })
 
   test('Gemini occupato (429): la chiave è buona, si salva subito e lo dice', async () => {

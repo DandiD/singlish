@@ -274,6 +274,11 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 - In Sessione, il voto di una card eliminata nel frattempo da un'altra scheda la salta senza contarla.
 - Voluto: i ripassi restano come storico anche quando la loro canzone viene eliminata, quindi le card nuove viste oggi continuano a contare nel limite delle nuove del giorno e nella memoria reale (lo stesso numero in Oggi, Sessione e Progressi). `chorusDoneAt` si salva per uso futuro e nessuna schermata lo mostra.
 - Un testo libero non si chiude da solo: Aggiungi testo dice che, quando chunk e parole sono nel ripasso, lo si segna come completato dallo Studio. Il limite delle 4 aperte dice «canzoni o testi» e offre anche di eliminare (una bozza non si può completare). Lo sblocco dice che le card nuove entrano nella coda insieme alle altre (l'ordine resta quello per gruppi di `sortKey`). Eliminare una canzone dice che anche le parole già ripassate restano nel profilo come note. Nei testi il verso si chiama «nel testo» e la legenda non mostra la pronuncia.
+- Impostazioni: il modello si salva da solo come le altre preferenze (anche quando il campo perde il fuoco toccando «Prova»); se la prova fallisce il messaggio dice che la chiave non è stata salvata e quale modello è salvato.
+- «Chiedi a Gemini» su una canzone eliminata durante la chiamata non salva nulla (nessuna voce con versi di una canzone che non c'è più).
+- Una parola che torna nel profilo (Escludi, Elimina canzone) non resta sospesa.
+- La Sessione vuota con una canzone «Da studiare» dice di aprirne lo Studio, non «Torna domani».
+- Testi liberi: Modifica mostra solo il titolo; l'Analisi dice «Il testo è salvato» e non parla di pronuncia. I messaggi di errore di Gemini valgono per ogni richiesta (non «Analisi non riuscita», non «un'altra canzone»).
 - Voluto: «Tienila per più avanti» dopo l'analisi è solo un link a Canzoni e non scrive nulla.
 - Voluto: il carico dei 7 giorni (Progressi, sblocco) conta anche le card con una frase in attesa di correzione: dopo la conferma vanno ripassate comunque.
 - Marginale accettato: confermare da un'altra scheda del browser una frase la cui card è stata eliminata o sospesa la conta comunque nella sessione (era già contata in «N di M» quando è stata scritta); un ripasso su una voce sospesa non la rimette in coda.

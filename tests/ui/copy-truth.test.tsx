@@ -26,3 +26,10 @@ test('lo sblocco non promette un ordine della coda che non c\'è', () => {
   expect(src).not.toContain('dietro a quelle che aspettano')
   expect(src).toContain('insieme a quelle che aspettano già')
 })
+
+test('i messaggi di Gemini valgono per ogni richiesta, non solo per l\'analisi di una canzone', async () => {
+  const { geminiProblem } = await import('../../src/ui/errors')
+  const { GeminiError } = await import('../../src/domain/gemini/client')
+  expect(geminiProblem(new Error('x'), 'm').title).not.toMatch(/Analisi/)
+  expect(geminiProblem(new GeminiError('blocked', 'x'), 'm').text).not.toMatch(/canzone/)
+})

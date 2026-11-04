@@ -343,3 +343,11 @@ test('una voce eliminata altrove (un\'altra scheda) durante la sessione: il voto
   expect(await db.reviews.count()).toBe(0)
   expect((await db.sessions.toArray())[0].reviewsDone).toBe(0)
 })
+
+test('niente da ripassare ma una canzone «Da studiare»: dice di aprirne lo Studio, non «Torna domani»', async () => {
+  await db.songs.update('s1', { status: 'analyzed' })
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  renderSession()
+  expect(await screen.findByText(/apri lo Studio di una canzone «Da studiare»/)).toBeTruthy()
+  expect(screen.queryByText(/Torna domani/)).toBeNull()
+})

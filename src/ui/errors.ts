@@ -8,7 +8,7 @@ export function geminiProblem(e: unknown, model: string): Problem {
   const storage = storageProblem(e)
   if (storage) return storage
   if (!(e instanceof GeminiError)) {
-    return { title: 'Analisi non riuscita', text: 'Qualcosa si è interrotto a metà. Riprova tra poco.', fix: 'retry' }
+    return { title: 'Operazione non riuscita', text: 'Qualcosa si è interrotto a metà. Riprova tra poco.', fix: 'retry' }
   }
   switch (e.code) {
     case 'no_key':
@@ -28,7 +28,7 @@ export function geminiProblem(e: unknown, model: string): Problem {
     case 'blocked':
       return {
         title: 'Gemini non ha analizzato questo testo',
-        text: 'L\'hanno fermato i filtri di Gemini sui contenuti. Riprova; se succede ancora, prova con un\'altra canzone.',
+        text: 'L\'hanno fermato i filtri di Gemini sui contenuti. Riprova; se succede ancora, prova con un testo diverso.',
         fix: 'retry',
       }
     case 'bad_json':

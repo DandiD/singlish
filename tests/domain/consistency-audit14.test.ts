@@ -51,3 +51,28 @@ test('la fascia dal test sopravvive a esportazione e importazione del backup', a
   await importBackup(db, file)
   expect((await getSettings(db)).bandFromTest).toBe(true)
 })
+
+test('Chiedi a Gemini su una canzone eliminata durante la chiamata: nessuna voce orfana', async () => {
+  await saveSettings(db, { apiKey: 'k' })
+  await db.songs.add(song('s1'))
+  const w = { lemma: 'glide', surface_form: 'glide', line_index: 0, pos: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'scivolare', explanation_it: '', extra_example_en: '' }
+  const f = vi.fn(async () => {
+    await db.songs.delete('s1') // eliminata mentre Gemini risponde
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ chunks: [], words: [w], line_translations: [] }) }] } }] }))
+  })
+  await expect(askGemini(db, 's1', [{ lineIndex: 0, text: 'glide' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })).rejects.toThrow()
+  expect(await db.words.count()).toBe(0)
+  expect(await db.cards.count()).toBe(0)
+})
+
+test('una parola sospesa che torna nel profilo (Escludi, Elimina canzone) non resta sospesa', async () => {
+  const { excludeItem, deleteSong } = await import('../../src/domain/ingest')
+  await db.songs.add(song('s1'))
+  const base: Word = { id: 'a', lemma: 'a', surfaceForm: 'a', pos: 'verb', freqRank: 1, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'x', explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: true, wasKnown: true }
+  await db.words.bulkAdd([base, { ...base, id: 'b', lemma: 'b', surfaceForm: 'b' }])
+  await excludeItem(db, 'a')
+  expect(await db.words.get('a')).toMatchObject({ triage: 'known', suspended: false })
+  await deleteSong(db, 's1')
+  expect(await db.words.get('b')).toMatchObject({ triage: 'known', suspended: false })
+})

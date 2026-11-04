@@ -424,3 +424,13 @@ describe('elimina canzone', () => {
     await waitFor(() => expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(false))
   })
 })
+
+test('Modifica di un testo libero: solo il titolo, niente link Spotify né artista', async () => {
+  await createSong(db, { title: 'Episodio 3', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null, kind: 'text', source: 'serie' }, now)
+  mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Episodio 3' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  expect(within(card).getByLabelText('Titolo')).toBeTruthy()
+  expect(within(card).queryByLabelText('Link Spotify')).toBeNull()
+  expect(within(card).queryByLabelText('Artista')).toBeNull()
+})

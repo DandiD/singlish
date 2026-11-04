@@ -170,3 +170,13 @@ describe('Analyzing', () => {
     expect(geminiCalls(f)).toBe(0)
   })
 })
+
+test('un testo libero offline: «Il testo è salvato», e i passi non parlano di pronuncia', async () => {
+  setOnline(false)
+  const t = await createSong(db, { ...input, kind: 'text', source: 'serie' }, now)
+  mount(t.id, vi.fn(async () => { throw new TypeError('offline') }) as unknown as typeof fetch)
+  await screen.findByRole('heading', { name: 'Sei offline' })
+  expect(screen.getByText(/Il testo è salvato\./)).toBeTruthy()
+  expect(screen.queryByText(/La canzone è salvata/)).toBeNull()
+  setOnline(true)
+})

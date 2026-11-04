@@ -19,11 +19,14 @@ type State =
   | { kind: 'error'; problem: Problem }
 
 const STEPS = ['Lettura del testo', 'Estrazione di chunk, grammatica, pronuncia', 'Selezione delle parole nella tua fascia']
+// Un testo libero non ha pronuncia del canto.
+const TEXT_STEPS = ['Lettura del testo', 'Estrazione di chunk e grammatica', 'Selezione delle parole nella tua fascia']
 
 export function Analyzing({ songId }: { songId: string }) {
   const { db, fetch, sleep, now } = useDeps()
   const [state, setState] = useState<State>({ kind: 'running' })
   const [title, setTitle] = useState('')
+  const [isText, setIsText] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const started = useRef<string | null>(null)
 
@@ -40,7 +43,7 @@ export function Analyzing({ songId }: { songId: string }) {
           if (alive) setState({ kind: 'missing' })
           return
         }
-        if (alive) setTitle(before.title)
+        if (alive) { setTitle(before.title); setIsText(before.kind === 'text') }
         if (before && (before.status === 'analyzed' || before.status === 'studying' || before.status === 'done')) {
           const pending = (await pendingWords(db, songId)).length
           if (alive) setState({ kind: 'analyzed', song: before, pending })
@@ -107,7 +110,7 @@ export function Analyzing({ songId }: { songId: string }) {
             <div class="wave" aria-hidden="true"><span /><span /><span /><span /><span /></div>
             <h2>Gemini sta leggendo il testo</h2>
             <ul class="steps">
-              {STEPS.map((s, i) => (
+              {(isText ? TEXT_STEPS : STEPS).map((s, i) => (
                 <li key={s} style={{ '--i': i }}>
                   <span class="step-dot" aria-hidden="true" />
                   {s}
@@ -120,7 +123,7 @@ export function Analyzing({ songId }: { songId: string }) {
         {state.kind === 'queued' && state.reason === 'offline' && (
           <>
             <h2>Sei offline</h2>
-            <p>La canzone è salvata. La analizzo quando riapri l'app con la connessione.</p>
+            <p>{`${isText ? 'Il testo è salvato' : 'La canzone è salvata'}. La analizzo quando riapri l'app con la connessione.`}</p>
             <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
           </>
         )}
@@ -129,7 +132,7 @@ export function Analyzing({ songId }: { songId: string }) {
           <>
             <h2>Gemini è occupato</h2>
             <p>
-              Hai raggiunto il limite di richieste gratuite, o il servizio non risponde. La canzone è salvata e resta in coda:
+              Hai raggiunto il limite di richieste gratuite, o il servizio non risponde. {isText ? 'Il testo è salvato' : 'La canzone è salvata'} e resta in coda:
               la analizzo alla prossima apertura dell'app.
             </p>
             <button type="button" class="btn primary" onClick={() => setAttempt((n) => n + 1)}>Riprova ora</button>

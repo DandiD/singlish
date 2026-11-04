@@ -163,7 +163,8 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
   }
   return (
     <form class="song-edit" onSubmit={(e) => { e.preventDefault(); void save() }}>
-      <label class="field">
+      {/* Un testo libero non ha link Spotify né artista: si corregge solo il titolo. */}
+      {song.kind !== 'text' && <label class="field">
         <span>Link Spotify</span>
         <input
           type="url"
@@ -176,16 +177,16 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
           aria-invalid={badLink ? 'true' : undefined}
           aria-describedby={badLink ? `link-error-${song.id}` : undefined}
         />
-      </label>
+      </label>}
       {badLink && <p class="note danger" id={`link-error-${song.id}`}>{LINK_ERROR}</p>}
       <label class="field">
         <span>Titolo</span>
         <input type="text" value={title} onInput={(e) => setTitle((e.currentTarget as HTMLInputElement).value)} />
       </label>
-      <label class="field">
+      {song.kind !== 'text' && <label class="field">
         <span>Artista</span>
         <input type="text" value={artist} onInput={(e) => setArtist((e.currentTarget as HTMLInputElement).value)} />
-      </label>
+      </label>}
       <div class="grid2">
         <button type="submit" class="btn primary" disabled={!canSave}>Salva</button>
         <button type="button" class="btn outline" onClick={onDone}>Annulla</button>
