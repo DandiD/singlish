@@ -292,3 +292,12 @@ test('le Impostazioni citano la fonte delle frequenze delle parole, come chiede 
   expect(credit.querySelector('a')!.getAttribute('href')).toBe('https://github.com/rspeer/wordfreq')
   expect(credit.textContent).toContain('CC BY-SA 4.0')
 })
+
+test('le Impostazioni mostrano la fascia utile in uso e da dove viene', async () => {
+  await saveSettings(db, { level: 'B1' })
+  await saveSettings(db, { bandStart: 3000, bandEnd: 8000 })
+  mount()
+  expect(await screen.findByText(/Fascia utile: 3\.000–8\.000, dal test di vocabolario/)).toBeTruthy()
+  fireEvent.change(screen.getByLabelText('Livello'), { target: { value: 'B2' } })
+  expect(await screen.findByText(/Fascia utile: [\d.]+–[\d.]+, del livello B2/)).toBeTruthy()
+})

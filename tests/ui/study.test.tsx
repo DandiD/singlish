@@ -277,3 +277,11 @@ test('escludere una parola: la conferma dice quante voci di Espandi escono con l
   fireEvent.click(screen.getByRole('button', { name: 'Sì, escludi' }))
   await waitFor(async () => expect(await db.words.count()).toBe(0), { timeout: 3000 })
 })
+
+test('Studio aperto dall\'indirizzo su una canzone non ancora analizzata: lo dice, niente «Segna come completata»', async () => {
+  await db.songs.update('s1', { status: 'draft' })
+  mount()
+  expect(await screen.findByText(/non è ancora stata analizzata/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /Segna come completata/ })).toBeNull()
+  expect((await db.songs.get('s1'))!.status).toBe('draft')
+})

@@ -6,6 +6,7 @@ import { AppDepsProvider } from '../../src/ui/deps'
 import { Session } from '../../src/ui/screens/Session'
 import { Today } from '../../src/ui/screens/Today'
 import { newFsrsCard } from '../../src/domain/scheduler'
+import { excludeItem } from '../../src/domain/ingest'
 import type { CardRow, Chunk, Song } from '../../src/db/types'
 
 let db: SinglishDB
@@ -328,4 +329,17 @@ test('card C su dati vecchi: forma salvata non nel verso, si usa quella che c\'Ã
   await typeAndCheck('let it slide')
   await screen.findByText('Esatto')
   expect(container.querySelector('.gap')).not.toBeNull()
+})
+
+test('una voce eliminata altrove (un\'altra scheda) durante la sessione: il voto la salta senza contarla nÃ© bloccarsi', async () => {
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  await db.cards.add(reviewCard('k1', 'c1', 'R', '2026-10-30T10:00:00Z'))
+  renderSession()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mostra significato' }))
+  await screen.findByText('sig-c1')
+  await excludeItem(db, 'c1')
+  fireEvent.click(screen.getByRole('button', { name: 'Bene' }))
+  await screen.findByText('Fatto per oggi')
+  expect(await db.reviews.count()).toBe(0)
+  expect((await db.sessions.toArray())[0].reviewsDone).toBe(0)
 })

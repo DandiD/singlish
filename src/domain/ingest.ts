@@ -126,7 +126,8 @@ export async function saveAnalysis(
         explanationIt: c.explanation_it,
         extraExampleEn: c.extra_example_en,
         productionPromptIt: c.production_prompt_it,
-        pronunciationNoteIt: c.pronunciation_note_it ?? '',
+        // Un testo libero non si ascolta cantato: niente nota di pronuncia (e quindi niente card Ascolta).
+        pronunciationNoteIt: song.kind === 'text' ? '' : (c.pronunciation_note_it ?? ''),
         userEdited: false,
         suspended: false,
       }
@@ -391,7 +392,10 @@ export async function excludeItem(db: SinglishDB, itemId: string): Promise<{ chi
     }
     await db.cards.where('itemId').equals(itemId).delete()
     await db.chunks.delete(itemId)
-    await db.words.delete(itemId)
+    // Una parola che sapevi già torna nel profilo, come quando si esclude la sua parola d'origine.
+    const self = await db.words.get(itemId)
+    if (self?.wasKnown) await db.words.update(itemId, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
+    else await db.words.delete(itemId)
     return { children: children.length }
   })
 }

@@ -90,6 +90,17 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     )
   }
 
+  // Aperto dall'indirizzo su una canzone non ancora analizzata: niente studio (né «Segna come completata»).
+  if (song.status === 'draft' || song.status === 'queued') {
+    return (
+      <main class="screen">
+        <h1>{song.title}</h1>
+        <p class="note">Questa canzone non è ancora stata analizzata: la trovi in Canzoni, dove puoi avviare l'analisi.</p>
+        <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
+      </main>
+    )
+  }
+
   // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa (e per Oggi).
   const placed = itemsInSong(song, chunks, words)
   const hrefFor = (id: string) => href({ name: 'study', songId, itemId: id })

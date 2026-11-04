@@ -158,11 +158,14 @@ export function Session() {
         ? { reviews: counts.reviews, news: counts.news + 1 }
         : { reviews: counts.reviews + 1, news: counts.news }
       // Voto e contatori della sessione in una sola transazione: o tutti e due, o nessuno.
-      await db.transaction('rw', db.cards, db.reviews, db.sessions, db.chunks, db.songs, async () => {
+      // Una card eliminata nel frattempo (da un'altra scheda) si salta: niente voto, niente conteggio.
+      const recorded = await db.transaction('rw', db.cards, db.reviews, db.sessions, db.chunks, db.songs, async () => {
+        if (!(await db.cards.get(current.card.id))) return false
         await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
         await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
+        return true
       })
-      setCounts(next)
+      if (recorded) setCounts(next)
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
     } catch (e) {
@@ -261,7 +264,10 @@ export function Session() {
           onProduce={produce}
         />
       ) : (
-        <p class="note">Elemento non trovato.</p>
+        <div class="card">
+          <p class="note">Questa voce è stata eliminata.</p>
+          <button type="button" class="btn primary cta" onClick={() => setIdx(idx + 1)}>Salta</button>
+        </div>
       )}
 
       {paused && (

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
-import { getSettings, saveSettings } from '../../domain/settings'
+import { bandForLevel, getSettings, saveSettings } from '../../domain/settings'
+import { formatNumber } from '../format'
 import { callGemini, GeminiError } from '../../domain/gemini/client'
 import { geminiProblem } from '../errors'
 import { reportError } from '../report'
@@ -263,7 +264,11 @@ export function Settings() {
             <option value="C1">C1</option>
           </select>
         </label>
-        <p class="note">Cambiare livello reimposta la fascia utile delle parole (anche quella scelta dal test di vocabolario).</p>
+        <p class="note">
+          {`Fascia utile: ${formatNumber(settings.bandStart)}–${formatNumber(settings.bandEnd)}, ${
+            bandForLevel(settings.level).join() === `${settings.bandStart},${settings.bandEnd}` ? `del livello ${settings.level}` : 'dal test di vocabolario'
+          }. Cambiare livello la riporta a quella del livello.`}
+        </p>
         <label class="field">
           <span>Nuove al giorno</span>
           <input

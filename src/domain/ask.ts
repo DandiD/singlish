@@ -91,6 +91,8 @@ export async function askGemini(
   return db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
     let added = 0
     let existing = 0
+    // Le voci create in questa risposta: se Gemini le ripete, prendono il verso ma non contano come «c'era già».
+    const created = new Set<string>()
     for (const c of res.data.chunks.filter((c) => inRange(c.line_index))) {
       const key = normalizeKey(c.base_form)
       const found = await db.chunks.where('key').equals(key).first()
@@ -99,16 +101,17 @@ export async function askGemini(
         graduate(found)
         found.suspended = false // chiesta dallo studente: torna nel ripasso
         await db.chunks.put(found)
-        existing++
+        if (!created.has(found.id)) existing++
         continue
       }
       const chunk: Chunk = {
         id: newId(), songId, key, baseForm: c.base_form, surfaceForm: c.surface_form, lineIndex: c.line_index,
         contexts: [{ songId, lineIndex: c.line_index }], type: c.type, cefr: c.cefr, register: c.register, topic: c.topic,
         meaningIt: c.meaning_it, explanationIt: c.explanation_it, extraExampleEn: c.extra_example_en,
-        productionPromptIt: c.production_prompt_it, pronunciationNoteIt: c.pronunciation_note_it ?? '', userEdited: false, suspended: false,
+        productionPromptIt: c.production_prompt_it, pronunciationNoteIt: song.kind === 'text' ? '' : (c.pronunciation_note_it ?? ''), userEdited: false, suspended: false,
       }
       await db.chunks.add(chunk)
+      created.add(chunk.id)
       await db.cards.bulkAdd(newCardPair('chunk', chunk.id, now))
       added++
     }
@@ -125,7 +128,7 @@ export async function askGemini(
           if ((await db.cards.where('itemId').equals(found.id).filter((c) => c.kind === 'R').count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))
         }
         await db.words.put(found)
-        existing++
+        if (!created.has(found.id)) existing++
         continue
       }
       const word: Word = {
@@ -135,6 +138,7 @@ export async function askGemini(
         triage: 'learn', userEdited: false, suspended: false,
       }
       await db.words.add(word)
+      created.add(word.id)
       await db.cards.bulkAdd(newCardPair('word', word.id, now))
       added++
     }
