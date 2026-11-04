@@ -6,7 +6,7 @@ const register = z.enum(['usable', 'informal', 'song_only'])
 const cefr = z.enum(['B1', 'B2', 'C1', 'C2'])
 const idx = z.number().int()
 
-const ChunkSchema = z.object({
+export const ChunkSchema = z.object({
   base_form: z.string().min(1),
   surface_form: z.string().min(1),
   line_index: idx,
@@ -21,7 +21,7 @@ const ChunkSchema = z.object({
   pronunciation_note_it: z.string().optional(),
 })
 
-const WordSchema = z.object({
+export const WordSchema = z.object({
   lemma: z.string().min(1),
   surface_form: z.string().min(1),
   line_index: idx,

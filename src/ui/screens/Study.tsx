@@ -5,6 +5,9 @@ import { reportError } from '../report'
 import { href, goBackTo, goReplace, onBack, onBackTo } from '../../router'
 import { deleteSong } from '../../domain/ingest'
 import { startStudying } from '../../domain/finalListen'
+import { askGemini, groupSelection, tokenize } from '../../domain/ask'
+import { geminiProblem } from '../errors'
+import { useOnline } from '../components/OfflineBadge'
 import { DELETE_NOTE } from './Songs'
 import { getSettings } from '../../domain/settings'
 import { pendingWords } from '../../domain/triage'
@@ -24,9 +27,15 @@ const LEGEND: [string, string][] = [
 ]
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
-  const { db, now } = useDeps()
+  const { db, now, fetch, sleep } = useDeps()
   const [sessionId, setSessionId] = useState('')
   const [confirming, setConfirming] = useState<false | 'done' | 'delete'>(false)
+  // Chiedere a Gemini le parole segnate nel testo, tutte insieme.
+  const [asking, setAsking] = useState(false)
+  const [picked, setPicked] = useState<Set<string>>(new Set())
+  const [askBusy, setAskBusy] = useState(false)
+  const [askMsg, setAskMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
+  const online = useOnline()
 
   useEffect(() => {
     let alive = true
@@ -84,6 +93,34 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const placed = itemsInSong(song, chunks, words)
   const hrefFor = (id: string) => href({ name: 'study', songId, itemId: id })
 
+  const picks = groupSelection(song.lines, picked)
+  const toggle = (key: string) => setPicked((cur) => {
+    const next = new Set(cur)
+    if (next.has(key)) next.delete(key)
+    else next.add(key)
+    return next
+  })
+  const ask = async () => {
+    setAskBusy(true)
+    setAskMsg(null)
+    try {
+      const r = await askGemini(db, songId, picks, { fetch, sleep, now: now() })
+      const parts = [
+        r.added > 0 ? `${plural(r.added, 'voce aggiunta', 'voci aggiunte')} al ripasso` : '',
+        r.existing > 0 ? `${plural(r.existing, "c'era già", "c'erano già")}` : '',
+      ].filter(Boolean)
+      setAskMsg({ tone: 'ok', text: parts.length ? `${parts.join('; ')}.` : 'Gemini non ha trovato nulla da aggiungere.' })
+      setAsking(false)
+      setPicked(new Set())
+    } catch (e) {
+      const model = await getSettings(db).then((x) => x.model, () => '')
+      const p = geminiProblem(e, model)
+      setAskMsg({ tone: 'error', text: `${p.title}. ${p.text}` })
+    } finally {
+      setAskBusy(false)
+    }
+  }
+
   const chunkCount = placed.chunks.size
   const wordCount = placed.words.size
   const gp = song.grammarPoint
@@ -127,11 +164,40 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         ))}
       </ul>
 
-      <div class="lyrics" lang="en">
+      {!asking ? (
+        <div class="ask-start">
+          <button type="button" class="btn outline" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
+          {askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>}
+        </div>
+      ) : (
+        <p class="note info-box">Leggi tutto il testo e tocca ogni parola o espressione che non ti è chiara: le chiedi tutte insieme, con una sola chiamata. Parole vicine diventano un'espressione.</p>
+      )}
+
+      <div class={asking ? 'lyrics picking' : 'lyrics'} lang="en">
         {song.lines.map((l, i) => (
-          <p key={i}><Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} /></p>
+          <p key={i}>
+            {asking ? (
+              <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} />
+            ) : (
+              <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} />
+            )}
+          </p>
         ))}
       </div>
+
+      {asking && (
+        <section class="ask-bar" role="region" aria-label="Da chiedere a Gemini">
+          {askMsg?.tone === 'error' && <p class="note danger" role="alert">{askMsg.text}</p>}
+          {!online && <p class="note">Sei offline: per chiedere a Gemini serve la connessione.</p>}
+          <div class="ask-row">
+            <span class="note">{`${picks.length} da chiedere`}</span>
+            <button type="button" class="btn outline" onClick={() => { setAsking(false); setPicked(new Set()); setAskMsg(null) }}>Annulla</button>
+            <button type="button" class="btn primary" disabled={picks.length === 0 || askBusy || !online} onClick={() => void ask()}>
+              {askBusy ? 'Chiedo…' : 'Chiedi a Gemini'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {placed.unshown.length > 0 && (
         <section class="other-items">
@@ -210,4 +276,20 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       {itemId && (itemId.startsWith('cs:') ? <SpeechSheet song={song} itemId={itemId} /> : <ItemSheet song={song} itemId={itemId} />)}
     </main>
   )
+}
+
+/** Un verso in modalità selezione: ogni parola è un pulsante che si segna e si toglie. */
+function PickLine({ line, lineIndex, picked, onToggle }: { line: string; lineIndex: number; picked: Set<string>; onToggle(key: string): void }) {
+  const out: preact.ComponentChildren[] = []
+  let pos = 0
+  tokenize(line).forEach((t, ti) => {
+    if (t.start > pos) out.push(line.slice(pos, t.start))
+    const key = `${lineIndex}:${ti}`
+    out.push(
+      <button key={key} type="button" class="tok" aria-pressed={picked.has(key)} onClick={() => onToggle(key)}>{t.text}</button>,
+    )
+    pos = t.end
+  })
+  if (pos < line.length) out.push(line.slice(pos))
+  return <>{out}</>
 }

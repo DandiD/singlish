@@ -43,10 +43,10 @@ export async function createSong(db: SinglishDB, input: SongInput, now: Date): P
 }
 
 /** Il verso di una voce; la forma si ricorda solo se lì è diversa da quella della voce. */
-const contextOf = (songId: string, lineIndex: number, surface: string, itemSurface: string): Context =>
+export const contextOf = (songId: string, lineIndex: number, surface: string, itemSurface: string): Context =>
   surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
 
-const addContext = (contexts: Context[], ctx: Context): boolean => {
+export const addContext = (contexts: Context[], ctx: Context): boolean => {
   const same = contexts.find((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)
   if (same) {
     // Un contesto salvato prima senza la forma del verso la prende ora.
