@@ -89,6 +89,7 @@ una volta per riga; non tradurre le altre righe. Non inventare: se un significat
 
 ### Messaggio utente
 ```text
+Tipo: canzone | Tipo: testo libero (non una canzone): niente parlato connesso.
 Livello: {level}
 Fascia di frequenza: {bandStart}-{bandEnd}
 Già noti: {knownList, separati da virgola, massimo 300}
@@ -131,4 +132,4 @@ Esporta un file JSON con tutte le tabelle tranne `apiKey` (esclusa di proposito)
 Manifest, service worker con precache dell'app (vite-plugin-pwa), funziona offline tranne l'analisi. `navigator.storage.persist()` alla prima apertura. Su iOS va aggiunta alla schermata Home.
 
 ## 13. Fuori dall'MVP (v1/v2)
-Card A, P, F, S; Espandi; testi liberi; ritornello guidato; riascolto finale; Progressi; Lessico; test di vocabolario; modalità intensiva; temi in Lessico; card ostinate; ottimizzazione FSRS.
+Card A, P, F, S; Espandi; ritornello guidato; riascolto finale; Progressi; Lessico; test di vocabolario; modalità intensiva; temi in Lessico; card ostinate; ottimizzazione FSRS.

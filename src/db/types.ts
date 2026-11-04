@@ -5,11 +5,14 @@ export type Register = 'usable' | 'informal' | 'song_only'
 export type ChunkType = 'phrasal_verb' | 'idiom' | 'collocation' | 'fixed_phrase' | 'slang'
 export type Rating = 1 | 2 | 3 | 4
 /** Un verso in cui compare la voce. `surfaceForm` c'è solo se lì la voce ha una forma diversa da `surfaceForm` della voce. */
+export type TextSource = 'serie' | 'podcast' | 'articolo' | 'altro'
 export type Context = { songId: string; lineIndex: number; surfaceForm?: string }
 
 export interface Song {
   id: string
-  kind: 'song'
+  /** Canzone, o testo libero (serie, podcast, articolo…): stessa analisi, senza parlato connesso né riascolto. */
+  kind: 'song' | 'text'
+  source?: TextSource
   title: string
   artist: string
   spotifyUrl: string | null

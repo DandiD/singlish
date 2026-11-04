@@ -12,7 +12,7 @@ function toTop(e: MouseEvent) {
 
 export function BottomNav({ route }: { route: Route }) {
   const onToday = route.name === 'today'
-  const songRoutes: Route['name'][] = ['songs', 'addSong', 'analyzing', 'study', 'triage']
+  const songRoutes: Route['name'][] = ['songs', 'addSong', 'addText', 'finalListen', 'analyzing', 'study', 'triage']
   const onSongs = songRoutes.includes(route.name)
   const onLexicon = route.name === 'lexicon'
   const active = onToday ? 0 : onSongs ? 1 : onLexicon ? 2 : -1

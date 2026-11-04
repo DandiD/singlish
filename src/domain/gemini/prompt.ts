@@ -22,10 +22,12 @@ export function buildUserMessage(input: {
   band: [number, number]
   known: string[]
   lines: string[]
+  kind?: 'song' | 'text'
 }): string {
   const known = input.known.slice(0, 300).join(', ')
   const lines = input.lines.map((l, i) => `${i}: ${l}`).join('\n')
   return [
+    input.kind === 'text' ? 'Tipo: testo libero (non una canzone): niente parlato connesso.' : 'Tipo: canzone',
     `Livello: ${input.level}`,
     `Fascia di frequenza: ${input.band[0]}-${input.band[1]}`,
     `Già noti: ${known}`,

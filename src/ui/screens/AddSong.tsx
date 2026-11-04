@@ -7,36 +7,43 @@ import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
 import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
+import type { TextSource } from '../../db/types'
 
 
 /** Un link che non è di un brano Spotify: cosa fare. */
 export const LINK_ERROR = 'Questo non è il link di un brano Spotify. In Spotify tocca Condividi → Copia link del brano, oppure lascia il campo vuoto.'
 
 // Bozza del modulo: per ascoltare la canzone o copiare il testo si esce dall'app, e iOS può chiuderla.
-const DRAFT_KEY = 'singlish:add-song-draft'
-type Draft = { link: string; title: string; artist: string; known: number | null; text: string; auto: { url: string; title: string } | null }
+const draftKey = (kind: 'song' | 'text') => (kind === 'text' ? 'singlish:add-text-draft' : 'singlish:add-song-draft')
+type Draft = { link: string; title: string; artist: string; known: number | null; text: string; auto: { url: string; title: string } | null; source?: TextSource }
 const EMPTY: Draft = { link: '', title: '', artist: '', known: null, text: '', auto: null }
-function readDraft(): Draft {
+function readDraft(key: string): Draft {
   try {
-    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Partial<Draft> | null
+    const d = JSON.parse(localStorage.getItem(key) ?? 'null') as Partial<Draft> | null
     return d && typeof d === 'object' ? { ...EMPTY, ...d } : EMPTY
   } catch {
     return EMPTY
   }
 }
-function writeDraft(d: Draft | null) {
+function writeDraft(key: string, d: Draft | null) {
   try {
-    if (d) localStorage.setItem(DRAFT_KEY, JSON.stringify(d))
-    else localStorage.removeItem(DRAFT_KEY)
+    if (d) localStorage.setItem(key, JSON.stringify(d))
+    else localStorage.removeItem(key)
   } catch {
     // spazio pieno o storage bloccato: la bozza è un aiuto, non un dato
   }
 }
 
-export function AddSong() {
+const SOURCES: [TextSource, string][] = [['serie', 'Serie'], ['podcast', 'Podcast'], ['articolo', 'Articolo'], ['altro', 'Altro']]
+
+/** Aggiungi canzone; con `kind="text"` Aggiungi testo (serie, podcast, articolo): stessa analisi, senza Spotify. */
+export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
   const { db, fetch, now } = useDeps()
   const open = useLive(() => activeSongCount(db), [db])
-  const [draft] = useState(readDraft)
+  const key = draftKey(kind)
+  const isText = kind === 'text'
+  const [draft] = useState(() => readDraft(key))
+  const [source, setSource] = useState<TextSource>(draft.source ?? 'serie')
   const [link, setLink] = useState(draft.link)
   const [title, setTitle] = useState(draft.title)
   const [artist, setArtist] = useState(draft.artist)
@@ -49,8 +56,8 @@ export function AddSong() {
   const saved = useRef(false)
   useEffect(() => () => { mounted.current = false }, [])
   useEffect(() => {
-    if (!saved.current) writeDraft({ link, title, artist, known, text, auto: auto.current })
-  }, [link, title, artist, known, text])
+    if (!saved.current) writeDraft(key, { link, title, artist, known, text, auto: auto.current, source })
+  }, [link, title, artist, known, text, source])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [linkLeft, setLinkLeft] = useState(false)
@@ -128,12 +135,13 @@ export function AddSong() {
           artist: artist.trim(),
           spotifyUrl: canonical,
           rawText: text,
-          comprehensionBefore: known,
+          comprehensionBefore: isText ? null : known,
+          ...(isText ? { kind: 'text' as const, source } : {}),
         },
         now(),
       )
       saved.current = true
-      writeDraft(null)
+      writeDraft(key, null)
       goReplace({ name: 'analyzing', songId: song.id })
     } catch (e) {
       setError(failedMessage('Canzone non salvata', e))
@@ -145,9 +153,34 @@ export function AddSong() {
     <main class="screen add-song">
       <header class="settings-head">
         <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
-        <h1>Aggiungi canzone</h1>
+        {isText ? (
+          <div class="grow">
+            <h1>Aggiungi testo</h1>
+            <p class="note">Oltre le canzoni: serie, podcast, articoli</p>
+          </div>
+        ) : (
+          <h1>Aggiungi canzone</h1>
+        )}
       </header>
       <form class="add-form" onSubmit={submit}>
+        {isText ? (
+          <>
+        <section>
+          <h2 class="section-label" id="source-label">DA DOVE VIENE</h2>
+          <div class="chips-row" role="group" aria-labelledby="source-label">
+            {SOURCES.map(([v, label]) => (
+              <button key={v} type="button" class="filter-chip" aria-pressed={source === v} onClick={() => setSource(v)}>{label}</button>
+            ))}
+          </div>
+          <label class="field">
+            <span>Titolo</span>
+            <input type="text" value={title} onInput={(e) => setTitle((e.currentTarget as HTMLInputElement).value)} />
+          </label>
+        </section>
+
+          </>
+        ) : (
+          <>
         <section>
           <h2 class="section-label">1 · LINK SPOTIFY</h2>
           <label class="field">
@@ -213,10 +246,12 @@ export function AddSong() {
           )}
         </section>
 
+          </>
+        )}
         <section>
-          <h2 class="section-label">3 · INCOLLA IL TESTO</h2>
+          {!isText && <h2 class="section-label">3 · INCOLLA IL TESTO</h2>}
           <label class="field">
-            <span>Testo</span>
+            <span>{isText ? 'Testo incollato' : 'Testo'}</span>
             <textarea
               class="lyrics"
               rows={10}
@@ -226,6 +261,9 @@ export function AddSong() {
           </label>
         </section>
 
+        {isText && (
+          <p class="note info-box">Stessa analisi delle canzoni, senza note di pronuncia del canto. Nessun riascolto finale: il testo si chiude quando chunk e parole sono nel ripasso.</p>
+        )}
         {full && <p class="note danger" role="status">{LIMIT_NOTE}</p>}
         {error && <p class="note danger" role="alert">{error}</p>}
         <button type="submit" class="btn primary cta" disabled={!canSubmit}>Analizza con Gemini</button>

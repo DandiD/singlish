@@ -171,6 +171,7 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | — | Lessico (canvas: Lexicon) | `#/lexicon` |
 | — | Progressi (canvas: Progress), da Oggi | `#/progress` |
 | — | Riascolto finale (canvas: FinalListen), da Oggi | `#/songs/:id/final` |
+| — | Aggiungi testo (canvas: AddText), da Canzoni | `#/songs/new-text` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -215,6 +216,9 @@ Numeri da `progressStats` in `src/domain/progress.ts`: comprensione al primo asc
 
 ## Riascolto finale
 Una canzone in studio da almeno 7 giorni (`studyStartedAt`, segnata aprendo lo Studio; per le canzoni di prima vale `analyzedAt`) compare in Oggi come «Riascolto finale». Si riascolta senza testo, si segna la % capita adesso, si vede il guadagno rispetto al primo ascolto; «Chiudi la canzone» la completa. Il guadagno medio va in Progressi.
+
+## Testi liberi
+Un testo (serie, podcast, articolo, altro) è una `Song` con `kind: 'text'` e `source`: stessa analisi (a Gemini si dice «Tipo: testo libero»), niente parlato connesso, niente riascolto finale; conta nel limite delle 4 aperte. Si aggiunge da Canzoni con la variante testo di Aggiungi canzone (stessa bozza, limite e attese).
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

@@ -10,7 +10,7 @@ const studyStart = (s: Song) => s.studyStartedAt ?? s.analyzedAt ?? s.addedAt
 /** Canzoni in studio da almeno 7 giorni e non ancora riascoltate, dalla più vecchia. */
 export function finalListenDue(songs: Song[], now: Date): Song[] {
   return songs
-    .filter((s) => s.status === 'studying' && s.comprehensionAfter == null)
+    .filter((s) => s.kind !== 'text' && s.status === 'studying' && s.comprehensionAfter == null)
     .filter((s) => now.getTime() - studyStart(s).getTime() >= FINAL_LISTEN_DAYS * DAY)
     .sort((a, b) => studyStart(a).getTime() - studyStart(b).getTime())
 }

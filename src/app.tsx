@@ -26,6 +26,7 @@ function title(route: Route): string {
     case 'today': return 'Oggi'
     case 'songs': return 'Canzoni'
     case 'addSong': return 'Aggiungi canzone'
+    case 'addText': return 'Aggiungi testo'
     case 'analyzing': return 'Analisi in corso'
     case 'study': return 'Studio canzone'
     case 'triage': return 'Smista parole'
@@ -38,7 +39,7 @@ function title(route: Route): string {
   }
 }
 
-const NO_NAV: Route['name'][] = ['settings', 'progress', 'finalListen', 'addSong', 'analyzing', 'study', 'triage', 'session']
+const NO_NAV: Route['name'][] = ['settings', 'progress', 'finalListen', 'addText', 'addSong', 'analyzing', 'study', 'triage', 'session']
 
 export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
@@ -60,6 +61,8 @@ export function App({ swStore }: { swStore?: SwStore }) {
               <Songs />
             ) : route.name === 'addSong' ? (
               <AddSong />
+            ) : route.name === 'addText' ? (
+              <AddSong kind="text" />
             ) : route.name === 'analyzing' ? (
               <Analyzing key={route.songId} songId={route.songId} />
             ) : route.name === 'study' ? (

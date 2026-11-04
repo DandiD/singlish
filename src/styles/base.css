@@ -336,3 +336,4 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .result-note { grid-column: 1 / -1; margin: 0; }
 .final-cta { margin-top: auto; }
 .final-due { display: flex; flex-direction: column; gap: 6px; color: var(--text); text-decoration: none; border-color: var(--blue); }
+.info-box { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); margin: 0; }

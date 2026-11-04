@@ -5,6 +5,7 @@ export type Route =
   | { name: 'today' }
   | { name: 'songs' }
   | { name: 'addSong' }
+  | { name: 'addText' }
   | { name: 'analyzing'; songId: string }
   | { name: 'study'; songId: string; itemId?: string }
   | { name: 'triage'; songId: string }
@@ -34,6 +35,7 @@ export function parseRoute(hash: string): Route {
   if (a === 'songs') {
     if (parts.length === 1) return { name: 'songs' }
     if (b === 'new' && parts.length === 2) return { name: 'addSong' }
+    if (b === 'new-text' && parts.length === 2) return { name: 'addText' }
     if (parts.length === 2) {
       const itemId = new URLSearchParams(query).get('item')
       return itemId ? { name: 'study', songId: b, itemId } : { name: 'study', songId: b }
@@ -53,6 +55,8 @@ export function href(route: Route): string {
       return '#/songs'
     case 'addSong':
       return '#/songs/new'
+    case 'addText':
+      return '#/songs/new-text'
     case 'analyzing':
       return `#/songs/${encodeURIComponent(route.songId)}/analyzing`
     case 'study': {
@@ -80,7 +84,7 @@ export type NavDirection = 'forward' | 'back' | 'fade' | 'none'
 
 const DEPTH: Record<Route['name'], number> = {
   today: 0, songs: 0, lexicon: 0, notFound: 0,
-  settings: 1, progress: 1, addSong: 1, study: 1, session: 1,
+  settings: 1, progress: 1, addSong: 1, addText: 1, study: 1, session: 1,
   analyzing: 2, triage: 2, finalListen: 2,
 }
 

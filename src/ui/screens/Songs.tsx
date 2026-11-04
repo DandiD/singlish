@@ -27,6 +27,8 @@ export function statusLabel(status: Song['status']): string {
 /** Cosa succede alle voci di una canzone eliminata. */
 export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni restano.'
 
+const SOURCE_LABEL = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo', altro: 'Testo' } as const
+
 const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 
 export function Songs() {
@@ -54,7 +56,9 @@ export function Songs() {
           <Icon name="plus" size={18} />Aggiungi
         </button>
       </header>
-      {full && <p class="note">{LIMIT_NOTE}</p>}
+      {full ? <p class="note">{LIMIT_NOTE}</p> : (
+        <a class="link-add" href={href({ name: 'addText' })}><Icon name="plus" size={18} />Aggiungi testo</a>
+      )}
       {songs.length === 0 && <p class="note">Nessuna canzone. Aggiungine una per cominciare.</p>}
       <ul class="song-list">
         {songs.map((s) => editing === s.id ? (
@@ -68,7 +72,7 @@ export function Songs() {
               <span class="badge">{statusLabel(s.status)}</span>
             </div>
             <p class="note">
-              {s.artist ? `${s.artist} · ` : ''}aggiunta il {dateFmt.format(s.addedAt)}
+              {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}aggiunta il {dateFmt.format(s.addedAt)}
             </p>
             {s.comprehensionBefore !== null && <p class="mono">{s.comprehensionBefore}% prima</p>}
             <div class="song-actions">

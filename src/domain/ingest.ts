@@ -1,5 +1,5 @@
 import type { SinglishDB } from '../db/db'
-import type { Chunk, Context, Song, Word } from '../db/types'
+import type { Chunk, Context, Song, TextSource, Word } from '../db/types'
 import { filterWordsByBand, loadRanks } from './freq'
 import { GeminiError, callGemini } from './gemini/client'
 import { parseAnalysis, type Analysis } from './gemini/parse'
@@ -15,13 +15,16 @@ export interface SongInput {
   spotifyUrl: string | null
   rawText: string
   comprehensionBefore: number | null
+  kind?: 'song' | 'text'
+  source?: TextSource
 }
 
 export async function createSong(db: SinglishDB, input: SongInput, now: Date): Promise<Song> {
   const settings = await getSettings(db)
   const song: Song = {
     id: newId(),
-    kind: 'song',
+    kind: input.kind ?? 'song',
+    ...(input.kind === 'text' ? { source: input.source ?? 'altro' } : {}),
     title: input.title,
     artist: input.artist,
     spotifyUrl: input.spotifyUrl,
@@ -163,7 +166,8 @@ export async function saveAnalysis(
             lineIndex: analysis.grammar_point.line_index,
           }
         : null,
-      connectedSpeech: analysis.connected_speech.map((c) => ({
+      // Un testo libero non ha canto: niente parlato connesso anche se Gemini ne restituisce.
+      connectedSpeech: (song.kind === 'text' ? [] : analysis.connected_speech).map((c) => ({
         lineIndex: c.line_index,
         written: c.written,
         sung: c.sung,
@@ -217,7 +221,7 @@ export async function analyzeSong(
         apiKey: settings.apiKey,
         model: settings.model,
         system: SYSTEM_PROMPT,
-        user: buildUserMessage({ level: settings.level, band, known, lines: song.lines }),
+        user: buildUserMessage({ level: settings.level, band, known, lines: song.lines, kind: song.kind }),
         schema: RESPONSE_SCHEMA,
       },
       { fetch: deps.fetch, sleep: deps.sleep },
