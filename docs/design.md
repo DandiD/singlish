@@ -176,6 +176,7 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | — | Le tue frasi (canvas: Feedback), da fine sessione o Oggi | `#/feedback` |
 | — | Card Ascolta (canvas: CardA) | `#/session` |
 | — | Test di vocabolario (canvas: VocabTest, VocabResult), da Progressi | `#/vocab-test` |
+| — | Ritornello a voce (canvas: Chorus), dallo Studio | `#/songs/:id/chorus` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -238,6 +239,9 @@ Nasce insieme alla Produci, solo per i chunk con nota di pronuncia o parlato con
 
 ## Test di vocabolario
 80 parole sì/no (`src/domain/vocabTest.ts`): 10 per fascia di rango dalla lista di frequenza e 20 inventate; la quota di sì per fascia si corregge con i sì alle inventate. Il risultato (stima, grafico per fascia, fascia utile suggerita) si salva in `settings.vocabTests` e va in Progressi. Usa solo le fasce che la lista copre per intero; sotto tre fasce il test non è disponibile e lo dice.
+
+## Ritornello a voce
+Il ritornello sono le righe ripetute del testo (`chorusLines`, al massimo sei); il pulsante compare nello Studio solo se esiste. Si canta con Spotify, si tocca una riga per coprirla; «Ancora» conta un tentativo, «Ce l'ho, senza testo» salva `chorusDoneAt` e torna allo Studio.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

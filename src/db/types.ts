@@ -32,6 +32,8 @@ export interface Song {
   /** Riascolto finale: % capita dopo lo studio, e quando. */
   comprehensionAfter?: number | null
   finalListenAt?: Date | null
+  /** Ritornello a voce: quando l'ha cantato senza testo. */
+  chorusDoneAt?: Date | null
 }
 
 export interface Chunk {

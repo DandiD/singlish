@@ -402,3 +402,13 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .bar-v { width: 100%; background: var(--line-strong); border-radius: 4px 4px 0 0; min-height: 2px; }
 .bar-v.useful { background: var(--accent); }
 .vt-tile { color: var(--text); text-decoration: none; }
+
+/* Ritornello a voce */
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.row-actions .btn { display: inline-flex; align-items: center; text-decoration: none; }
+.chorus { display: flex; flex-direction: column; gap: 14px; min-height: 100dvh; }
+.chorus-lines { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.chorus-line { display: block; width: 100%; text-align: left; padding: 12px 14px; min-height: 52px; border-radius: 12px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 24px; line-height: 1.3; cursor: pointer; }
+.chorus-line[aria-pressed="true"] { border: 1px dashed var(--line-strong); color: var(--muted-2); }
+.chorus-foot { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.chorus-foot > .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }

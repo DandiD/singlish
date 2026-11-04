@@ -6,6 +6,7 @@ import { href, goBackTo, goReplace, onBack, onBackTo } from '../../router'
 import { deleteSong } from '../../domain/ingest'
 import { startStudying } from '../../domain/finalListen'
 import { askGemini, groupSelection, tokenize } from '../../domain/ask'
+import { chorusLines } from '../../domain/chorus'
 import { geminiProblem } from '../errors'
 import { useOnline } from '../components/OfflineBadge'
 import { DELETE_NOTE } from './Songs'
@@ -166,7 +167,12 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
       {!asking ? (
         <div class="ask-start">
-          <button type="button" class="btn outline" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
+          <div class="row-actions">
+            <button type="button" class="btn outline" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
+            {chorusLines(song.lines).length > 0 && (
+              <a class="btn outline" href={href({ name: 'chorus', songId })}>Ritornello a voce</a>
+            )}
+          </div>
           {askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>}
         </div>
       ) : (
