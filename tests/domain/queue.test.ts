@@ -129,6 +129,19 @@ describe('buildSessionQueue', () => {
     expect(q.newCount).toBe(0)
     expect(q.newBlockedByLoad).toBe(true)
   })
+  test('heavy load with the day\'s new budget already used: nothing is held back, so no block', async () => {
+    await seedDueCards(db, 200)
+    await seedNewReviews(db, 16, at('2026-10-31T09:00:00'))
+    const q = await buildSessionQueue(db, now)
+    expect(q.newCount).toBe(0)
+    expect(q.newBlockedByLoad).toBe(false)
+  })
+  test('heavy load with no new cards left: no block', async () => {
+    await seedDueCards(db, 200)
+    await db.cards.filter((c) => c.fsrs.state === State.New).delete()
+    const q = await buildSessionQueue(db, now)
+    expect(q.newBlockedByLoad).toBe(false)
+  })
   test('light load does not block', async () => {
     const q = await buildSessionQueue(db, now)
     expect(q.newBlockedByLoad).toBe(false)

@@ -214,6 +214,9 @@ test('Today: shows the blocked-new note when the review load exceeds the timer',
     await db.chunks.add(chunk('x' + i, 'phrase ' + i, 0))
     await db.cards.add(reviewCard('kx' + i, 'x' + i, 'R', '2026-10-30T10:00:00Z'))
   }
+  // una card nuova che il carico tiene davvero fuori
+  await db.chunks.add(chunk('nw', 'wait beside', 1))
+  await db.cards.add({ id: 'knw', itemType: 'chunk', itemId: 'nw', kind: 'R', unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('Per ora niente card nuove: il ripasso in scadenza supera i 2 minuti. Arrivano quando scende sotto.')
 })

@@ -111,9 +111,10 @@ export async function buildSessionQueue(
   const dayStart = startOfLocalDay(now).getTime()
   const writtenNewToday = (await pendingProductions(db)) // solo frasi con la card ancora presente e il chunk attivo
     .filter((p) => p.wasNew && p.at && p.at.getTime() >= dayStart && p.at <= now).length
-  let budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday - writtenNewToday)
-  const newBlockedByLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review
-  if (newBlockedByLoad) budget = 0
+  const budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday - writtenNewToday)
+  const overLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review
+  // Il blocco si segnala solo se trattiene davvero card nuove (limite del giorno non esaurito, nuove disponibili).
+  let newBlockedByLoad = false
 
   if (budget > 0) {
     const sortKey = (c: CardRow) => {
@@ -135,7 +136,8 @@ export async function buildSessionQueue(
       })
       .map((c) => ({ c, k: sortKey(c) }))
       .sort((x, y) => x.k.group - y.k.group || x.k.added - y.k.added || x.k.line - y.k.line || x.k.kind - y.k.kind)
-    for (const { c } of candidates) {
+    if (overLoad) newBlockedByLoad = candidates.some(({ c }) => !seen.has(c.itemId))
+    for (const { c } of overLoad ? [] : candidates) {
       if (items.length - dueCount >= budget) break
       if (seen.has(c.itemId)) continue
       seen.add(c.itemId)
