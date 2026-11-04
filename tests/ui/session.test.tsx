@@ -351,3 +351,10 @@ test('niente da ripassare ma una canzone «Da studiare»: dice di aprirne lo Stu
   expect(await screen.findByText(/Aprendo lo Studio di una canzone «Da studiare»/)).toBeTruthy()
   expect(screen.queryByText(/Torna domani/)).toBeNull()
 })
+
+test('niente da ripassare e solo canzoni da analizzare: dice di completarne l\'analisi, non «Torna domani»', async () => {
+  await db.songs.update('s1', { status: 'queued' })
+  renderSession()
+  expect(await screen.findByText(/si analizzano appena sei online/)).toBeTruthy()
+  expect(screen.queryByText(/Torna domani/)).toBeNull()
+})

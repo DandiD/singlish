@@ -95,3 +95,10 @@ test('fine sessione: il numero di frasi da correggere è quello di Oggi, anche r
   fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
   expect(await screen.findByRole('link', { name: 'Correggi le 2 frasi con Gemini' })).toBeTruthy()
 })
+
+test('fine sessione con sole frasi scritte: il riepilogo le conta, come «N di M»', async () => {
+  mount(<Session />)
+  fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'He was rude but I let it slide.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
+  expect(await screen.findByText(/0 ripassate · 0 nuove · 1 frase scritta/)).toBeTruthy()
+})

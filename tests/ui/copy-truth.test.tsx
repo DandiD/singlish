@@ -69,3 +69,9 @@ test('Espandi, Sessione vuota, Le tue frasi e prova offline dicono il vero', () 
   const songs = readFileSync('src/ui/screens/Songs.tsx', 'utf8')
   expect(songs).toContain("aggiunto il")
 })
+
+test('il badge di un testo completato è al maschile', async () => {
+  const { statusLabel } = await import('../../src/ui/screens/Songs')
+  expect(statusLabel('done', 'text')).toBe('Completato')
+  expect(statusLabel('done')).toBe('Completata')
+})

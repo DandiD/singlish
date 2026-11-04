@@ -11,7 +11,7 @@ import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 
 
-export function statusLabel(status: Song['status']): string {
+export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song'): string {
   switch (status) {
     case 'draft':
     case 'queued':
@@ -21,7 +21,7 @@ export function statusLabel(status: Song['status']): string {
     case 'studying':
       return 'In studio'
     case 'done':
-      return 'Completata'
+      return kind === 'text' ? 'Completato' : 'Completata'
   }
 }
 
@@ -69,7 +69,7 @@ export function Songs() {
           <li class="song-card" key={s.id}>
             <div class="song-top">
               <h2>{s.title}</h2>
-              <span class="badge">{statusLabel(s.status)}</span>
+              <span class="badge">{statusLabel(s.status, s.kind)}</span>
             </div>
             <p class="note">
               {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}{s.kind === 'text' ? 'aggiunto il' : 'aggiunta il'} {dateFmt.format(s.addedAt)}

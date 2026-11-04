@@ -201,6 +201,7 @@ export function Session() {
     const noSongs = loaded.songById.size === 0
     // Le card nuove di una canzone «Da studiare» entrano solo aprendone lo Studio: domani non cambierebbe nulla.
     const toStudy = [...loaded.songById.values()].some((s) => s.status === 'analyzed')
+    const toAnalyze = [...loaded.songById.values()].some((s) => s.status === 'draft' || s.status === 'queued')
     return (
       <main class="screen session session-done">
         <h1>Niente da ripassare</h1>
@@ -209,7 +210,9 @@ export function Session() {
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
             : toStudy
               ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone «Da studiare», le sue card nuove possono entrare nel ripasso.'
-              : 'Per ora non ci sono card in scadenza. Torna domani.'}
+              : toAnalyze
+                ? 'Per ora non ci sono card in scadenza. Le canzoni da analizzare si analizzano appena sei online: poi le trovi in Canzoni.'
+                : 'Per ora non ci sono card in scadenza. Torna domani.'}
         </p>
         {noSongs && (
           <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
@@ -224,7 +227,8 @@ export function Session() {
       <main class="screen session session-done">
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
-        <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
+        {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
+        <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
         {toCorrect > 0 && (
           <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
@@ -296,6 +300,7 @@ export function Session() {
               <div class="stat-box"><strong class="mono">{plural(counts.news, 'nuova', 'nuove')}</strong></div>
               <div class="stat-box"><strong class="mono">{plural(remainingCards, 'resta', 'restano')}</strong></div>
             </div>
+            {loaded.doneWritten + written > 0 && <p class="note">{`E ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')} da correggere.`}</p>}
             <p class="intro">Chiudendo, le card che restano ti aspettano su Oggi.</p>
             <button
               type="button"
