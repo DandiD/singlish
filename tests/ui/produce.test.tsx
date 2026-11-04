@@ -123,3 +123,17 @@ test('fine sessione con una frase da correggere: «Fatto per oggi» non compare 
   obs.disconnect()
   expect(seen.has('Fatto per oggi')).toBe(false)
 })
+
+test('«Correggi» dalla fine della sessione sostituisce la sessione: Indietro non riapre una sessione nuova', async () => {
+  mount(<Session />)
+  fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'He was rude but I let it slide.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
+  const link = await screen.findByRole('link', { name: 'Correggi la frase con Gemini' })
+  const replace = vi.spyOn(window.history, 'replaceState')
+  const push = vi.spyOn(window.history, 'pushState')
+  fireEvent.click(link)
+  expect(replace).toHaveBeenCalled()
+  expect(push).not.toHaveBeenCalled()
+  expect(window.location.hash).toBe('#/feedback')
+  replace.mockRestore(); push.mockRestore()
+})

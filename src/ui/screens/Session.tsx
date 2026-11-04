@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { useFailure } from '../useFailure'
-import { href, goBackTo, onBack, onBackTo } from '../../router'
+import { href, goBackTo, onBack, onBackTo, onReplace } from '../../router'
 import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { pendingProductions, saveProduction } from '../../domain/production'
@@ -235,7 +235,7 @@ export function Session() {
           <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         )}
         {toCorrect > 0 && (
-          <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
+          <a class="btn primary cta" href={href({ name: 'feedback' })} onClick={onReplace({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
         <a class={noSongs || toCorrect > 0 ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
@@ -256,7 +256,7 @@ export function Session() {
         {left > 0 && <p class="note">{left === 1 ? '1 card ancora da fare oggi: la trovi in Oggi.' : `${left} card ancora da fare oggi: le trovi in Oggi.`}</p>}
         {toCorrect > 0 && <p class="note">Dopo la correzione le loro card possono tornare in scadenza già oggi.</p>}
         {toCorrect > 0 && (
-          <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
+          <a class="btn primary cta" href={href({ name: 'feedback' })} onClick={onReplace({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
         <a class="btn primary cta" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>

@@ -164,6 +164,10 @@ export function onBack(fallback: Route) {
 export function onBackTo(target: Route) {
   return (e: MouseEvent) => { if (plainClick(e)) goBackTo(target) }
 }
+/** onClick per i link che lasciano una pagina già conclusa (per esempio la fine della sessione): il ritorno non ci ripassa. */
+export function onReplace(target: Route) {
+  return (e: MouseEvent) => { if (plainClick(e)) goReplace(target) }
+}
 function plainClick(e: MouseEvent): boolean {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return false
   e.preventDefault()
