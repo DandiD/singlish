@@ -208,7 +208,7 @@ export function Session() {
           {noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
             : toStudy
-              ? 'Per ora non ci sono card in scadenza. Le card nuove arrivano quando apri lo Studio di una canzone «Da studiare».'
+              ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone «Da studiare», le sue card nuove possono entrare nel ripasso.'
               : 'Per ora non ci sono card in scadenza. Torna domani.'}
         </p>
         {noSongs && (

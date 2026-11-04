@@ -161,7 +161,7 @@ describe('Settings', () => {
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
     try {
       const f = await tryKey(okBody)
-      await screen.findByText('Sei offline: la chiave non è stata provata né salvata.')
+      await screen.findByText(/^Sei offline: la chiave non è stata provata né salvata\. Il modello salvato è «.+»\.$/)
       expect(f).not.toHaveBeenCalled()
     } finally {
       Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })

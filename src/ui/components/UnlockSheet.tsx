@@ -52,7 +52,7 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
     setIntensive(on)
     saveSettings(db, { intensiveUntil: on ? new Date(now().getTime() + INTENSIVE.days * DAY) : null }).catch(reportError)
   }
-  const title = 'La prossima canzone non è ancora pronta'
+  const title = target === 'addText' ? 'Il prossimo testo non è ancora pronto' : 'La prossima canzone non è ancora pronta'
   return (
     <div class="sheet-scrim" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
       <section class="sheet unlock" role="dialog" aria-modal="true" aria-label={title} tabIndex={-1} ref={ref}>

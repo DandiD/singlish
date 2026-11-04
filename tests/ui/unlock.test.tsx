@@ -63,7 +63,7 @@ test('anche Aggiungi testo passa dal controllo di sblocco', async () => {
   await db.cards.bulkAdd(newCardPair('chunk', 'a', now))
   mount()
   fireEvent.click(await screen.findByRole('link', { name: 'Aggiungi testo' }))
-  expect(await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })).toBeTruthy()
+  expect(await screen.findByRole('dialog', { name: 'Il prossimo testo non è ancora pronto' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Sblocca lo stesso' }))
   await waitFor(() => expect(window.location.hash).toBe('#/songs/new-text'))
 })

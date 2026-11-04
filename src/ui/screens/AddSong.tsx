@@ -144,7 +144,7 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
       writeDraft(key, null)
       goReplace({ name: 'analyzing', songId: song.id })
     } catch (e) {
-      setError(failedMessage('Canzone non salvata', e))
+      setError(failedMessage(isText ? 'Testo non salvato' : 'Canzone non salvata', e))
       setBusy(false)
     }
   }
@@ -267,7 +267,7 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
         {full && <p class="note danger" role="status">{LIMIT_NOTE}</p>}
         {error && <p class="note danger" role="alert">{error}</p>}
         <button type="submit" class="btn primary cta" disabled={!canSubmit}>Analizza con Gemini</button>
-        <p class="note center">1 chiamata · offline? La salviamo e la analizziamo dopo</p>
+        <p class="note center">{isText ? '1 chiamata · offline? Lo salviamo e lo analizziamo dopo' : '1 chiamata · offline? La salviamo e la analizziamo dopo'}</p>
       </form>
     </main>
   )

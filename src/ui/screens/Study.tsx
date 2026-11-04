@@ -240,7 +240,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       <footer class="study-foot">
         {confirming === 'done' ? (
           <div class="confirm" role="alertdialog" aria-label="Conferma completamento">
-            <p>Segnare questa canzone come completata? Libera un posto tra le canzoni aperte.</p>
+            <p>{song.kind === 'text' ? 'Segnare questo testo come completato? Libera un posto tra le canzoni e i testi aperti.' : 'Segnare questa canzone come completata? Libera un posto tra le canzoni e i testi aperti.'}</p>
             <div class="grid2">
               <button type="button" class="btn outline" onClick={() => setConfirming(false)}>Annulla</button>
               <button
@@ -284,8 +284,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           </div>
         ) : (
           <div class="grid2">
-            {song.status !== 'done' && <button type="button" class="btn outline" onClick={() => setConfirming('done')}>Segna come completata</button>}
-            <button type="button" class="btn outline danger" onClick={() => setConfirming('delete')}>Elimina canzone</button>
+            {song.status !== 'done' && <button type="button" class="btn outline" onClick={() => setConfirming('done')}>{song.kind === 'text' ? 'Segna come completato' : 'Segna come completata'}</button>}
+            <button type="button" class="btn outline danger" onClick={() => setConfirming('delete')}>{song.kind === 'text' ? 'Elimina testo' : 'Elimina canzone'}</button>
           </div>
         )}
       </footer>

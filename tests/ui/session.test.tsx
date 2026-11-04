@@ -348,6 +348,6 @@ test('niente da ripassare ma una canzone «Da studiare»: dice di aprirne lo Stu
   await db.songs.update('s1', { status: 'analyzed' })
   await db.chunks.add(chunk('c1', 'harbour wall', 1))
   renderSession()
-  expect(await screen.findByText(/apri lo Studio di una canzone «Da studiare»/)).toBeTruthy()
+  expect(await screen.findByText(/Aprendo lo Studio di una canzone «Da studiare»/)).toBeTruthy()
   expect(screen.queryByText(/Torna domani/)).toBeNull()
 })

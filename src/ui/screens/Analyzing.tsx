@@ -154,14 +154,14 @@ export function Analyzing({ songId }: { songId: string }) {
             {state.song.difficultyKnownPct !== null && state.song.difficultyKnownPct < 60 && (
               <div class="outcome">
                 <p>
-                  {`Capiresti il ${state.song.difficultyKnownPct}%: puoi studiarla lo stesso o tenerla per più avanti`}
+                  {`Capiresti il ${state.song.difficultyKnownPct}%: ${state.song.kind === 'text' ? 'puoi studiarlo lo stesso o tenerlo per più avanti' : 'puoi studiarla lo stesso o tenerla per più avanti'}`}
                 </p>
               </div>
             )}
             {state.song.status !== 'done' && (
-              <button type="button" class="btn primary cta" onClick={studyNow}>Studiala ora</button>
+              <button type="button" class="btn primary cta" onClick={studyNow}>{state.song.kind === 'text' ? 'Studialo ora' : 'Studiala ora'}</button>
             )}
-            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Tienila per più avanti</a>
+            <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>{state.song.kind === 'text' ? 'Tienilo per più avanti' : 'Tienila per più avanti'}</a>
           </>
         )}
 

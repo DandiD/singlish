@@ -68,7 +68,7 @@ export function Feedback() {
 
       {!items && (
         pending.length === 0 ? (
-          <p class="note">Nessuna frase da correggere. Le frasi delle card Produci arrivano qui a fine sessione.</p>
+          <p class="note">Nessuna frase da correggere. Le frasi che scrivi nelle card Produci arrivano qui appena le scrivi.</p>
         ) : (
           <>
             <ul class="pending-list">

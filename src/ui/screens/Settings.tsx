@@ -82,7 +82,7 @@ export function Settings() {
 
   const probe = async () => {
     if (!navigator.onLine) {
-      setKeyStatus({ tone: 'error', text: 'Sei offline: la chiave non è stata provata né salvata.' })
+      setKeyStatus({ tone: 'error', text: `Sei offline: la chiave non è stata provata né salvata. Il modello salvato è «${(await getSettings(db)).model}».` })
       return
     }
     setKeyStatus({ tone: 'running', text: 'Provo la chiave…' })

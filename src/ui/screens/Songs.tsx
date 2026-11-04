@@ -26,7 +26,7 @@ export function statusLabel(status: Song['status']): string {
 }
 
 /** Cosa succede alle voci di una canzone eliminata. */
-export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni restano, e le parole che sai, o che hai già ripassato, restano nel tuo profilo come note.'
+export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni o testi restano, e le parole che sai, o che hai già ripassato, restano nel tuo profilo come note.'
 
 const SOURCE_LABEL = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo', altro: 'Testo' } as const
 
@@ -72,7 +72,7 @@ export function Songs() {
               <span class="badge">{statusLabel(s.status)}</span>
             </div>
             <p class="note">
-              {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}aggiunta il {dateFmt.format(s.addedAt)}
+              {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}{s.kind === 'text' ? 'aggiunto il' : 'aggiunta il'} {dateFmt.format(s.addedAt)}
             </p>
             {s.comprehensionBefore !== null && <p class="mono">{s.comprehensionBefore}% prima</p>}
             <div class="song-actions">

@@ -51,7 +51,7 @@ test('una chiamata a richiesta, gruppi con caselle, Aggiungi al ripasso', async 
   expect(screen.getByText('SFUMATURE')).toBeTruthy()
   fireEvent.click(screen.getByRole('checkbox', { name: /full/ }))
   // emptiness e full: 2 card ciascuna; empty promises: 2; sfumature: 1
-  expect(screen.getByText('7 card nuove · entrano dopo chunk e parole delle canzoni')).toBeTruthy()
+  expect(screen.getByText('7 card nuove · le voci nuove entrano dopo chunk e parole delle canzoni')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 7 card al ripasso' }))
   await waitFor(async () => expect((await db.words.toArray()).map((w) => w.lemma).sort()).toEqual(['emptiness', 'empty', 'full']))
   expect(f).toHaveBeenCalledTimes(1)

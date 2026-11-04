@@ -279,6 +279,8 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 - Una parola che torna nel profilo (Escludi, Elimina canzone) non resta sospesa.
 - La Sessione vuota con una canzone «Da studiare» dice di aprirne lo Studio, non «Torna domani».
 - Testi liberi: Modifica mostra solo il titolo; l'Analisi dice «Il testo è salvato» e non parla di pronuncia. I messaggi di errore di Gemini valgono per ogni richiesta (non «Analisi non riuscita», non «un'altra canzone»).
+- Testi liberi: Aggiungi testo, Analisi, Studio (completa, elimina), Canzoni («aggiunto il») e il foglio di sblocco aperto da Aggiungi testo parlano di un testo. La Sessione vuota con una canzone «Da studiare» dice che aprendone lo Studio le card nuove «possono» entrare (dipende dal limite del giorno). Le tue frasi: le frasi arrivano appena scritte. La prova offline della chiave dice quale modello è salvato. In Espandi «le voci nuove» entrano dopo chunk e parole delle canzoni (una parola già in un testo resta parola di quel testo).
+- Marginale accettato: l'avviso generico «Non salvato. Riprova…» compare per ogni azione non riuscita per un guasto di IndexedDB, anche per le poche che leggono soltanto.
 - Voluto: «Tienila per più avanti» dopo l'analisi è solo un link a Canzoni e non scrive nulla.
 - Voluto: il carico dei 7 giorni (Progressi, sblocco) conta anche le card con una frase in attesa di correzione: dopo la conferma vanno ripassate comunque.
 - Marginale accettato: confermare da un'altra scheda del browser una frase la cui card è stata eliminata o sospesa la conta comunque nella sessione (era già contata in «N di M» quando è stata scritta); un ripasso su una voce sospesa non la rimette in coda.
