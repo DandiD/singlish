@@ -192,12 +192,14 @@ export function useSheet(songId: string, itemId: string, loaded: boolean, before
   const close = async () => {
     if (done.current) return // Escludi e «voce sparita» chiedono entrambi di chiudere: si chiude una volta
     done.current = true
+    // L'indirizzo della scheda, preso subito: se durante la chiusura si va altrove, non si torna indietro.
+    const at = window.location.hash
     await before.current?.()
     const go = () => goBackTo({ name: 'study', songId })
     // Il foglio scende prima di sparire; con movimento ridotto si chiude subito.
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return go()
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return window.location.hash === at ? go() : undefined
     setClosing(true)
-    setTimeout(go, 200)
+    setTimeout(() => { if (window.location.hash === at) go() }, 200)
   }
   // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
   // in quel caso si torna al link dell'elemento nel testo.

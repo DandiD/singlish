@@ -308,8 +308,11 @@ test('voto e contatori della sessione si salvano insieme: se uno fallisce, non r
   await typeAndCheck('let it slide')
   await screen.findByText('Esatto')
   const original = db.sessions.update.bind(db.sessions)
-  db.sessions.update = (async () => { throw new Error('disco pieno') }) as unknown as typeof db.sessions.update
+  let attempted = false
+  db.sessions.update = (async () => { attempted = true; throw new Error('disco pieno') }) as unknown as typeof db.sessions.update
   fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  // si rimette l'originale solo dopo che il salvataggio ha davvero provato (sotto carico 50 ms non bastano)
+  await waitFor(() => expect(attempted).toBe(true))
   await new Promise((r) => setTimeout(r, 50))
   db.sessions.update = original
   expect(await db.reviews.count()).toBe(0)

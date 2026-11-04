@@ -128,3 +128,13 @@ test('senza traduzione la sezione non compare', async () => {
   await screen.findByRole('dialog', { name: 'Scheda del chunk' })
   expect(screen.queryByText('TRADUZIONE DEL VERSO')).toBeNull()
 })
+
+test('chiusa la scheda, se nel frattempo si va altrove la chiusura ritardata non riporta allo Studio', async () => {
+  window.location.hash = '#/songs/s1?item=c1'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  const dialog = await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  fireEvent.keyDown(dialog, { key: 'Escape' })
+  window.location.hash = '#/lexicon' // un tocco sulla barra durante l'animazione di chiusura
+  await new Promise((r) => setTimeout(r, 300))
+  expect(window.location.hash).toBe('#/lexicon')
+})

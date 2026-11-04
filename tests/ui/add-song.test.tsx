@@ -282,7 +282,8 @@ describe('niente si perde nel modulo', () => {
     fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'line one' } })
     fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
     fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
-    await new Promise((r) => setTimeout(r, 10))
+    // si aspetta che la richiesta del titolo sia davvero partita (sotto carico 10 ms non bastano)
+    await waitFor(() => expect(release).toBeTypeOf('function'))
     window.location.hash = '#/songs'
     cleanup()
     release()
