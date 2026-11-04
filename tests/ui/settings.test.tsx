@@ -284,3 +284,11 @@ test('memoria obiettivo: due scatti di fila salvano il secondo e l\'etichetta no
   await waitFor(async () => expect((await getSettings(db)).desiredRetention).toBe(0.92))
   expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
 })
+
+test('le Impostazioni citano la fonte delle frequenze delle parole, come chiede la licenza', async () => {
+  mount()
+  await screen.findByLabelText('Livello')
+  const credit = [...document.querySelectorAll('p')].find((p) => p.textContent!.startsWith('Frequenze delle parole: wordfreq'))!
+  expect(credit.querySelector('a')!.getAttribute('href')).toBe('https://github.com/rspeer/wordfreq')
+  expect(credit.textContent).toContain('CC BY-SA 4.0')
+})

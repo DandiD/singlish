@@ -57,7 +57,7 @@ Livello impostato: B1 | B2 | C1. Fascia utile per le parole singole (ranghi di f
 | C1 | 6.000–15.000 |
 Una parola entra in Smista parole solo se il suo rango è dentro la fascia e il lemma non è già nel profilo (note o già studiate). Parole senza rango nella lista: escluse.
 
-Lista di frequenza: file `public/freq.json` (array di lemmi ordinati per rango, prime 20.000). Fonte da scegliere (SUBTLEX-US o wordfreq) verificando la licenza; lo script di build accetta un TSV `lemma<TAB>rank`.
+Lista di frequenza: file `public/freq.json` (array di lemmi ordinati per rango, prime 20.000), da wordfreq 3.1.1 (lista `best`, inglese; solo parole di lettere), licenza CC BY-SA 4.0: fonte citata nelle Impostazioni e in `public/freq.LICENSE.md`. Lo script `scripts/build-freq.mjs` accetta un TSV `lemma<TAB>rank`.
 
 ## 8. Gemini
 - Endpoint: `POST https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`, header `x-goog-api-key`.

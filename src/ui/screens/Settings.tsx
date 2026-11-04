@@ -350,6 +350,9 @@ export function Settings() {
         <h2 class="section-label" id="s-app">APP</h2>
         <InstallCard state={install.state} onInstall={() => void install.install()} />
         <p class="note">{`Versione ${__APP_VERSION__}`}</p>
+        <p class="note">
+          Frequenze delle parole: <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener noreferrer">wordfreq</a> di Robyn Speer, licenza CC BY-SA 4.0.
+        </p>
       </section>
     </main>
   )
