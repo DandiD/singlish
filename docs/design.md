@@ -170,6 +170,7 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 18 | Impostazioni | `#/settings` |
 | — | Lessico (canvas: Lexicon) | `#/lexicon` |
 | — | Progressi (canvas: Progress), da Oggi | `#/progress` |
+| — | Riascolto finale (canvas: FinalListen), da Oggi | `#/songs/:id/final` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -211,6 +212,9 @@ Tutte le voci (chunk e parole non note) da `lexicon()` in `src/domain/lexicon.ts
 
 ## Progressi
 Numeri da `progressStats` in `src/domain/progress.ts`: comprensione al primo ascolto per canzone (grafico a una serie, asse adattato ai valori, soglia del 70%, tabella per lo screen reader), lessico attivo (card Completa in ripasso; quelle del livello attuale contano per salire), memoria reale (ripassi non nuovi degli ultimi 30 giorni non dimenticati), carico medio dei prossimi 7 giorni, avanzamento verso il livello successivo (150 voci attive e 70%). Senza dati si mostra «—» e cosa fare, mai numeri inventati.
+
+## Riascolto finale
+Una canzone in studio da almeno 7 giorni (`studyStartedAt`, segnata aprendo lo Studio; per le canzoni di prima vale `analyzedAt`) compare in Oggi come «Riascolto finale». Si riascolta senza testo, si segna la % capita adesso, si vede il guadagno rispetto al primo ascolto; «Chiudi la canzone» la completa. Il guadagno medio va in Progressi.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

@@ -24,6 +24,11 @@ export interface Song {
   lineTranslations?: { lineIndex: number; textIt: string }[]
   addedAt: Date
   analyzedAt: Date | null
+  /** Quando la canzone è passata «in studio» (aperto lo Studio). Assente nelle canzoni di prima: vale `analyzedAt`. */
+  studyStartedAt?: Date | null
+  /** Riascolto finale: % capita dopo lo studio, e quando. */
+  comprehensionAfter?: number | null
+  finalListenAt?: Date | null
 }
 
 export interface Chunk {

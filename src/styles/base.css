@@ -322,3 +322,17 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .tile-num { font-size: 26px; font-weight: 600; }
 .tile-sub { font-size: 12px; color: var(--muted); }
 .level-up { display: flex; flex-direction: column; gap: 8px; padding: 16px; background: var(--surface-2); border-radius: 16px; }
+
+/* Riascolto finale */
+.final-listen { display: flex; flex-direction: column; gap: 16px; }
+.final-listen > .btn.outline { display: flex; align-items: center; justify-content: center; min-height: 52px; text-decoration: none; }
+.result { display: grid; grid-template-columns: 1fr auto; gap: 14px 16px; align-items: end; padding: 18px; background: var(--surface-2); border-radius: 18px; }
+.result-bars { display: flex; flex-direction: column; gap: 6px; }
+.result-bar { height: 12px; background: var(--line); border-radius: 6px; overflow: hidden; }
+.result-fill { height: 100%; background: var(--blue); border-radius: 6px; }
+.result-fill.before { background: var(--muted-2); }
+.result-gain { display: flex; flex-direction: column; align-items: flex-end; }
+.gain-num { font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-weight: 700; font-size: 40px; line-height: 1; color: var(--blue-text); }
+.result-note { grid-column: 1 / -1; margin: 0; }
+.final-cta { margin-top: auto; }
+.final-due { display: flex; flex-direction: column; gap: 6px; color: var(--text); text-decoration: none; border-color: var(--blue); }

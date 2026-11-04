@@ -3,6 +3,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { href, goReplace, onBack, onBackTo } from '../../router'
 import { analyzeSong } from '../../domain/ingest'
+import { startStudying } from '../../domain/finalListen'
 import { loadRanks } from '../../domain/freq'
 import { pendingWords } from '../../domain/triage'
 import { getSettings } from '../../domain/settings'
@@ -85,7 +86,7 @@ export function Analyzing({ songId }: { songId: string }) {
   const studyNow = async () => {
     if (state.kind !== 'analyzed') return
     try {
-      await db.songs.update(songId, { status: 'studying' })
+      await startStudying(db, songId, now())
     } catch (e) {
       reportError(e)
       return

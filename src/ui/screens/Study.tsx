@@ -4,6 +4,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { href, goBackTo, goReplace, onBack, onBackTo } from '../../router'
 import { deleteSong } from '../../domain/ingest'
+import { startStudying } from '../../domain/finalListen'
 import { DELETE_NOTE } from './Songs'
 import { getSettings } from '../../domain/settings'
 import { pendingWords } from '../../domain/triage'
@@ -51,7 +52,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
   // Aprire lo Studio di una canzone tenuta per più avanti la mette in studio: da qui le sue card nuove entrano nel ripasso.
   useEffect(() => {
-    db.songs.where('id').equals(songId).filter((s) => s.status === 'analyzed').modify({ status: 'studying' }).catch(reportError)
+    startStudying(db, songId, now()).catch(reportError)
   }, [db, songId])
 
   const timer = useTimer(sessionId, { autoPauseOnHide: true, wakeLock: false }, db)

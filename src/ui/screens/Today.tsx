@@ -6,6 +6,7 @@ import { buildSessionQueue } from '../../domain/queue'
 import { getSettings } from '../../domain/settings'
 import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
+import { finalListenDue } from '../../domain/finalListen'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 
@@ -38,11 +39,11 @@ export function Today() {
         }).length
         return { song, total: ids.length, done }
       })
-    return { queue, settings, progress }
+    return { queue, settings, progress, finalDue: finalListenDue(songs, now()) }
   }, [db])
 
   if (!data) return <main class="screen" aria-busy="true" />
-  const { queue, settings, progress } = data
+  const { queue, settings, progress, finalDue } = data
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
 
@@ -74,6 +75,14 @@ export function Today() {
           <p class="note">Niente da ripassare oggi.</p>
         )}
       </section>
+
+      {finalDue.map((s) => (
+        <a key={s.id} class="card final-due" href={href({ name: 'finalListen', songId: s.id })}>
+          <span class="section-label">RIASCOLTO FINALE</span>
+          <strong>{s.title}</strong>
+          <span class="note">Una settimana di studio: riascoltala senza testo e misura quanto capisci adesso.</span>
+        </a>
+      ))}
 
       <div class="today-songs-head">
         <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN_SONGS}`}</span></h2>

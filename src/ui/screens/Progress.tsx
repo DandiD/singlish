@@ -4,6 +4,7 @@ import { href, onBack } from '../../router'
 import { getSettings } from '../../domain/settings'
 import { estimateAvgSeconds } from '../../domain/queue'
 import { LEVEL_UP, progressStats } from '../../domain/progress'
+import { averageGain } from '../../domain/finalListen'
 import { Icon } from '../components/Icon'
 
 const comma = (n: number, digits = 2) => n.toFixed(digits).replace('.', ',')
@@ -37,11 +38,11 @@ export function Progress() {
     const [settings, songs, chunks, words, cards, reviews, avgSeconds] = await Promise.all([
       getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db),
     ])
-    return { settings, stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, now()) }
+    return { settings, gain: averageGain(songs), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, now()) }
   }, [db])
 
   if (!data) return <main class="screen progress" aria-busy="true" />
-  const { settings, stats: p } = data
+  const { settings, gain, stats: p } = data
   const minutes = settings.timerMinutes.review
 
   return (
@@ -83,8 +84,8 @@ export function Progress() {
         </section>
         <section class="tile">
           <span class="note">Guadagno medio</span>
-          <span class="tile-num">—</span>
-          <span class="tile-sub">dopo il riascolto finale</span>
+          <span class="tile-num">{gain === null ? '—' : gain > 0 ? `+${gain}` : String(gain)}</span>
+          <span class="tile-sub">{gain === null ? 'dopo il riascolto finale' : 'punti a canzone'}</span>
         </section>
         <section class="tile">
           <span class="note">Carico</span>

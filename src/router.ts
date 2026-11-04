@@ -8,6 +8,7 @@ export type Route =
   | { name: 'analyzing'; songId: string }
   | { name: 'study'; songId: string; itemId?: string }
   | { name: 'triage'; songId: string }
+  | { name: 'finalListen'; songId: string }
   | { name: 'session' }
   | { name: 'settings' }
   | { name: 'lexicon' }
@@ -39,6 +40,7 @@ export function parseRoute(hash: string): Route {
     }
     if (parts.length === 3 && c === 'analyzing') return { name: 'analyzing', songId: b }
     if (parts.length === 3 && c === 'triage') return { name: 'triage', songId: b }
+    if (parts.length === 3 && c === 'final') return { name: 'finalListen', songId: b }
   }
   return { name: 'notFound' }
 }
@@ -59,6 +61,8 @@ export function href(route: Route): string {
     }
     case 'triage':
       return `#/songs/${encodeURIComponent(route.songId)}/triage`
+    case 'finalListen':
+      return `#/songs/${encodeURIComponent(route.songId)}/final`
     case 'session':
       return '#/session'
     case 'settings':
@@ -77,7 +81,7 @@ export type NavDirection = 'forward' | 'back' | 'fade' | 'none'
 const DEPTH: Record<Route['name'], number> = {
   today: 0, songs: 0, lexicon: 0, notFound: 0,
   settings: 1, progress: 1, addSong: 1, study: 1, session: 1,
-  analyzing: 2, triage: 2,
+  analyzing: 2, triage: 2, finalListen: 2,
 }
 
 /** Come animare il passaggio fra due route: in profondità avanti/indietro, fra schede in dissolvenza. */
