@@ -12,6 +12,12 @@ import type { Settings } from '../../db/types'
 
 const DAY = 86_400_000
 
+/** Minuti al giorno da mostrare: vicino al tetto si mostra un decimale, così «30′» non sembra «oltre i 30′». */
+export function loadLabel(minutes: number, limit: number): string {
+  const rounded = Math.round(minutes)
+  return Math.abs(minutes - limit) < 1 && rounded === limit && minutes !== limit ? minutes.toFixed(1).replace('.', ',') : String(rounded)
+}
+
 /**
  * «Aggiungi»: se le canzoni in corso hanno ancora voci fuori dal ripasso o il carico supera il tetto,
  * prima di aprire Aggiungi canzone un foglio spiega perché e lascia scegliere (canvas: Unlock).
@@ -65,7 +71,7 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
             </li>
           ))}
           <li class={r.loadOk ? 'ok' : 'todo'}>
-            {`Ripasso dei prossimi 7 giorni: ${Math.round(r.loadMinutesPerDay)}′ al giorno, ${r.loadOk ? 'sotto' : 'oltre'} i ${minutes}′`}
+            {`Ripasso dei prossimi 7 giorni: ${loadLabel(r.loadMinutesPerDay, minutes)}′ al giorno, ${r.loadOk ? 'sotto' : 'oltre'} i ${minutes}′`}
           </li>
           <li class={r.openSongs < MAX_OPEN_SONGS ? 'ok' : 'todo'}>{`Canzoni e testi aperti: ${r.openSongs} di ${MAX_OPEN_SONGS}`}</li>
         </ul>

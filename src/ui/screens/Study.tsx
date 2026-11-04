@@ -222,7 +222,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       {placed.unshown.length > 0 && (
         <section class="other-items">
           <h2 class="section-label" id="other-items">{song.kind === 'text' ? 'ALTRE VOCI DI QUESTO TESTO' : 'ALTRE VOCI DI QUESTA CANZONE'}</h2>
-          <ul aria-label="Altre voci di questa canzone">
+          <ul aria-label={song.kind === 'text' ? 'Altre voci di questo testo' : 'Altre voci di questa canzone'}>
             {placed.unshown.map((i) => (
               <li key={i.id}>
                 <a href={href({ name: 'study', songId, itemId: i.id })} lang="en">

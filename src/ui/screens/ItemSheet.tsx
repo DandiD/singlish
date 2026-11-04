@@ -135,7 +135,8 @@ export function ItemSheet({ song, itemId: routeId }: { song: Song; itemId: strin
               <p lang="en">{item.extraExampleEn}</p>
             </div>
           )}
-          {kind === 'chunk' && item.pronunciationNoteIt && song.kind !== 'text' && (
+          {/* La nota di pronuncia riguarda il canto della canzone di casa (come la card Ascolta). */}
+          {kind === 'chunk' && item.pronunciationNoteIt && song.kind !== 'text' && item.songId === song.id && (
             <div>
               <div class="section-label">PRONUNCIA</div>
               <p>{item.pronunciationNoteIt}</p>
@@ -204,8 +205,10 @@ export function useSheet(songId: string, itemId: string, loaded: boolean, before
     const active = document.activeElement
     const opener = active instanceof HTMLElement && active !== document.body ? active : null
     return () => {
-      const sel = `a[href$="item=${encodeURIComponent(itemId)}"]`
-      const target = opener?.isConnected ? opener : document.querySelector<HTMLElement>(`.lyrics ${sel}, .other-items ${sel}`)
+      // Nel testo una voce su più righe ha l'indirizzo «id@riga» (%40): vale anche quello.
+      const sel = `a[href$="item=${encodeURIComponent(itemId)}"], a[href*="item=${encodeURIComponent(itemId)}%40"]`
+      const scoped = sel.split(', ').flatMap((x) => [`.lyrics ${x}`, `.other-items ${x}`]).join(', ')
+      const target = opener?.isConnected ? opener : document.querySelector<HTMLElement>(scoped)
       target?.focus()
     }
   }, [])

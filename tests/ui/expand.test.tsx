@@ -151,3 +151,19 @@ test('nella scheda di un testo libero il verso si chiama «nel testo»', async (
   expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
   expect(screen.queryByText('pronuncia')).toBeNull()
 })
+
+test('la nota di pronuncia di un chunk si vede solo nella sua canzone di casa', async () => {
+  await db.songs.add({ ...song, id: 's2', title: 'Other', lines: ['running on empty tonight'] })
+  await db.chunks.add({ id: 'c7', songId: 's1', key: 'running on empty', baseForm: 'running on empty', surfaceForm: 'running on empty', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'a secco',
+    explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: 'nel canto suona runnin', userEdited: false, suspended: false })
+  window.location.hash = '#/songs/s2?item=c7'
+  mount(<Study songId="s2" itemId="c7" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByText('PRONUNCIA')).toBeNull()
+  cleanup()
+  window.location.hash = '#/songs/s1?item=c7'
+  mount(<Study songId="s1" itemId="c7" />)
+  await screen.findByRole('dialog')
+  expect(screen.getByText('PRONUNCIA')).toBeTruthy()
+})

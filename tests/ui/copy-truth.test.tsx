@@ -92,3 +92,18 @@ test('testi su testi liberi, sessione vuota, Escludi, riascolto e badge offline 
   const badge = readFileSync('src/ui/components/OfflineBadge.tsx', 'utf8')
   expect(badge).not.toContain('il resto funziona')
 })
+
+test('sblocco: il carico mostrato non contraddice «sotto/oltre» al limite', async () => {
+  const { loadLabel } = await import('../../src/ui/components/UnlockSheet')
+  expect(loadLabel(30.3, 30)).toBe('30,3')
+  expect(loadLabel(29.6, 30)).toBe('29,6')
+  expect(loadLabel(12.4, 30)).toBe('12')
+  expect(loadLabel(30, 30)).toBe('30')
+})
+
+test('etichetta «Altre voci» e ritorno del fuoco con indirizzo id@riga', () => {
+  const study = readFileSync('src/ui/screens/Study.tsx', 'utf8')
+  expect(study).not.toContain('aria-label="Altre voci di questa canzone"')
+  const sheet = readFileSync('src/ui/screens/ItemSheet.tsx', 'utf8')
+  expect(sheet).toContain('item=${encodeURIComponent(itemId)}%40')
+})
