@@ -71,7 +71,7 @@ test('percorso completo: chiave, canzone, analisi, triage, studio, sessione, per
   await page.getByRole('button', { name: 'Mostra significato' }).click()
   await page.getByRole('button', { name: 'Bene' }).click()
   // Come farebbe una persona: si lascia la sessione dopo che è passata alla card successiva (o è finita).
-  await expect(page.getByText(/^2 di \d+$|^Fatto per oggi$/)).toBeVisible()
+  await expect(page.getByText(/^2 di \d+$|^Fatto per oggi$|^Sessione finita$/)).toBeVisible()
 
   await page.goto('/#/')
   await page.reload()

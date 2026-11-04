@@ -123,7 +123,7 @@ export function Analyzing({ songId }: { songId: string }) {
         {state.kind === 'queued' && state.reason === 'offline' && (
           <>
             <h2>Sei offline</h2>
-            <p>{`${isText ? 'Il testo è salvato' : 'La canzone è salvata'}. La analizzo quando riapri l'app con la connessione.`}</p>
+            <p>{isText ? 'Il testo è salvato. Lo analizzo quando riapri l\'app con la connessione.' : 'La canzone è salvata. La analizzo quando riapri l\'app con la connessione.'}</p>
             <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>
           </>
         )}
@@ -132,8 +132,7 @@ export function Analyzing({ songId }: { songId: string }) {
           <>
             <h2>Gemini è occupato</h2>
             <p>
-              Hai raggiunto il limite di richieste gratuite, o il servizio non risponde. {isText ? 'Il testo è salvato' : 'La canzone è salvata'} e resta in coda:
-              la analizzo alla prossima apertura dell'app.
+              Hai raggiunto il limite di richieste gratuite, o il servizio non risponde. {isText ? 'Il testo è salvato e resta in coda: lo analizzo alla prossima apertura dell\'app.' : 'La canzone è salvata e resta in coda: la analizzo alla prossima apertura dell\'app.'}
             </p>
             <button type="button" class="btn primary" onClick={() => setAttempt((n) => n + 1)}>Riprova ora</button>
             <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Vai alle canzoni</a>

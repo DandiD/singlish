@@ -106,3 +106,11 @@ test('Oggi: una canzone in studio con solo parole da smistare dice di smistarle,
   expect(await screen.findByText(/1 parola da smistare nello Studio/)).toBeTruthy()
   expect(screen.queryByText(/0 di 0/)).toBeNull()
 })
+
+test('Oggi: una canzone «Da studiare» con solo parole da smistare non dice «0 chunk e parole»', async () => {
+  await db.songs.update('s1', { status: 'analyzed' })
+  await db.words.add({ id: 'w2', lemma: 'y', surfaceForm: 'y', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'y', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  mount(<Today />)
+  expect(await screen.findByText(/Da studiare · 1 parola da smistare/)).toBeTruthy()
+})

@@ -119,7 +119,7 @@ export function Today() {
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'study', songId: song.id })}>
                 <h3>{song.title}</h3>
-                <p class="note">{song.status === 'analyzed' ? `Da studiare · ${total} chunk e parole` : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio` : `${done} di ${total} chunk e parole nel ripasso`}</p>
+                <p class="note">{song.status === 'analyzed' ? (total === 0 && toTriage > 0 ? `Da studiare · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare` : `Da studiare · ${total} chunk e parole`) : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio` : `${done} di ${total} chunk e parole nel ripasso`}</p>
                 <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
               </a>
             </li>

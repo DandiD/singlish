@@ -377,3 +377,14 @@ test('coda vuota e solo frasi da correggere: non dice «Fatto per oggi · 0 ripa
   expect(screen.queryByText(/0 ripassate · 0 nuove/)).toBeNull()
   expect(screen.getByRole('heading', { name: 'Niente da ripassare' })).toBeTruthy()
 })
+
+test('una card nuova votata Bene torna più tardi oggi: la fine non dice «Fatto per oggi»', async () => {
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  await db.cards.add({ id: 'n1', itemType: 'chunk', itemId: 'c1', kind: 'R', unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
+  renderSession()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mostra significato' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Bene' }))
+  expect(await screen.findByRole('heading', { name: 'Sessione finita' })).toBeTruthy()
+  expect(screen.getByText(/1 card torna più tardi oggi/)).toBeTruthy()
+  expect(screen.queryByRole('heading', { name: 'Fatto per oggi' })).toBeNull()
+})

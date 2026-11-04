@@ -180,3 +180,10 @@ test('un testo libero offline: «Il testo è salvato», e i passi non parlano di
   expect(screen.queryByText(/La canzone è salvata/)).toBeNull()
   setOnline(true)
 })
+
+test('un testo offline: «Lo analizzo», non «La analizzo»', async () => {
+  setOnline(false)
+  const t = await createSong(db, { ...input, kind: 'text', source: 'serie' }, now)
+  mount(t.id, vi.fn(async () => { throw new TypeError('offline') }) as unknown as typeof fetch)
+  expect(await screen.findByText(/Il testo è salvato\. Lo analizzo quando riapri/)).toBeTruthy()
+})

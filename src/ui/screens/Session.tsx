@@ -53,6 +53,8 @@ export function Session() {
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [written, setWritten] = useState(0)
+  // Card che tornano più tardi oggi (passi di apprendimento di FSRS): con queste la giornata non è finita.
+  const [later, setLater] = useState<number | null>(null)
   // Le frasi da correggere sono tutte quelle in attesa, come in Oggi e in «Le tue frasi» (anche di una sessione ripresa).
   const toCorrect = useLive(() => pendingProductions(db), [db])?.length ?? 0
   const [sheet, setSheet] = useState(false)
@@ -128,7 +130,10 @@ export function Session() {
     if (!timerReady) return
     ended.current = true
     timerRef.current.stop()
-    db.sessions.update(sessionId, { endedAt: now() }).catch(reportError)
+    db.sessions.update(sessionId, { endedAt: now() })
+      .then(() => buildSessionQueue(db, now()))
+      .then((q) => setLater(q.items.length))
+      .catch(reportError)
   }, [finished, sessionId, timerReady])
 
   // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
@@ -234,12 +239,16 @@ export function Session() {
   }
 
   if (items.length === 0 || finished) {
+    // Coda vuota già all'apertura: non torna nulla oggi. Altrimenti si aspetta il conteggio, per non dire «Fatto per oggi» a vuoto.
+    const left = items.length === 0 ? 0 : later
+    if (left === null) return <main class="screen session" aria-busy="true" />
     return (
       <main class="screen session session-done">
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
-        <h1>Fatto per oggi</h1>
+        <h1>{left > 0 ? 'Sessione finita' : 'Fatto per oggi'}</h1>
         {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
+        {left > 0 && <p class="note">{`${left === 1 ? '1 card torna' : `${left} card tornano`} più tardi oggi: le card nuove e quelle sbagliate si ripassano ancora prima di domani. Le trovi in Oggi.`}</p>}
         {toCorrect > 0 && (
           <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
