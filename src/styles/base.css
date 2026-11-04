@@ -438,3 +438,5 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .error-details { margin-top: 8px; color: var(--text-2); font-size: 13px; }
 .error-details summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
 .error-details pre { white-space: pre-wrap; word-break: break-word; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; user-select: text; }
+.share-app { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.share-app .note { user-select: text; word-break: break-all; }
