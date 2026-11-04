@@ -119,6 +119,7 @@ export async function askGemini(
         if (addContext(found.contexts, contextOf(songId, w.line_index, w.surface_form, found.surfaceForm))) graduate(found)
         found.suspended = false // chiesta dallo studente: torna nel ripasso
         if (found.triage !== 'learn') {
+          if (found.triage === 'known') found.wasKnown = true
           found.triage = 'learn'
           // Riconosci e Completa servono anche se la parola ha già un'altra card (es. Sfumature).
           if ((await db.cards.where('itemId').equals(found.id).filter((c) => c.kind === 'R').count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))

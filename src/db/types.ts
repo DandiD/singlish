@@ -81,6 +81,8 @@ export interface Word {
   suspended: boolean
   origin?: 'expand'
   fromItemId?: string
+  /** Era nota prima di passare in studio: eliminata la sua canzone, torna nel profilo anche se mai ripassata. */
+  wasKnown?: boolean
   /** Risultato di Espandi (una chiamata, poi salvato). */
   expansion?: import('../domain/expand').Expansion
   /** Card Sfumature: scelta fra parole vicine in una situazione. */

@@ -1,0 +1,37 @@
+import { beforeEach, expect, test, vi } from 'vitest'
+import { createDb, type SinglishDB } from '../../src/db/db'
+import { createSong, saveAnalysis, deleteSong } from '../../src/domain/ingest'
+import { askGemini } from '../../src/domain/ask'
+import { saveSettings } from '../../src/domain/settings'
+import type { Analysis } from '../../src/domain/gemini/parse'
+import type { Word } from '../../src/db/types'
+import fixtureJson from '../fixtures/analysis.json'
+
+const now = new Date('2026-11-04T10:00:00')
+const analysis = fixtureJson as Analysis
+const ranks = new Map([['flicker', 6000], ['wander', 3000], ['shadow', 4000]])
+const profile = (lemma: string): Word => ({ id: lemma, lemma, surfaceForm: lemma, pos: 'verb', freqRank: 1, songId: 'gone', lineIndex: 7, contexts: [],
+  cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'x', explanationIt: '', extraExampleEn: '', triage: 'known', userEdited: false, suspended: false })
+let db: SinglishDB
+beforeEach(async () => { db = createDb('t-' + crypto.randomUUID()); await saveSettings(db, { apiKey: 'k', level: 'B2' }) })
+
+test('una parola del profilo che ricompare in una canzone prende canzone e riga di quel verso', async () => {
+  await db.words.add(profile('wander'))
+  const b = await createSong(db, { title: 'B', artist: '', spotifyUrl: null, rawText: Array.from({ length: 10 }, (_, i) => `line ${i}`).join('\n'), comprehensionBefore: null }, now)
+  await saveAnalysis(db, b.id, analysis, ranks, now)
+  const w = (await db.words.get('wander'))!
+  expect(w.songId).toBe(b.id)
+  expect(w.lineIndex).toBe(w.contexts[0].lineIndex)
+})
+
+test('una parola nota passata in studio e mai ripassata, eliminata la canzone, torna nel profilo', async () => {
+  const b = await createSong(db, { title: 'B', artist: '', spotifyUrl: null, rawText: 'we wander home', comprehensionBefore: null }, now)
+  await db.songs.update(b.id, { status: 'studying' })
+  await db.words.add(profile('wander'))
+  const answer = { chunks: [], words: [{ lemma: 'wander', surface_form: 'wander', line_index: 0, pos: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '' }], line_translations: [] }
+  const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] })))
+  await askGemini(db, b.id, [{ lineIndex: 0, text: 'wander' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })
+  expect((await db.words.get('wander'))!).toMatchObject({ triage: 'learn', songId: b.id })
+  await deleteSong(db, b.id)
+  expect((await db.words.get('wander'))?.triage).toBe('known')
+})

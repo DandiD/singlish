@@ -117,9 +117,10 @@ export async function addExpansion(db: SinglishDB, wordId: string, pick: Expansi
     for (const w of plan.toLearn) {
       // Una parola del profilo senza versi diventa voce della parola espansa: ne segue la canzone e la coda.
       const anchorless = w.contexts.length === 0
+      const wasKnown = w.triage === 'known' ? { wasKnown: true } : {}
       await db.words.update(w.id, anchorless
-        ? { triage: 'learn', origin: 'expand', fromItemId: word.id, songId: word.songId, lineIndex: word.lineIndex }
-        : { triage: 'learn' })
+        ? { triage: 'learn', origin: 'expand', fromItemId: word.id, songId: word.songId, lineIndex: word.lineIndex, ...wasKnown }
+        : { triage: 'learn', ...wasKnown })
       if ((await db.cards.where('itemId').equals(w.id).filter((c) => c.kind === 'R').count()) === 0) { await db.cards.bulkAdd(newCardPair('word', w.id, now)); cards += 2 }
     }
     for (const c of plan.newChunks) {

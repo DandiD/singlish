@@ -48,7 +48,9 @@ export const contextOf = (songId: string, lineIndex: number, surface: string, it
 
 /** Una voce di Espandi che compare in un verso diventa una voce di canzone come le altre. */
 export function graduate(item: Chunk | Word): void {
-  if (item.origin !== 'expand') return
+  // Anche una voce senza casa (parola del profilo, canzone eliminata) si sposta sul verso che ha ricevuto.
+  const homeless = !item.contexts.some((x) => x.songId === item.songId)
+  if (item.origin !== 'expand' && !homeless) return
   delete item.origin
   delete item.fromItemId
   // Canzone, riga e forma passano al verso: Lessico, scheda, card Ascolta e coda la vedono lì.
@@ -320,7 +322,7 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
           // Il profilo delle parole note (spec §7: «note o già studiate») non si perde: la parola esce dal
           // ripasso ma resta nota, così non torna in Smista con la prossima canzone.
           const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
-          if ('triage' in item && (item.triage === 'known' || (item.triage === 'learn' && studied))) {
+          if ('triage' in item && (item.triage === 'known' || item.wasKnown || (item.triage === 'learn' && studied))) {
             await db.words.update(item.id, { triage: 'known', contexts: [] })
           } else {
             await table.delete(item.id)
@@ -348,7 +350,7 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
         const cards = await db.cards.where('itemId').equals(item.id).toArray()
         await db.cards.where('itemId').equals(item.id).delete()
         const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
-        if ('triage' in item && (item.triage === 'known' || studied)) {
+        if ('triage' in item && (item.triage === 'known' || item.wasKnown || studied)) {
           await db.words.update(item.id, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
         } else {
           await table.delete(item.id)
