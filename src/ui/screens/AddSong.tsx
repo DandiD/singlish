@@ -238,6 +238,9 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
                 step={1}
                 value={known ?? 50}
                 onInput={(e) => setKnown(Number((e.currentTarget as HTMLInputElement).value))}
+                // Toccarlo senza spostarlo (o un tasto) vale come risposta, come nel Riascolto finale.
+                onPointerUp={(e) => setKnown(Number((e.currentTarget as HTMLInputElement).value))}
+                onKeyUp={(e) => setKnown(Number((e.currentTarget as HTMLInputElement).value))}
               />
             </label>
             <output class="mono range-value">{known === null ? '—' : `${known}%`}</output>

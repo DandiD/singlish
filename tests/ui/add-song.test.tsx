@@ -510,3 +510,10 @@ test('Canzoni: «Sì, elimina» toccato due volte elimina una volta sola', async
   expect(spy).toHaveBeenCalledTimes(1)
   spy.mockRestore()
 })
+
+test('Aggiungi canzone: toccare il cursore della comprensione senza spostarlo vale come risposta', async () => {
+  mount(<AddSong />)
+  const slider = await screen.findByRole('slider')
+  fireEvent.pointerUp(slider)
+  expect(screen.getByText('50%')).toBeTruthy()
+})

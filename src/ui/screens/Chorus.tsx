@@ -12,6 +12,8 @@ export function Chorus({ songId }: { songId: string }) {
   const song = useLive(async () => (await db.songs.get(songId)) ?? null, [db, songId])
   const [hidden, setHidden] = useState<Set<number>>(new Set())
   const [attempt, setAttempt] = useState(1)
+  // Un doppio tocco salva e torna indietro una volta sola (hook prima dei ritorni anticipati).
+  const acting = useRef(false)
 
   if (song === undefined) return <main class="screen chorus" aria-busy="true" />
   if (song === null) {
@@ -24,8 +26,6 @@ export function Chorus({ songId }: { songId: string }) {
   }
   const lines = chorusLines(song.lines)
   const toggle = (i: number) => setHidden((cur) => { const n = new Set(cur); if (n.has(i)) n.delete(i); else n.add(i); return n })
-  // Un doppio tocco salva e torna indietro una volta sola.
-  const acting = useRef(false)
   const done = async () => {
     if (acting.current) return
     acting.current = true

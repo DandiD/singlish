@@ -364,3 +364,37 @@ test('il modello si salva lasciando il campo: cancellare e riscrivere non salva 
   fireEvent.focusOut(field)
   await waitFor(async () => expect((await getSettings(db)).model).toBe('xyz'))
 })
+
+test('modello scritto e «Prova» toccata subito: si prova e si salva il modello nuovo', async () => {
+  await saveSettings(db, { apiKey: 'STORED', model: 'old-model' })
+  const f = vi.fn(async () => okBody()) as unknown as typeof fetch
+  mount(f)
+  const field = await screen.findByLabelText('Modello')
+  fireEvent.input(field, { target: { value: 'new-model' } })
+  fireEvent.focusOut(field)
+  fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+  await screen.findByText(/Chiave valida, salvata/)
+  expect(String((f as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0])).toContain('new-model')
+  expect((await getSettings(db)).model).toBe('new-model')
+})
+
+test('un numero scritto non si perde se la pagina si ridisegna prima di lasciare il campo', async () => {
+  await saveSettings(db, { newPerDay: 16 })
+  mount()
+  const field = (await screen.findByLabelText('Nuove al giorno')) as HTMLInputElement
+  fireEvent.input(field, { target: { value: '25' } })
+  await saveSettings(db, { theme: 'dark' }) // un altro salvataggio ridisegna la pagina
+  await new Promise((r) => setTimeout(r, 30))
+  expect(field.value).toBe('25')
+  fireEvent.focusOut(field)
+  await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(25))
+})
+
+test('uscendo dalle Impostazioni con un campo ancora aperto, quello scritto si salva', async () => {
+  await saveSettings(db, { newPerDay: 16, model: 'old-model' })
+  const { unmount } = mount()
+  fireEvent.input(await screen.findByLabelText('Nuove al giorno'), { target: { value: '22' } })
+  fireEvent.input(screen.getByLabelText('Modello'), { target: { value: 'other-model' } })
+  unmount()
+  await waitFor(async () => expect(await getSettings(db)).toMatchObject({ newPerDay: 22, model: 'other-model' }))
+})

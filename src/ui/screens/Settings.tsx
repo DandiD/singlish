@@ -21,6 +21,26 @@ const THEMES: { value: SettingsRow['theme']; label: string }[] = [
   { value: 'dark', label: 'Scuro' },
 ]
 
+type NumKey = 'newPerDay' | 'study' | 'review'
+const LIMITS: Record<NumKey, [number, number]> = { newPerDay: [1, 40], study: [1, 180], review: [1, 180] }
+const numOf = (s: SettingsRow, k: NumKey) => (k === 'newPerDay' ? s.newPerDay : s.timerMinutes[k])
+/** Le bozze valide e diverse dal salvato, come modifica da salvare (vuoto o non numero: niente; fuori limite: al limite). */
+function draftPatch(s: SettingsRow, d: Partial<Record<NumKey, string>>): Partial<Omit<SettingsRow, 'id'>> {
+  const patch: Partial<Omit<SettingsRow, 'id'>> = {}
+  const timer = { ...s.timerMinutes }
+  for (const k of Object.keys(d) as NumKey[]) {
+    const raw = d[k] ?? ''
+    const n = Number(raw)
+    if (raw.trim() === '' || !Number.isFinite(n)) continue
+    const [min, max] = LIMITS[k]
+    const v = Math.min(max, Math.max(min, Math.round(n)))
+    if (v === numOf(s, k)) continue
+    if (k === 'newPerDay') patch.newPerDay = v
+    else { timer[k] = v; patch.timerMinutes = timer }
+  }
+  return patch
+}
+
 /** Esito della prova della chiave: `tone` decide il colore, `text` è la frase per l'utente. */
 type KeyStatus = { tone: 'idle' | 'running' | 'ok' | 'error'; text: string }
 type Msg = { tone: 'ok' | 'error'; text: string } | null
@@ -41,6 +61,32 @@ export function Settings() {
   const fileRef = useRef<HTMLInputElement>(null)
   const install = useInstall()
 
+  // Bozze dei campi numerici: quello che si scrive resta nel campo anche se la pagina si ridisegna, e si salva
+  // lasciando il campo (o la pagina). Il modello ha la sua bozza in `typedModel`.
+  const [draft, setDraft] = useState<Partial<Record<NumKey, string>>>({})
+  const latest = useRef({ draft, typedModel, settings })
+  latest.current = { draft, typedModel, settings }
+  // Una bozza sparisce quando il valore salvato la raggiunge: il campo torna a mostrare il salvato.
+  useEffect(() => {
+    if (!settings) return
+    setDraft((d) => {
+      const keys = (Object.keys(d) as NumKey[]).filter((k) => Number(d[k]) === numOf(settings, k))
+      if (keys.length === 0) return d
+      const n = { ...d }
+      for (const k of keys) delete n[k]
+      return n
+    })
+    if (typedModel !== null && typedModel.trim() === settings.model) setTypedModel(null)
+  }, [settings])
+  // Uscendo dalla pagina con un campo ancora aperto (Indietro, la barra in basso): quello scritto e valido si salva.
+  useEffect(() => () => {
+    const { draft: d, typedModel: m, settings: s } = latest.current
+    if (!s) return
+    const patch = draftPatch(s, d)
+    const v = m?.trim()
+    if (v && v !== s.model) patch.model = v
+    if (Object.keys(patch).length > 0) saveSettings(db, patch).catch(reportError)
+  }, [])
   // Il valore trascinato resta finché quello salvato non lo raggiunge: niente salto indietro al rilascio.
   const savedRetention = settings ? Math.round(settings.desiredRetention * 100) : null
   useEffect(() => {
@@ -67,6 +113,22 @@ export function Settings() {
     input.value = String(v)
     if (v !== current) apply(v)
   }
+
+  /** Lasciando un campo numerico: vuoto o non valido torna al salvato, fuori limite si ferma al limite. */
+  const commitNumber = (k: NumKey) => {
+    const raw = latest.current.draft[k]
+    if (raw === undefined) return
+    const patch = draftPatch(settings, { [k]: raw })
+    if (Object.keys(patch).length === 0) { setDraft((d) => { const n = { ...d }; delete n[k]; return n }); return }
+    setDraft((d) => ({ ...d, [k]: String(numOf({ ...settings, ...patch } as SettingsRow, k)) }))
+    store(patch)
+  }
+  const numField = (k: NumKey) => ({
+    value: latest.current.draft[k] ?? String(numOf(settings, k)),
+    onInput: (e: Event) => { const v = (e.currentTarget as HTMLInputElement).value; setDraft((d) => ({ ...d, [k]: v })) },
+    // onBlur, non onChange: con preact/compat (caricato da dexie-react-hooks) onChange scatta a ogni tasto.
+    onBlur: () => commitNumber(k),
+  })
 
   /** Ogni modifica si salva subito; se il salvataggio non riesce, l'avviso lo dice. */
   const store = (patch: Parameters<typeof saveSettings>[1]) => { saveSettings(db, patch).catch(reportError) }
@@ -237,13 +299,12 @@ export function Settings() {
               ref={noAutocorrect}
               onInput={(e) => setTypedModel((e.currentTarget as HTMLInputElement).value)}
               // onBlur, non onChange: con preact/compat (caricato da dexie-react-hooks) onChange scatta a ogni tasto.
-              onBlur={(e) => {
-                // Si salva lasciando il campo, come le altre impostazioni; vuoto non vale, torna quello salvato.
-                const input = e.currentTarget as HTMLInputElement
-                const v = input.value.trim()
-                setTypedModel(null)
-                input.value = v || settings.model
-                if (v && v !== settings.model) store({ model: v })
+              onBlur={() => {
+                // Si salva lasciando il campo; vuoto non vale, torna quello salvato. La bozza resta finché il salvato la raggiunge,
+                // così «Prova» toccata subito dopo prova il modello nuovo.
+                const v = (latest.current.typedModel ?? '').trim()
+                if (!v) { setTypedModel(null); return }
+                if (v !== settings.model) store({ model: v })
               }}
             />
           </label>
@@ -286,8 +347,7 @@ export function Settings() {
             inputMode="numeric"
             min={1}
             max={40}
-            value={settings.newPerDay}
-            onBlur={(e) => numeric(e, settings.newPerDay, 1, 40, (n) => store({ newPerDay: n }))}
+            {...numField('newPerDay')}
           />
         </label>
         <label class="field">
@@ -316,10 +376,7 @@ export function Settings() {
               type="number"
               inputMode="numeric"
               min={1}
-              value={settings.timerMinutes.study}
-              onBlur={(e) =>
-                numeric(e, settings.timerMinutes.study, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, study: n } }))
-              }
+              {...numField('study')}
             />
           </label>
           <label class="field">
@@ -328,10 +385,7 @@ export function Settings() {
               type="number"
               inputMode="numeric"
               min={1}
-              value={settings.timerMinutes.review}
-              onBlur={(e) =>
-                numeric(e, settings.timerMinutes.review, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, review: n } }))
-              }
+              {...numField('review')}
             />
           </label>
         </div>
