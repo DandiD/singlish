@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { href } from '../../router'
+import { href, stillHere } from '../../router'
 import { readiness, INTENSIVE, type Readiness } from '../../domain/readiness'
 import { estimateAvgSeconds } from '../../domain/queue'
 import { getSettings, saveSettings } from '../../domain/settings'
@@ -29,11 +29,14 @@ export function useAddGate(): { request(target?: 'addSong' | 'addText'): void; s
   const { db, now } = useDeps()
   const [state, setState] = useState<{ r: Readiness; settings: Settings; target: 'addSong' | 'addText' } | null>(null)
   const request = (target: 'addSong' | 'addText' = 'addSong') => {
+    const here = stillHere()
     void (async () => {
       const [settings, songs, chunks, words, cards, avgSeconds] = await Promise.all([
         getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), estimateAvgSeconds(db),
       ])
       const r = readiness({ settings, songs, chunks, words, cards, avgSeconds }, now())
+      // Toccato altrove mentre si controllava: non si apre Aggiungi sopra la scelta dell'utente.
+      if (!here()) return
       if (r.ready) window.location.hash = href({ name: target })
       else setState({ r, settings, target })
     })().catch(reportError)

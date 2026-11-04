@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { href, goReplace, onBack, onBackTo } from '../../router'
+import { href, goReplace, onBack, onBackTo, stillHere } from '../../router'
 import { analyzeSong } from '../../domain/ingest'
 import { startStudying } from '../../domain/finalListen'
 import { loadRanks } from '../../domain/freq'
@@ -88,13 +88,14 @@ export function Analyzing({ songId }: { songId: string }) {
 
   const studyNow = async () => {
     if (state.kind !== 'analyzed') return
+    const here = stillHere()
     try {
       await startStudying(db, songId, now())
     } catch (e) {
       reportError(e)
       return
     }
-    goReplace({ name: state.pending > 0 ? 'triage' : 'study', songId })
+    if (here()) goReplace({ name: state.pending > 0 ? 'triage' : 'study', songId })
   }
 
   return (

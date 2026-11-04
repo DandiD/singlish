@@ -139,3 +139,8 @@ test('Progressi si ricalcola al cambio di giorno come Oggi', () => {
   const progress = readFileSync('src/ui/screens/Progress.tsx', 'utf8')
   expect(progress).toContain('useDayTick(now)')
 })
+
+test('senza View Transitions, scroll e fuoco vanno solo alla pagina che è ancora quella (due navigazioni ravvicinate)', () => {
+  const router = readFileSync('src/router.ts', 'utf8')
+  expect(router).toContain('void settled(1000).then(() => { if (current.current === next) after() })')
+})

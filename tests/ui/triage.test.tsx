@@ -156,3 +156,14 @@ test('chiusa una scheda e aperta subito un\'altra voce: la nuova scheda si chiud
   fireEvent.keyDown(second, { key: 'Escape' })
   await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'), { timeout: 1500 })
 })
+
+test('Smista: se durante il salvataggio si va altrove, la conferma non riporta allo Studio', async () => {
+  window.location.hash = '#/songs/s1/triage'
+  render(<AppDepsProvider value={deps()}><Triage songId="s1" /></AppDepsProvider>)
+  await screen.findByText('harbour')
+  fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+  window.location.hash = '#/lexicon' // un tocco sulla barra mentre salva
+  await waitFor(async () => expect((await db.words.get('w1'))!.triage).not.toBe('pending'))
+  await new Promise((r) => setTimeout(r, 50))
+  expect(window.location.hash).toBe('#/lexicon')
+})

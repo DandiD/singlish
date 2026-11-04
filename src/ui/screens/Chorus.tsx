@@ -2,7 +2,7 @@ import { useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { goBackTo, href, onBack, onBackTo } from '../../router'
+import { goBackTo, href, onBack, onBackTo, stillHere } from '../../router'
 import { chorusLines } from '../../domain/chorus'
 import { Icon } from '../components/Icon'
 
@@ -25,9 +25,10 @@ export function Chorus({ songId }: { songId: string }) {
   const lines = chorusLines(song.lines)
   const toggle = (i: number) => setHidden((cur) => { const n = new Set(cur); if (n.has(i)) n.delete(i); else n.add(i); return n })
   const done = async () => {
+    const here = stillHere()
     try {
       await db.songs.update(songId, { chorusDoneAt: now() })
-      goBackTo({ name: 'study', songId })
+      if (here()) goBackTo({ name: 'study', songId })
     } catch (e) {
       reportError(e)
     }

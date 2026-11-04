@@ -3,7 +3,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { geminiProblem } from '../errors'
-import { goBack, href, onBack } from '../../router'
+import { goBack, href, onBack, stillHere } from '../../router'
 import { addExpansion, canExpand, expansionPlan, requestExpansion, type Expansion } from '../../domain/expand'
 import { getSettings } from '../../domain/settings'
 import { useOnline } from '../components/OfflineBadge'
@@ -46,9 +46,10 @@ export function Expand({ wordId }: { wordId: string }) {
   const add = async () => {
     if (!e) return
     setBusy(true)
+    const here = stillHere()
     try {
       await addExpansion(db, wordId, pickOf(e), now())
-      goBack({ name: 'lexicon' })
+      if (here()) goBack({ name: 'lexicon' })
     } catch (err) {
       reportError(err)
       setBusy(false)

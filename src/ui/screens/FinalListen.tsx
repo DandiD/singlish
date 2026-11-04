@@ -3,7 +3,7 @@ import { State } from 'ts-fsrs'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { goReplace, href, onBack, onBackTo } from '../../router'
+import { goReplace, href, onBack, onBackTo, stillHere } from '../../router'
 import { saveFinalListen } from '../../domain/finalListen'
 import { itemsInSong } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
@@ -81,9 +81,10 @@ export function FinalListen({ songId }: { songId: string }) {
   const close = async () => {
     if (after === null) return
     setBusy(true)
+    const here = stillHere()
     try {
       await saveFinalListen(db, songId, after, now())
-      goReplace({ name: 'today' })
+      if (here()) goReplace({ name: 'today' })
     } catch (e) {
       reportError(e)
       setBusy(false)

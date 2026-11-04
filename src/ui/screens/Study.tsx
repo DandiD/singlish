@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { href, goBackTo, goReplace, onBack, onBackTo } from '../../router'
+import { href, goBackTo, goReplace, onBack, onBackTo, stillHere } from '../../router'
 import { deleteSong } from '../../domain/ingest'
 import { startStudying } from '../../domain/finalListen'
 import { askGemini, groupSelection, tokenize } from '../../domain/ask'
@@ -250,9 +250,10 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn primary"
                 onClick={async () => {
+                  const here = stillHere()
                   try {
                     await db.songs.update(songId, { status: 'done' })
-                    goBackTo({ name: 'songs' })
+                    if (here()) goBackTo({ name: 'songs' })
                   } catch (e) {
                     reportError(e)
                     setConfirming(false)
@@ -271,9 +272,10 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn outline danger"
                 onClick={async () => {
+                  const here = stillHere()
                   try {
                     await deleteSong(db, songId)
-                    goReplace({ name: 'songs' })
+                    if (here()) goReplace({ name: 'songs' })
                   } catch (e) {
                     reportError(e)
                     setConfirming(false)

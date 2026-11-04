@@ -2,7 +2,7 @@ import { useEffect, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { useFailure } from '../useFailure'
-import { href, goBackTo, onBack } from '../../router'
+import { href, goBackTo, onBack, stillHere } from '../../router'
 import { applyTriage, pendingWords } from '../../domain/triage'
 import type { Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -33,9 +33,10 @@ export function Triage({ songId }: { songId: string }) {
 
   const confirm = async () => {
     setBusy(true)
+    const here = stillHere()
     try {
       await applyTriage(db, choice, now())
-      goBackTo({ name: 'study', songId })
+      if (here()) goBackTo({ name: 'study', songId })
     } catch (e) {
       reportError(e)
       setBusy(false)

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
 import { useFailure } from '../useFailure'
 import { reportError } from '../report'
-import { goReplace, href, onBack } from '../../router'
+import { goReplace, href, onBack, stillHere } from '../../router'
 import { loadFreqList } from '../../domain/freq'
 import { buildVocabTest, scoreVocabTest, suggestedBand, vocabTestAvailable, type VocabItem, type VocabResult } from '../../domain/vocabTest'
 import { getSettings, saveSettings } from '../../domain/settings'
@@ -96,9 +96,10 @@ function VocabResultView({ r, previous }: { r: VocabResult; previous: Settings['
   const pct = (b: VocabResult['bands'][number]) => (b.total ? Math.round((b.known / b.total) * 100) : 0)
   const label = `Percentuale di parole note per fascia: ${r.bands.map((b) => `${pct(b)}% fino a ${num(b.to)}`).join(', ')}`
   const update = async () => {
+    const here = stillHere()
     try {
       await saveSettings(db, { bandStart: from, bandEnd: to, bandFromTest: true })
-      goReplace({ name: 'progress' })
+      if (here()) goReplace({ name: 'progress' })
     } catch (e) {
       reportError(e)
     }

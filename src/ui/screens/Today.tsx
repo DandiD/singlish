@@ -46,7 +46,9 @@ export function Today() {
           return s !== undefined && s !== State.New
         }).length
         const toTriage = [...placed.words].filter((id) => pendingIds.has(id)).length
-        return { song, total: ids.length, done, toTriage }
+        // Voci della canzone tolte dal ripasso con Sospendi: le dice quando non resta altro.
+        const suspended = [...chunks, ...words].filter((x) => x.suspended && x.contexts.some((c) => c.songId === song.id)).length
+        return { song, total: ids.length, done, toTriage, suspended }
       })
     return { queue, settings, progress, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
@@ -110,7 +112,7 @@ export function Today() {
       </div>
       {full && <p class="note">{LIMIT_NOTE}</p>}
       <ul class="song-list">
-        {progress.map(({ song, total, done, toTriage }) =>
+        {progress.map(({ song, total, done, toTriage, suspended }) =>
           song.status === 'draft' || song.status === 'queued' ? (
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'analyzing', songId: song.id })}>
@@ -122,7 +124,7 @@ export function Today() {
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'study', songId: song.id })}>
                 <h3>{song.title}</h3>
-                <p class="note">{song.status === 'analyzed' ? (total === 0 && toTriage > 0 ? `Da studiare · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare` : `Da studiare · ${total} chunk e parole`) : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio` : `${done} di ${total} chunk e parole nel ripasso`}</p>
+                <p class="note">{song.status === 'analyzed' ? (total === 0 && toTriage > 0 ? `Da studiare · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare` : `Da studiare · ${total} chunk e parole`) : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio` : total === 0 ? (suspended > 0 ? 'Nessuna voce nel ripasso: le trovi sospese nel Lessico' : 'Nessuna voce da ripassare in questa canzone') : `${done} di ${total} chunk e parole nel ripasso`}</p>
                 <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
               </a>
             </li>

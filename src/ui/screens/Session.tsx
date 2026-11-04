@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { useFailure } from '../useFailure'
-import { href, goBackTo, onBack, onBackTo, onReplace } from '../../router'
+import { href, goBackTo, onBack, onBackTo, onReplace, stillHere } from '../../router'
 import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { pendingProductions, saveProduction } from '../../domain/production'
@@ -12,6 +12,7 @@ import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
 import { gradeAnswer, gradeDictation } from '../../domain/text'
 import { useTimer } from '../useTimer'
+import { useDayTick } from '../useDayTick'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, findForm, formIn } from '../../domain/songItems'
@@ -111,6 +112,13 @@ export function Session() {
 
   const sessionId = loaded?.sessionId ?? ''
   const timer = useTimer(sessionId, { autoPauseOnHide: true, wakeLock: true }, db)
+  // Fine o Sessione vuota lasciate aperte oltre mezzanotte: al ritorno si ricontano le card del giorno (come Oggi).
+  const day = useDayTick(now)
+  const finishedNow = loaded !== null && idx >= (loaded?.items.length ?? 0)
+  useEffect(() => {
+    if (day === 0 || !finishedNow) return
+    buildSessionQueue(db, now()).then((q) => setLater(q.items.length)).catch(reportError)
+  }, [day])
   const timerRef = useRef(timer)
   timerRef.current = timer
   // Il timer è caricato quando lo stato non è più 'idle': prima non si danno comandi (race di useTimer).
@@ -151,12 +159,13 @@ export function Session() {
 
   const closeSession = async () => {
     timerRef.current.stop()
+    const here = stillHere()
     try {
       await db.sessions.update(sessionId, { endedAt: now() })
     } catch (e) {
       reportError(e)
     }
-    goToday()
+    if (here()) goToday()
   }
 
   const rate = async (rating: Rating, auto: boolean, answer: string | null) => {
@@ -217,9 +226,11 @@ export function Session() {
     const toAnalyze = [...loaded.songById.values()].some((s) => s.status === 'draft' || s.status === 'queued')
     return (
       <main class="screen session session-done">
-        <h1>Niente da ripassare</h1>
+        <h1>{(later ?? 0) > 0 ? 'Ci sono card da ripassare' : 'Niente da ripassare'}</h1>
         <p class="note">
-          {noSongs
+          {(later ?? 0) > 0
+            ? `${later} card in scadenza oggi: le trovi in Oggi.`
+            : noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
             : toCorrect > 0
               ? 'Per ora non ci sono altre card da ripassare: le voci con una frase da correggere tornano nel ripasso dopo la correzione.'
@@ -244,7 +255,7 @@ export function Session() {
 
   if (items.length === 0 || finished) {
     // Coda vuota già all'apertura: non torna nulla oggi. Altrimenti si aspetta il conteggio, per non dire «Fatto per oggi» a vuoto.
-    const left = items.length === 0 ? 0 : later
+    const left = later ?? (items.length === 0 ? 0 : null)
     if (left === null) return <main class="screen session" aria-busy="true" />
     return (
       <main class="screen session session-done">

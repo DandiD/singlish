@@ -114,3 +114,11 @@ test('Oggi: una canzone «Da studiare» con solo parole da smistare non dice «0
   mount(<Today />)
   expect(await screen.findByText(/Da studiare · 1 parola da smistare/)).toBeTruthy()
 })
+
+test('Oggi: una canzone in studio con tutte le voci sospese non dice «0 di 0»', async () => {
+  await db.chunks.add({ id: 'cz', songId: 's1', key: 'x', baseForm: 'x', surfaceForm: 'x', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    type: 'idiom', cefr: 'B1', register: 'usable', topic: '', meaningIt: 'x', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: true })
+  mount(<Today />)
+  expect(await screen.findByText(/Nessuna voce nel ripasso: le trovi sospese nel Lessico/)).toBeTruthy()
+  expect(screen.queryByText(/0 di 0/)).toBeNull()
+})

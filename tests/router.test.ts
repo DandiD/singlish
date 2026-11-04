@@ -37,3 +37,12 @@ describe('navDirection', () => {
     expect(navDirection({ name: 'today' }, { name: 'today' })).toBe('none')
   })
 })
+
+test('stillHere: vero finché l\'indirizzo non cambia', async () => {
+  const { stillHere } = await import('../src/router')
+  window.location.hash = '#/songs/s1/triage'
+  const here = stillHere()
+  expect(here()).toBe(true)
+  window.location.hash = '#/lexicon'
+  expect(here()).toBe(false)
+})

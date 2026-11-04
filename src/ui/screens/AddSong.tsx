@@ -142,7 +142,8 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
       )
       saved.current = true
       writeDraft(key, null)
-      goReplace({ name: 'analyzing', songId: song.id })
+      // Uscito mentre salvava: la canzone resta fra le bozze in Canzoni, la navigazione dell'utente non si annulla.
+      if (!left()) goReplace({ name: 'analyzing', songId: song.id })
     } catch (e) {
       setError(failedMessage(isText ? 'Testo non salvato' : 'Canzone non salvata', e))
       setBusy(false)

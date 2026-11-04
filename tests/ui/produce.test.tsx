@@ -137,3 +137,16 @@ test('«Correggi» dalla fine della sessione sostituisce la sessione: Indietro n
   expect(window.location.hash).toBe('#/feedback')
   replace.mockRestore(); push.mockRestore()
 })
+
+test('Gemini non corregge nessuna frase: niente «Corrette · 0 frasi», resta da correggere e si può riprovare', async () => {
+  await saveSettings(db, { apiKey: 'k' })
+  await db.sessions.add({ id: 'r1', kind: 'review', songId: null, startedAt: now, endedAt: now, timer: { status: 'stopped', durationMs: 1, accumulatedMs: 1, resumedAt: null }, reviewsDone: 0, newDone: 0 })
+  await saveProduction(db, 'r1', { cardId: 'p1', itemId: 'c1', sentence: 'I let it slide.', elapsedMs: 1 })
+  const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ results: [] }) }] } }] })))
+  mount(<Feedback />, f as unknown as typeof fetch)
+  fireEvent.click(await screen.findByRole('button', { name: 'Correggi con Gemini' }))
+  expect(await screen.findByText(/Gemini non ha corretto nessuna frase/)).toBeTruthy()
+  expect(screen.queryByText(/Corrette da Gemini · 0/)).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Conferma i voti' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Correggi con Gemini' })).toBeTruthy()
+})

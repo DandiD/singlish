@@ -3,7 +3,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { geminiProblem } from '../errors'
-import { goReplace, href, onBack } from '../../router'
+import { goReplace, href, onBack, stillHere } from '../../router'
 import { confirmProductions, correctProductions, pendingProductions, type Feedback as FeedbackItem } from '../../domain/production'
 import { getSettings } from '../../domain/settings'
 import { RATING_LABEL } from '../components/RatingBar'
@@ -33,7 +33,10 @@ export function Feedback() {
     setBusy(true)
     setError('')
     try {
-      setItems(await correctProductions(db, { fetch, sleep }))
+      const got = await correctProductions(db, { fetch, sleep })
+      // Nessuna correzione nella risposta: le frasi restano da correggere, si riprova (niente «0 frasi corrette»).
+      if (got.length === 0) setError('Gemini non ha corretto nessuna frase: restano da correggere. Riprova.')
+      else setItems(got)
     } catch (e) {
       const model = await getSettings(db).then((s) => s.model, () => '')
       const p = geminiProblem(e, model)
@@ -45,10 +48,11 @@ export function Feedback() {
   const confirm = async () => {
     if (!items) return
     setBusy(true)
+    const here = stillHere()
     try {
       const { desiredRetention } = await getSettings(db)
       await confirmProductions(db, items, now(), desiredRetention)
-      goReplace({ name: 'today' })
+      if (here()) goReplace({ name: 'today' })
     } catch (e) {
       reportError(e)
       setBusy(false)

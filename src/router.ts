@@ -149,6 +149,15 @@ function memory(): Storage {
   }
 }
 
+/**
+ * L'indirizzo di adesso, da ricontrollare dopo un salvataggio: se nel frattempo si è andati altrove
+ * (Indietro, la barra in basso), l'azione non deve riportare indietro la navigazione.
+ */
+export function stillHere(): () => boolean {
+  const at = window.location.hash
+  return () => window.location.hash === at
+}
+
 /** Torna alla pagina precedente dell'app (come il tasto Indietro); senza, va a `fallback`. */
 export function goBack(fallback: Route): void { getNav().back(href(fallback)) }
 /** Torna a `target` ripercorrendo la cronologia se è la voce precedente, altrimenti la sostituisce. */
@@ -227,7 +236,8 @@ export function useRoute(): Route {
       }
       if (dir === 'none' || !doc.startViewTransition || reduce) {
         show()
-        if (dir !== 'none') void settled(1000).then(after)
+        // Come nel ramo con View Transitions: se intanto si è già andati altrove, scroll e fuoco non toccano la pagina nuova.
+        if (dir !== 'none') void settled(1000).then(() => { if (current.current === next) after() })
         return
       }
       const root = document.documentElement
