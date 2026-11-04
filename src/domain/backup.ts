@@ -75,7 +75,10 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
     fsrs: { ...c.fsrs, due: d(c.fsrs.due), last_review: d(c.fsrs.last_review) },
   }))
   const reviews = t.reviews.map((r) => ({ ...r, reviewedAt: d(r.reviewedAt) }))
-  const sessions = t.sessions.map((s) => ({ ...s, startedAt: d(s.startedAt), endedAt: d(s.endedAt) }))
+  const sessions = t.sessions.map((s) => ({
+    ...s, startedAt: d(s.startedAt), endedAt: d(s.endedAt),
+    ...(s.productions ? { productions: s.productions.map((p) => ({ ...p, at: d(p.at ?? null) ?? undefined })) } : {}),
+  }))
   const settingsRow: Settings = {
     ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...t.settings[0], intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })) } : DEFAULT_SETTINGS),
     id: 'settings',

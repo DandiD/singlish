@@ -78,7 +78,7 @@ export function Today() {
         {queue.items.length > 0 ? (
           <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
         ) : progress.length === 0 ? (
-          <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
+          <a class="btn primary cta" href={href({ name: 'addSong' })} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         ) : (
           <p class="note">Niente da ripassare oggi.</p>
         )}

@@ -178,7 +178,7 @@ export function Session() {
     busy.current = true
     try {
       const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
-      await saveProduction(db, sessionId, { cardId: current.card.id, itemId: current.card.itemId, sentence, elapsedMs: elapsed })
+      await saveProduction(db, sessionId, { cardId: current.card.id, itemId: current.card.itemId, sentence, elapsedMs: elapsed, wasNew: current.isNew, at: now() })
       setWritten((n) => n + 1)
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)

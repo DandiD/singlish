@@ -90,15 +90,26 @@ export async function correctProductions(db: SinglishDB, deps: { fetch: typeof f
 }
 
 /** Registra i voti confermati e toglie le frasi dall'elenco da correggere. */
-export async function confirmProductions(db: SinglishDB, items: Pick<Feedback, 'sessionId' | 'cardId' | 'sentence' | 'elapsedMs' | 'rating'>[], now: Date, retention: number): Promise<void> {
+export async function confirmProductions(
+  db: SinglishDB,
+  items: Pick<Feedback, 'sessionId' | 'cardId' | 'sentence' | 'elapsedMs' | 'rating' | 'wasNew' | 'at'>[],
+  now: Date,
+  retention: number,
+): Promise<void> {
   for (const it of items) {
     await db.transaction('rw', db.cards, db.reviews, db.chunks, db.sessions, db.songs, async () => {
+      // Il ripasso porta la data in cui la frase è stata scritta: conta in quel giorno, una volta sola.
       if (await db.cards.get(it.cardId)) {
-        await recordReview(db, it.cardId, { rating: it.rating, auto: false, answer: it.sentence, elapsedMs: it.elapsedMs }, now, retention)
+        await recordReview(db, it.cardId, { rating: it.rating, auto: false, answer: it.sentence, elapsedMs: it.elapsedMs }, it.at ?? now, retention)
       }
       const s = await db.sessions.get(it.sessionId)
-      // La frase confermata diventa un ripasso della sua sessione: «N di M» e «Fatto per oggi» non la perdono.
-      if (s) await db.sessions.update(it.sessionId, { productions: (s.productions ?? []).filter((p) => p.cardId !== it.cardId), reviewsDone: s.reviewsDone + 1 })
+      // La frase confermata entra fra le nuove o le ripassate della sua sessione: «N di M» e «Fatto per oggi» non la perdono.
+      if (s) {
+        await db.sessions.update(it.sessionId, {
+          productions: (s.productions ?? []).filter((p) => p.cardId !== it.cardId),
+          ...(it.wasNew ? { newDone: s.newDone + 1 } : { reviewsDone: s.reviewsDone + 1 }),
+        })
+      }
     })
   }
 }

@@ -135,6 +135,9 @@ export interface Production {
   itemId: string
   sentence: string
   elapsedMs: number
+  /** La card era nuova: la frase conta fra le nuove del giorno in cui è stata scritta. */
+  wasNew?: boolean
+  at?: Date
 }
 
 export interface Settings {

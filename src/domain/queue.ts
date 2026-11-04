@@ -103,7 +103,12 @@ export async function buildSessionQueue(
     .between(startOfLocalDay(now), now, true, true)
     .filter((r) => r.wasNew)
     .count()
-  let budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday)
+  // Anche le frasi scritte oggi su card Produci nuove, ancora da correggere, hanno usato una nuova di oggi.
+  const dayStart = startOfLocalDay(now).getTime()
+  const writtenNewToday = (await db.sessions.toArray())
+    .flatMap((s) => s.productions ?? [])
+    .filter((p) => p.wasNew && p.at && p.at.getTime() >= dayStart && p.at <= now).length
+  let budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday - writtenNewToday)
   const newBlockedByLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review
   if (newBlockedByLoad) budget = 0
 

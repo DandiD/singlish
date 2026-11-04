@@ -86,6 +86,9 @@ export function Feedback() {
 
       {items && (
         <>
+          {items.length < pending.length && (
+            <p class="note info-box">{`Gemini non ha corretto ${pending.length - items.length === 1 ? '1 frase: resta' : `${pending.length - items.length} frasi: restano`} da correggere per la prossima volta.`}</p>
+          )}
           {items.map((it) => (
             <article key={it.cardId} class="fb-item">
               <div class="fb-top">
