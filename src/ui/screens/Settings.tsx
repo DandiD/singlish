@@ -13,6 +13,7 @@ import { useInstall } from '../../pwa/install'
 import { applyTheme } from '../theme'
 import { Icon } from '../components/Icon'
 import { InstallCard } from '../components/InstallCard'
+import { ShareApp } from '../components/ShareApp'
 import { noAutocorrect } from '../noAutocorrect'
 
 const THEMES: { value: SettingsRow['theme']; label: string }[] = [
@@ -420,6 +421,7 @@ export function Settings() {
       <section aria-labelledby="s-app">
         <h2 class="section-label" id="s-app">APP</h2>
         <InstallCard state={install.state} onInstall={() => void install.install()} />
+        <ShareApp />
         <p class="note">{`Versione ${__APP_VERSION__}`}</p>
         <p class="note">
           Frequenze delle parole: <a href="https://github.com/rspeer/wordfreq" target="_blank" rel="noopener noreferrer">wordfreq</a> di Robyn Speer, licenza CC BY-SA 4.0.
