@@ -122,3 +122,19 @@ test('Oggi: una canzone in studio con tutte le voci sospese non dice «0 di 0»'
   expect(await screen.findByText(/Nessuna voce nel ripasso: le trovi sospese nel Lessico/)).toBeTruthy()
   expect(screen.queryByText(/0 di 0/)).toBeNull()
 })
+
+test('Oggi: una canzone in studio con voci nel ripasso e parole lasciate da smistare le nomina', async () => {
+  await db.chunks.add({ id: 'cy', songId: 's1', key: 'y', baseForm: 'y', surfaceForm: 'y', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    type: 'idiom', cefr: 'B1', register: 'usable', topic: '', meaningIt: 'y', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false })
+  await db.words.add({ id: 'w3', lemma: 'z', surfaceForm: 'z', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'z', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  mount(<Today />)
+  expect(await screen.findByText(/0 di 1 chunk e parole nel ripasso · 1 parola da smistare/)).toBeTruthy()
+})
+
+test('Oggi: una canzone «Da studiare» senza nessuna voce non dice «0 chunk e parole»', async () => {
+  await db.songs.update('s1', { status: 'analyzed' })
+  mount(<Today />)
+  expect(await screen.findByText(/Da studiare · nessuna voce da ripassare/)).toBeTruthy()
+  expect(screen.queryByText(/0 chunk e parole/)).toBeNull()
+})
