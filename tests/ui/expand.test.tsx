@@ -103,3 +103,11 @@ test('scheda aperta dall\'indirizzo su una canzone dove la voce non compare: nes
   expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
   expect(screen.queryByText('a line without the word', { selector: '.examples *' })).toBeNull()
 })
+
+test('scheda di una parola del profilo (senza versi) che conserva la canzone di casa: nessun verso', async () => {
+  await db.words.add({ ...word, id: 'w2', lemma: 'running', surfaceForm: 'running', triage: 'known', contexts: [] })
+  window.location.hash = '#/songs/s1?item=w2'
+  mount(<Study songId="s1" itemId="w2" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
+})

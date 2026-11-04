@@ -51,8 +51,8 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const own = item.contexts.find((c) => c.songId === song.id)
   const lineIdx = own?.lineIndex ?? item.lineIndex
   // Una voce di Espandi non viene dal testo: niente verso della canzone, resta l'esempio.
-  // Nemmeno se la voce non compare in questa canzone (scheda aperta dall'indirizzo): niente riga presa da un'altra.
-  const line = item.origin === 'expand' || (!own && item.songId !== song.id) ? undefined : song.lines[lineIdx]
+  // Nemmeno se la voce non ha un verso in questa canzone (scheda aperta dall'indirizzo, parola del profilo): niente riga altrui.
+  const line = item.origin === 'expand' || !own ? undefined : song.lines[lineIdx]
   const surface = formIn(line ?? '', [own?.surfaceForm, item.surfaceForm, kind === 'chunk' ? item.baseForm : item.lemma])
   const translation = line ? song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt : undefined
 
