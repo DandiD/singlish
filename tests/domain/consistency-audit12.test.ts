@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { graduate, repairHomes } from '../../src/domain/ingest'
 import { addExpansion, canExpand } from '../../src/domain/expand'
@@ -43,4 +43,22 @@ test('il riascolto finale non riscrive una canzone già completata', async () =>
   await db.songs.add(song('done', { status: 'done', comprehensionAfter: 80, finalListenAt: now }))
   await saveFinalListen(db, 'done', 30, new Date('2026-11-10T10:00:00'))
   expect(await db.songs.get('done')).toMatchObject({ comprehensionAfter: 80, finalListenAt: now })
+})
+
+test('il riascolto finale vale solo per una canzone in studio: una bozza aperta dall\'indirizzo non si chiude', async () => {
+  await db.songs.add(song('draft', { status: 'draft', comprehensionBefore: null }))
+  await saveFinalListen(db, 'draft', 70, now)
+  expect(await db.songs.get('draft')).toMatchObject({ status: 'draft' })
+  expect((await db.songs.get('draft'))!.comprehensionAfter).toBeUndefined()
+})
+
+test('se la riparazione dopo l\'importazione fallisce, i dati di prima restano', async () => {
+  const { exportBackup, importBackup } = await import('../../src/domain/backup')
+  await db.words.add(word('wander', { songId: 'gone', contexts: [{ songId: 'B', lineIndex: 2 }] }))
+  const file = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  await db.songs.add(song('mine'))
+  const put = vi.spyOn(db.words, 'put').mockRejectedValue(new Error('disk'))
+  await expect(importBackup(db, file)).rejects.toThrow()
+  put.mockRestore()
+  expect(await db.songs.get('mine')).toBeTruthy()
 })

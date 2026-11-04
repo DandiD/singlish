@@ -61,6 +61,21 @@ export function FinalListen({ songId }: { songId: string }) {
       </main>
     )
   }
+  if (song.status !== 'studying' || song.kind === 'text') {
+    return (
+      <main class="screen final-listen">
+        <header class="settings-head">
+          <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
+          <div class="grow">
+            <h1>Riascolto finale</h1>
+            <p class="note">{song.title}</p>
+          </div>
+        </header>
+        <p class="intro">Il riascolto finale è per le canzoni in studio: si propone in Oggi dopo 7 giorni di studio.</p>
+        <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
+      </main>
+    )
+  }
   const gain = after !== null && before !== null ? after - before : null
 
   const close = async () => {

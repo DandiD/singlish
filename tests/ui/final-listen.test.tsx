@@ -79,3 +79,10 @@ test('una canzone già completata, aperta dall\'indirizzo: mostra il riascolto f
   expect(screen.getByText(/85%/)).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Chiudi la canzone' })).toBeNull()
 })
+
+test('una canzone non ancora in studio, aperta dall\'indirizzo: niente riascolto finale', async () => {
+  await db.songs.update('s1', { status: 'draft' })
+  mount(<FinalListen songId="s1" />)
+  expect(await screen.findByText(/Il riascolto finale è per le canzoni in studio/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Chiudi la canzone' })).toBeNull()
+})

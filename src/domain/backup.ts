@@ -106,10 +106,10 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
       await db.reviews.bulkAdd(reviews)
       await db.sessions.bulkAdd(sessions)
       await db.settings.add(settingsRow)
+      // Un backup di prima può avere voci fuori dai loro versi: si sistemano subito, nella stessa transazione.
+      await repairHomes(db)
     },
   )
-  // Un backup di prima può avere voci fuori dai loro versi: si sistemano subito.
-  await repairHomes(db)
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
