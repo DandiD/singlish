@@ -3,6 +3,7 @@ import { App } from './app'
 import { db } from './db/db'
 import { registerSW } from 'virtual:pwa-register'
 import { getSettings, saveSettings, seedApiKey } from './domain/settings'
+import { repairHomes } from './domain/ingest'
 import { retryQueuedSongs } from './domain/ingest'
 import { defaultDeps } from './ui/deps'
 import { createSwStore } from './pwa/sw-store'
@@ -20,6 +21,8 @@ applyTheme('auto')
 render(<App swStore={swStore} />, document.getElementById('app')!)
 // La chiave da .env.local solo in sviluppo: Vite copierebbe le variabili VITE_* nel codice costruito.
 seedApiKey(db, import.meta.env.DEV ? import.meta.env.VITE_GEMINI_API_KEY : undefined).catch(() => {})
+// Dati salvati prima della regola «canzone e riga seguono i versi»: si sistemano una volta all'apertura.
+repairHomes(db).catch(() => {})
 getSettings(db)
   .then((s) => applyTheme(s.theme))
   .catch(() => {})

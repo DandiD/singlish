@@ -373,7 +373,10 @@ export async function excludeItem(db: SinglishDB, itemId: string): Promise<{ chi
     ]
     for (const ch of children) {
       await db.cards.where('itemId').equals(ch.id).delete()
-      await ch.table.delete(ch.id)
+      // Una parola che era nota prima di Espandi torna nel profilo: le parole che sai non tornano in Smista.
+      const w = await db.words.get(ch.id)
+      if (w?.wasKnown) await db.words.update(ch.id, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
+      else await ch.table.delete(ch.id)
     }
     await db.cards.where('itemId').equals(itemId).delete()
     await db.chunks.delete(itemId)
@@ -385,4 +388,24 @@ export async function excludeItem(db: SinglishDB, itemId: string): Promise<{ chi
 /** Quante voci sono nate da questa con Espandi. */
 export async function expandChildren(db: SinglishDB, itemId: string): Promise<number> {
   return (await db.chunks.filter((c) => c.fromItemId === itemId).count()) + (await db.words.filter((w) => w.fromItemId === itemId).count())
+}
+
+/**
+ * Riparazione all'apertura (dati salvati prima della regola): una voce la cui canzone non è fra i suoi versi
+ * torna sul primo verso. Restituisce quante voci ha sistemato.
+ */
+export async function repairHomes(db: SinglishDB): Promise<number> {
+  return db.transaction('rw', db.chunks, db.words, async () => {
+    let fixed = 0
+    for (const table of [db.chunks, db.words] as const) {
+      const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
+      for (const item of items) {
+        const first = item.contexts[0]
+        if (!first || item.contexts.some((x) => x.songId === item.songId)) continue
+        await (table as typeof db.chunks).update(item.id, { songId: first.songId, lineIndex: first.lineIndex })
+        fixed++
+      }
+    }
+    return fixed
+  })
 }
