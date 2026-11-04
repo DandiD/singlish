@@ -27,8 +27,8 @@ export function geminiProblem(e: unknown, model: string): Problem {
       }
     case 'blocked':
       return {
-        title: 'Gemini non ha analizzato questo testo',
-        text: 'L\'hanno fermato i filtri di Gemini sui contenuti. Riprova; se succede ancora, prova con un testo diverso.',
+        title: 'Gemini ha fermato la richiesta',
+        text: 'L\'hanno fermata i filtri di Gemini sui contenuti. Riprova: a volte passa al secondo tentativo.',
         fix: 'retry',
       }
     case 'bad_json':

@@ -107,3 +107,18 @@ test('etichetta «Altre voci» e ritorno del fuoco con indirizzo id@riga', () =>
   const sheet = readFileSync('src/ui/screens/ItemSheet.tsx', 'utf8')
   expect(sheet).toContain('item=${encodeURIComponent(itemId)}%40')
 })
+
+test('carico: Progressi e sblocco lo scrivono allo stesso modo; al tetto si dice «entro»', () => {
+  const progress = readFileSync('src/ui/screens/Progress.tsx', 'utf8')
+  expect(progress).toContain('loadLabel(p.loadMinutesPerDay, minutes)')
+  const unlock = readFileSync('src/ui/components/UnlockSheet.tsx', 'utf8')
+  expect(unlock).toContain("r.loadOk ? 'entro' : 'oltre'")
+})
+
+test('l\'errore «bloccato» vale per ogni richiesta a Gemini', async () => {
+  const { geminiProblem } = await import('../../src/ui/errors')
+  const { GeminiError } = await import('../../src/domain/gemini/client')
+  const p = geminiProblem(new GeminiError('blocked', 'x'), 'm')
+  expect(p.title).toBe('Gemini ha fermato la richiesta')
+  expect(p.text).not.toMatch(/testo diverso/)
+})

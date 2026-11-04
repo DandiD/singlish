@@ -71,7 +71,7 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
             </li>
           ))}
           <li class={r.loadOk ? 'ok' : 'todo'}>
-            {`Ripasso dei prossimi 7 giorni: ${loadLabel(r.loadMinutesPerDay, minutes)}′ al giorno, ${r.loadOk ? 'sotto' : 'oltre'} i ${minutes}′`}
+            {`Ripasso dei prossimi 7 giorni: ${loadLabel(r.loadMinutesPerDay, minutes)}′ al giorno, ${r.loadOk ? 'entro' : 'oltre'} i ${minutes}′`}
           </li>
           <li class={r.openSongs < MAX_OPEN_SONGS ? 'ok' : 'todo'}>{`Canzoni e testi aperti: ${r.openSongs} di ${MAX_OPEN_SONGS}`}</li>
         </ul>

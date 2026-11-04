@@ -2,6 +2,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
 import { getSettings } from '../../domain/settings'
+import { loadLabel } from '../components/UnlockSheet'
 import { estimateAvgSeconds } from '../../domain/queue'
 import { LEVEL_UP, progressStats } from '../../domain/progress'
 import { averageGain } from '../../domain/finalListen'
@@ -93,7 +94,7 @@ export function Progress() {
         </section>
         <section class="tile">
           <span class="note">Carico</span>
-          <span class="tile-num">{`${Math.round(p.loadMinutesPerDay)}′`}</span>
+          <span class="tile-num">{`${loadLabel(p.loadMinutesPerDay, minutes)}′`}</span>
           <span class="tile-sub">{`al giorno su ${minutes}, prossimi 7`}</span>
         </section>
       </div>

@@ -42,7 +42,8 @@ export function Today() {
           const s = rState.get(id)
           return s !== undefined && s !== State.New
         }).length
-        return { song, total: ids.length, done }
+        const toTriage = [...placed.words].filter((id) => pendingIds.has(id)).length
+        return { song, total: ids.length, done, toTriage }
       })
     return { queue, settings, progress, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
   }, [db])
@@ -106,7 +107,7 @@ export function Today() {
       </div>
       {full && <p class="note">{LIMIT_NOTE}</p>}
       <ul class="song-list">
-        {progress.map(({ song, total, done }) =>
+        {progress.map(({ song, total, done, toTriage }) =>
           song.status === 'draft' || song.status === 'queued' ? (
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'analyzing', songId: song.id })}>
@@ -118,7 +119,7 @@ export function Today() {
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'study', songId: song.id })}>
                 <h3>{song.title}</h3>
-                <p class="note">{song.status === 'analyzed' ? `Da studiare · ${total} chunk e parole` : `${done} di ${total} chunk e parole nel ripasso`}</p>
+                <p class="note">{song.status === 'analyzed' ? `Da studiare · ${total} chunk e parole` : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio` : `${done} di ${total} chunk e parole nel ripasso`}</p>
                 <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${total ? done / total : 0})` }} /></div>
               </a>
             </li>

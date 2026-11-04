@@ -98,3 +98,11 @@ test('Oggi intitola la lista come il limite: canzoni e testi aperti', async () =
   mount(<Today />)
   expect(await screen.findByRole('heading', { name: /^Canzoni e testi aperti/ })).toBeTruthy()
 })
+
+test('Oggi: una canzone in studio con solo parole da smistare dice di smistarle, non «0 di 0»', async () => {
+  await db.words.add({ id: 'w1', lemma: 'x', surfaceForm: 'x', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'x', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  mount(<Today />)
+  expect(await screen.findByText(/1 parola da smistare nello Studio/)).toBeTruthy()
+  expect(screen.queryByText(/0 di 0/)).toBeNull()
+})

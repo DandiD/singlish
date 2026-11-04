@@ -19,7 +19,7 @@ describe('messaggi per gli errori di Gemini', () => {
     [new GeminiError('no_key'), /Manca la chiave/, 'settings'],
     [new GeminiError('bad_key', 'http 400', 400), /chiave .*non funziona/i, 'settings'],
     [new GeminiError('bad_model', 'http 404', 404), /modello «gemini-x» non esiste/, 'settings'],
-    [new GeminiError('blocked', 'RECITATION'), /non ha analizzato/, 'retry'],
+    [new GeminiError('blocked', 'RECITATION'), /ha fermato la richiesta/, 'retry'],
     [new GeminiError('bad_json'), /incompleta/, 'retry'],
     [new GeminiError('rate_limited', 'rate limited', 429), /occupato/, 'retry'],
     [new GeminiError('network'), /non risponde/, 'retry'],

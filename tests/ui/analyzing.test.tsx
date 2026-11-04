@@ -127,7 +127,7 @@ describe('Analyzing', () => {
   test('testo bloccato dai filtri: lo spiega e permette di riprovare', async () => {
     const song = await createSong(db, input, now)
     mount(song.id, makeFetch(() => new Response(JSON.stringify({ candidates: [{ finishReason: 'RECITATION' }] }))))
-    await screen.findByRole('heading', { name: 'Gemini non ha analizzato questo testo' })
+    await screen.findByRole('heading', { name: 'Gemini ha fermato la richiesta' })
     expect(screen.getByRole('button', { name: 'Riprova' })).toBeTruthy()
   })
 
