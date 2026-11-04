@@ -8,96 +8,45 @@ Impara l'inglese dalle canzoni che ascolti. Incolli il testo di una canzone (o d
 
 ## Indice
 
-1. [Cosa ti serve](#1-cosa-ti-serve)
-2. [Scaricare il progetto](#2-scaricare-il-progetto)
-3. [Portare l'app sul telefono](#3-portare-lapp-sul-telefono)
-4. [Creare la chiave Gemini](#4-creare-la-chiave-gemini)
-5. [Prima configurazione](#5-prima-configurazione)
-6. [Aggiungere una canzone](#6-aggiungere-una-canzone)
-7. [Smistare le parole e studiare la canzone](#7-smistare-le-parole-e-studiare-la-canzone)
-8. [Il ripasso di ogni giorno](#8-il-ripasso-di-ogni-giorno)
-9. [Quando passare alla canzone successiva](#9-quando-passare-alla-canzone-successiva)
-10. [Lessico, Progressi e test di vocabolario](#10-lessico-progressi-e-test-di-vocabolario)
-11. [Backup dei dati](#11-backup-dei-dati)
-12. [Aggiornare l'app](#12-aggiornare-lapp)
-13. [Problemi frequenti](#13-problemi-frequenti)
+1. [Aprire l'app sul telefono](#1-aprire-lapp-sul-telefono)
+2. [Installarla sul telefono](#2-installarla-sul-telefono)
+3. [Creare la chiave Gemini](#3-creare-la-chiave-gemini)
+4. [Prima configurazione](#4-prima-configurazione)
+5. [Aggiungere una canzone](#5-aggiungere-una-canzone)
+6. [Smistare le parole e studiare la canzone](#6-smistare-le-parole-e-studiare-la-canzone)
+7. [Il ripasso di ogni giorno](#7-il-ripasso-di-ogni-giorno)
+8. [Quando passare alla canzone successiva](#8-quando-passare-alla-canzone-successiva)
+9. [Lessico, Progressi e test di vocabolario](#9-lessico-progressi-e-test-di-vocabolario)
+10. [Backup dei dati](#10-backup-dei-dati)
+11. [Aggiornamenti](#11-aggiornamenti)
+12. [Problemi frequenti](#12-problemi-frequenti)
+13. [Pubblicarne una tua copia](#13-pubblicarne-una-tua-copia)
 14. [Per chi sviluppa](#14-per-chi-sviluppa)
 15. [Licenze e testi delle canzoni](#15-licenze-e-testi-delle-canzoni)
 
 ---
 
-## 1. Cosa ti serve
+## 1. Aprire l'app sul telefono
 
-- Un computer (Mac, Windows o Linux) con:
-  - **Git**: [git-scm.com](https://git-scm.com/downloads)
-  - **Node.js 22 o più recente**: [nodejs.org](https://nodejs.org) (scegli la versione «LTS»)
-- Uno smartphone con **Chrome** (Android) o **Safari** (iPhone).
-- Un account Google, per la chiave gratuita di Gemini.
+L'app è già pubblicata. Non serve un computer.
 
-Per controllare di avere Node.js, apri il Terminale (su Windows: «Prompt dei comandi») e scrivi:
+1. Sul telefono apri **Chrome** (Android) o **Safari** (iPhone).
+2. Vai a **[https://dandid.github.io/singlish/](https://dandid.github.io/singlish/)**.
 
-```bash
-node -v
-```
+Ti serve anche un **account Google**, per la chiave gratuita di Gemini ([punto 3](#3-creare-la-chiave-gemini)).
 
-Deve rispondere con un numero che inizia con `v22` o superiore.
+## 2. Installarla sul telefono
 
-## 2. Scaricare il progetto
+Installata, Singlish si apre dall'icona sulla Home, a schermo intero, e funziona anche senza rete (l'analisi con Gemini aspetta la connessione).
 
-Nel Terminale:
+- **Android (Chrome)**: in **Oggi** compare il riquadro «Installala»: tocca **Installa**. Se non c'è, menu ⋮ del browser → «Installa app» (o «Aggiungi a schermata Home»).
+- **iPhone (Safari)**: tocca il pulsante **Condividi** di Safari → «Aggiungi alla schermata Home».
 
-```bash
-git clone https://github.com/DandiD/singlish.git
-cd singlish
-npm install
-```
+Le istruzioni sono anche nelle **Impostazioni**, sezione **App**. Lì trovi pure **Condividi app**, per mandare il link a qualcuno.
 
-`npm install` scarica le librerie: ci vuole qualche minuto la prima volta.
+**Importante:** i tuoi dati restano nel browser con cui hai aperto l'app. Se la apri da un altro browser o da un altro indirizzo, la trovi vuota. Per spostare i dati usa il [backup](#10-backup-dei-dati).
 
-Poi prepara la versione da usare:
-
-```bash
-npm run build
-```
-
-Alla fine trovi l'app pronta nella cartella `dist`.
-
-## 3. Portare l'app sul telefono
-
-Ci sono due strade. La **A** serve per provarla in pochi minuti; la **B** per usarla tutti i giorni.
-
-### A. Dal computer, sulla stessa rete Wi-Fi (prova veloce)
-
-1. Telefono e computer devono essere sulla **stessa rete Wi-Fi**.
-2. Nel Terminale, dentro la cartella `singlish`:
-   ```bash
-   npm run preview -- --host
-   ```
-3. Il Terminale mostra alcuni indirizzi. Prendi quello che inizia con `http://192.168.` (o `http://10.`), per esempio `http://192.168.1.47:4173`.
-4. Apri quell'indirizzo nel browser del telefono.
-
-Limiti di questa strada:
-- il computer deve restare acceso con il Terminale aperto;
-- con un indirizzo `http://` il telefono **non installa** l'app e **non funziona senza rete**;
-- i dati sono legati all'indirizzo: se il computer cambia indirizzo (succede cambiando rete o riavviando il router), il telefono vede un'app vuota. I dati non sono persi, ma per ritrovarli devi riaprire l'indirizzo di prima. Per spostarli usa il [backup](#11-backup-dei-dati).
-
-### B. Pubblicarla su un indirizzo `https://` (uso di tutti i giorni)
-
-Serve un servizio che ospiti siti statici. Il più semplice è **Netlify Drop**, gratuito e senza configurazioni:
-
-1. Esegui `npm run build` (vedi sopra).
-2. Apri [app.netlify.com/drop](https://app.netlify.com/drop) e crea un account gratuito.
-3. Trascina la cartella **`dist`** (non tutta la cartella del progetto) nel riquadro della pagina.
-4. Netlify ti dà un indirizzo tipo `https://nome-a-caso.netlify.app`. Puoi cambiarlo nelle impostazioni del sito.
-5. Apri quell'indirizzo sul telefono e **installa l'app**:
-   - **Android (Chrome)**: menu ⋮ → «Installa app» (o «Aggiungi a schermata Home»).
-   - **iPhone (Safari)**: pulsante Condividi → «Aggiungi alla schermata Home».
-
-Da qui in poi apri Singlish dall'icona sul telefono: funziona anche senza rete (l'analisi con Gemini aspetta la connessione).
-
-L'app va pubblicata nella **radice** del dominio (`https://indirizzo/`), non in una sottocartella: per questo GitHub Pages, che usa `https://utente.github.io/singlish/`, non funziona senza modifiche alla configurazione.
-
-## 4. Creare la chiave Gemini
+## 3. Creare la chiave Gemini
 
 L'app usa Gemini (di Google) per analizzare i testi. Ti serve una chiave personale:
 
@@ -113,7 +62,7 @@ Il modello predefinito è `gemini-flash-lite-latest`; puoi cambiarlo nel campo *
 
 Con il piano gratuito di Gemini, Google può usare i testi che invii per migliorare i suoi servizi. Leggi le condizioni su [ai.google.dev](https://ai.google.dev/gemini-api/terms).
 
-## 5. Prima configurazione
+## 4. Prima configurazione
 
 Nelle **Impostazioni**:
 
@@ -125,9 +74,9 @@ Nelle **Impostazioni**:
 | Timer Studio / Ripasso | Minuti per sessione | 15 / 30 |
 | Tema | Automatico, chiaro o scuro | Automatico |
 
-I campi si salvano da soli quando li lasci. Per una scelta più precisa delle parole, fai il **test di vocabolario** (vedi [punto 10](#10-lessico-progressi-e-test-di-vocabolario)).
+I campi si salvano da soli quando li lasci. Per una scelta più precisa delle parole, fai il **test di vocabolario** (vedi [punto 9](#9-lessico-progressi-e-test-di-vocabolario)).
 
-## 6. Aggiungere una canzone
+## 5. Aggiungere una canzone
 
 1. Vai su **Canzoni** (barra in basso) e tocca **Aggiungi**.
 2. **1 · Link Spotify** (facoltativo): incolla il link del brano (in Spotify: ⋯ → Condividi → Copia link). Il titolo arriva da solo.
@@ -141,7 +90,7 @@ Puoi tenere **al massimo 4 canzoni o testi aperti** insieme. Per aggiungerne un 
 
 **Testi che non sono canzoni** (serie, podcast, articoli): in Canzoni tocca **Aggiungi testo**. Funziona allo stesso modo, senza la parte sulla pronuncia del canto.
 
-## 7. Smistare le parole e studiare la canzone
+## 6. Smistare le parole e studiare la canzone
 
 Dopo l'analisi:
 
@@ -155,7 +104,7 @@ Nello **Studio** di una canzone:
 - **Ritornello a voce**: ripeti il ritornello nascondendo le righe una alla volta;
 - **Segna come completata**: chiude la canzone e libera un posto.
 
-## 8. Il ripasso di ogni giorno
+## 7. Il ripasso di ogni giorno
 
 1. Apri l'app: la schermata **Oggi** dice quante card sono **in scadenza**, quante **nuove** e quanti minuti servono.
 2. Tocca **Inizia sessione**.
@@ -172,7 +121,7 @@ Le frasi scritte nelle card **Produci** si correggono tutte insieme: da **Oggi**
 
 Se il ripasso in scadenza supera i minuti del timer, l'app ferma le card nuove finché non lo smaltisci: Oggi lo dice.
 
-## 9. Quando passare alla canzone successiva
+## 8. Quando passare alla canzone successiva
 
 Quando tocchi **Aggiungi** con canzoni ancora aperte, l'app controlla che:
 - le voci delle canzoni aperte siano già nel ripasso e le parole siano state smistate;
@@ -183,53 +132,64 @@ Se manca qualcosa, un foglio spiega cosa. Puoi aspettare oppure toccare **Sblocc
 
 Dopo **7 giorni** di studio di una canzone, Oggi propone il **Riascolto finale**: la riascolti senza testo, indichi quanto capisci adesso e vedi il guadagno rispetto al primo ascolto.
 
-## 10. Lessico, Progressi e test di vocabolario
+## 9. Lessico, Progressi e test di vocabolario
 
 - **Lessico** (barra in basso): tutte le tue voci, con ricerca in inglese e in italiano, filtri per livello e stato, e le aree tematiche coperte.
 - **Progressi** (icona del grafico in Oggi): comprensione canzone per canzone, lessico attivo, memoria reale, carico dei prossimi giorni, guadagno medio.
 - **Test di vocabolario** (da Progressi): circa 80 parole, per ognuna tocchi **La conosco** o **Non la conosco**. Stima il tuo vocabolario e propone la **fascia di parole utile**; tocca **Aggiorna la fascia utile** per usarla.
 
-## 11. Backup dei dati
+## 10. Backup dei dati
 
 I dati stanno **solo nel browser del telefono**. Se cancelli i dati del browser, disinstalli l'app o cambi telefono, li perdi senza un backup.
 
 - **Esporta**: Impostazioni → **Esporta**. Salva o condividi il file `.json` (per esempio su Drive o via email a te stesso).
 - **Importa**: Impostazioni → **Importa** e scegli il file. **Sostituisce** tutti i dati presenti con quelli del file.
 
-La chiave Gemini non è nel backup: dopo un'importazione su un nuovo telefono va reinserita (punto 4).
+La chiave Gemini non è nel backup: dopo un'importazione su un nuovo telefono va reinserita ([punto 3](#3-creare-la-chiave-gemini)).
 
 Consiglio: esporta un backup ogni settimana.
 
-## 12. Aggiornare l'app
+## 11. Aggiornamenti
 
-Quando il codice su GitHub cambia:
+Ogni modifica pubblicata sul ramo `main` di GitHub arriva da sola all'indirizzo dell'app, in un paio di minuti.
 
-```bash
-cd singlish
-git pull
-npm install
-npm run build
-```
+Sul telefono, all'apertura successiva compare l'avviso di una nuova versione: tocca **Aggiorna**. Su iPhone l'avviso può comparire solo all'apertura dopo.
 
-Poi:
-- **strada A**: riavvia `npm run preview -- --host`;
-- **strada B**: su Netlify, nella pagina del sito, sezione «Deploys», trascina di nuovo la cartella `dist`.
+I tuoi dati non si perdono con un aggiornamento.
 
-Sul telefono, alla riapertura l'app mostra l'avviso di una nuova versione: tocca **Aggiorna**. Su iPhone l'avviso può comparire solo all'apertura successiva.
-
-I tuoi dati non si perdono con un aggiornamento, purché l'indirizzo resti lo stesso.
-
-## 13. Problemi frequenti
+## 12. Problemi frequenti
 
 | Problema | Cosa fare |
 |---|---|
-| «Manca la chiave Gemini» | Inserisci la chiave nelle Impostazioni e tocca Prova (punto 4). |
+| «Manca la chiave Gemini» | Inserisci la chiave nelle Impostazioni e tocca Prova ([punto 3](#3-creare-la-chiave-gemini)). |
 | «La chiave Gemini non funziona» | Ricopiala intera da AI Studio, o creane una nuova. |
 | «Il modello … non esiste» | Nelle Impostazioni rimetti `gemini-flash-lite-latest` nel campo Modello. |
 | «Gemini è occupato» | Hai raggiunto il limite gratuito o il servizio è carico: riprova tra qualche minuto. La canzone resta in coda. |
-| L'app sul telefono è vuota | Hai aperto un indirizzo diverso da quello di prima (strada A): riapri quello vecchio o importa un backup. |
-| Non compare «Installa app» | Serve un indirizzo `https://` (strada B). Con `http://192.168…` non si può installare. |
+| L'app sul telefono è vuota | L'hai aperta da un altro browser o da un altro indirizzo: torna a quello di prima, o importa un backup. |
+| Non compare «Installa app» | Usa Chrome su Android o Safari su iPhone, all'indirizzo `https://dandid.github.io/singlish/` ([punto 2](#2-installarla-sul-telefono)). |
 | «Aggiungi» non c'è | Hai già 4 canzoni o testi aperti: segnane uno come completato o eliminane uno. |
+
+## 13. Pubblicarne una tua copia
+
+Per avere una tua versione dell'app a un indirizzo tuo:
+
+1. Su GitHub, in questa pagina, tocca **Fork** e crea la copia nel tuo account.
+2. Nella tua copia: **Settings** → **Pages** → in «Build and deployment», alla voce «Source» scegli **GitHub Actions**.
+3. **Actions** → workflow «Pubblica su GitHub Pages» → **Run workflow**.
+4. Dopo un paio di minuti l'app è su `https://<il-tuo-utente>.github.io/singlish/`.
+
+Da lì in poi ogni push sul ramo `main` esegue i test e, se passano, ripubblica l'app.
+
+Per provarla sul tuo computer invece serve **Node.js 22 o più recente** ([nodejs.org](https://nodejs.org)):
+
+```bash
+git clone https://github.com/DandiD/singlish.git
+cd singlish
+npm install
+npm run dev
+```
+
+Poi apri l'indirizzo che compare nel Terminale (di solito `http://localhost:5173`).
 
 ## 14. Per chi sviluppa
 
