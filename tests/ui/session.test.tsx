@@ -205,7 +205,7 @@ test('Today: counts, start link, song progress', async () => {
   const link = await screen.findByRole('link', { name: /Night Song/ })
   expect(link.getAttribute('href')).toBe('#/songs/s1')
   expect(link.textContent).toContain('1 di 2')
-  expect(screen.queryByText(/Oggi niente card nuove/)).toBeNull()
+  expect(screen.queryByText(/niente card nuove/)).toBeNull()
 })
 
 test('Today: shows the blocked-new note when the review load exceeds the timer', async () => {
@@ -215,7 +215,7 @@ test('Today: shows the blocked-new note when the review load exceeds the timer',
     await db.cards.add(reviewCard('kx' + i, 'x' + i, 'R', '2026-10-30T10:00:00Z'))
   }
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
-  await screen.findByText('Oggi niente card nuove: ripasso oltre i 2 minuti')
+  await screen.findByText('Per ora niente card nuove: il ripasso in scadenza supera i 2 minuti. Arrivano quando scende sotto.')
 })
 
 test('resuming an open session does not bring back items already reviewed in it (spec §4)', async () => {

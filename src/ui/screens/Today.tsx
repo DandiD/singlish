@@ -75,7 +75,7 @@ export function Today() {
         {settings.intensiveUntil && settings.intensiveUntil > now() && (
           <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${Math.max(INTENSIVE.newPerDay, settings.newPerDay)} nuove al giorno.`}</p>
         )}
-        {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}`}</p>}
+        {queue.newBlockedByLoad && <p class="note">{`Per ora niente card nuove: il ripasso in scadenza supera ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}. Arrivano quando scende sotto.`}</p>}
         {queue.items.length > 0 ? (
           <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
         ) : progress.length === 0 ? (

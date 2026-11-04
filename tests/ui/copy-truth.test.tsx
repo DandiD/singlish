@@ -122,3 +122,9 @@ test('l\'errore «bloccato» vale per ogni richiesta a Gemini', async () => {
   expect(p.title).toBe('Gemini ha fermato la richiesta')
   expect(p.text).not.toMatch(/testo diverso/)
 })
+
+test('la card Produci dice dove arriva davvero la correzione', () => {
+  const session = readFileSync('src/ui/screens/Session.tsx', 'utf8')
+  expect(session).not.toContain('La correzione arriva a fine sessione')
+  expect(session).toContain('La correggi con Gemini da «Le tue frasi»')
+})

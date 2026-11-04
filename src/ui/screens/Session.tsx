@@ -481,7 +481,7 @@ function ProduceCard({ chunk, isNew, onRate, onProduce }: {
           <textarea rows={3} lang="en" autocapitalize="off" ref={noAutocorrect} value={sentence}
             onInput={(e) => setSentence((e.currentTarget as HTMLTextAreaElement).value)} />
         </label>
-        <p class="note info-box">La correzione arriva a fine sessione, insieme alle altre frasi: una sola chiamata a Gemini.</p>
+        <p class="note info-box">La correggi con Gemini da «Le tue frasi» (anche a fine sessione), insieme alle altre: una sola chiamata.</p>
         <div class="grid2">
           <button type="button" class="btn outline" onClick={() => onRate(1, false, null)}>Non so farla</button>
           <button type="submit" class="btn primary" disabled={!ok}>Salva e avanti</button>
