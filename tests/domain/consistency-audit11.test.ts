@@ -36,3 +36,9 @@ test('importando un backup vecchio, la riparazione gira subito', async () => {
   await importBackup(db, file)
   expect(await db.words.get('wander')).toMatchObject({ songId: 'B', lineIndex: 2 })
 })
+
+test('la riparazione sposta anche una voce rimasta nella canzone giusta ma su una riga che non è un suo verso', async () => {
+  await db.words.add(word('drift', { songId: 'A', lineIndex: 2, contexts: [{ songId: 'A', lineIndex: 7 }] }))
+  expect(await repairHomes(db)).toBe(1)
+  expect(await db.words.get('drift')).toMatchObject({ songId: 'A', lineIndex: 7 })
+})

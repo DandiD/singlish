@@ -54,3 +54,12 @@ test('senza sintesi vocale: lo dice e mostra il verso da leggere', async () => {
   expect(await screen.findByText(/non sa leggere ad alta voce/)).toBeTruthy()
   expect(screen.getByText("I'm gonna get it off my chest")).toBeTruthy()
 })
+
+test('card Ascolta: canzone e riga vengono dallo stesso verso', async () => {
+  const other: Song = { ...song, id: 's2', lines: ['nothing to hear here', 'we get it off my chest tonight'], connectedSpeech: [] }
+  await db.songs.add(other)
+  await db.chunks.update('c1', { songId: 's2', lineIndex: 1, contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 's2', lineIndex: 1 }] })
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: 'Riproduci la frase' }))
+  expect(spoken[0].text).toBe("I'm gonna get it off my chest")
+})

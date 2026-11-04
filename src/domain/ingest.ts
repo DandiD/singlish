@@ -404,7 +404,7 @@ export async function repairHomes(db: SinglishDB): Promise<number> {
       const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
       for (const item of items) {
         const first = item.contexts[0]
-        if (!first || item.contexts.some((x) => x.songId === item.songId)) continue
+        if (!first || item.contexts.some((x) => x.songId === item.songId && x.lineIndex === item.lineIndex)) continue
         await (table as typeof db.chunks).update(item.id, { songId: first.songId, lineIndex: first.lineIndex })
         fixed++
       }

@@ -469,8 +469,10 @@ function ListenCard({ chunk, song, isNew, onRate }: {
   isNew: boolean
   onRate(rating: Rating, auto: boolean, answer: string | null): void
 }) {
-  const verse = song?.lines[chunk.lineIndex] ?? chunk.extraExampleEn
-  const notes = [chunk.pronunciationNoteIt, ...(song?.connectedSpeech.filter((cs) => cs.lineIndex === chunk.lineIndex).map((cs) => cs.noteIt) ?? [])].filter((n) => n.trim())
+  // Canzone e riga dallo stesso verso: quello della canzone mostrata.
+  const line = chunk.contexts.find((c) => c.songId === song?.id)?.lineIndex ?? chunk.lineIndex
+  const verse = song?.lines[line] ?? chunk.extraExampleEn
+  const notes = [chunk.pronunciationNoteIt, ...(song?.connectedSpeech.filter((cs) => cs.lineIndex === line).map((cs) => cs.noteIt) ?? [])].filter((n) => n.trim())
   const canSpeak = !!(window as unknown as Speech).speechSynthesis
   const [slow, setSlow] = useState(false)
   const [answer, setAnswer] = useState('')
