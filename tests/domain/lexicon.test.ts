@@ -57,6 +57,12 @@ describe('lessico', () => {
     expect(byId['let it slide'].where).toBe('Lantern Road')
     expect(byId['figure out'].where).toBe('2 canzoni')
   })
+  test('dove compare: se fra i posti c\'è un testo libero, lo dice', () => {
+    const fo = data.chunks.find((c) => c.id === 'figure out')!
+    const other = data.songs.find((s) => s.id === fo.contexts[1].songId)!
+    const mixed = { ...data, songs: data.songs.map((s) => (s.id === other.id ? { ...s, kind: 'text' as const, source: 'serie' as const } : s)) }
+    expect(lexicon(mixed, {}).find((e) => e.id === 'figure out')!.where).toBe('2 tra canzoni e testi')
+  })
   test('ricerca in inglese e in italiano, senza badare a maiuscole e accenti', () => {
     expect(ids({ q: 'FIGURE' })).toEqual(['figure out'])
     expect(ids({ q: 'risolvere' })).toEqual(['figure out'])

@@ -42,6 +42,7 @@ function statusOf(item: Chunk | Word, cards: CardRow[]): LexStatus {
 /** Tutte le voci del lessico (chunk e parole non note), filtrate e ordinate: prima i chunk, poi le parole. */
 export function lexicon(data: { songs: Song[]; chunks: Chunk[]; words: Word[]; cards: CardRow[] }, f: LexFilter): LexEntry[] {
   const title = new Map(data.songs.map((s) => [s.id, s.title]))
+  const isText = new Set(data.songs.filter((s) => s.kind === 'text').map((s) => s.id))
   const cardsOf = new Map<string, CardRow[]>()
   for (const c of data.cards) cardsOf.set(c.itemId, [...(cardsOf.get(c.itemId) ?? []), c])
   const entry = (item: Chunk | Word, kind: 'chunk' | 'word'): LexEntry => {
@@ -52,7 +53,8 @@ export function lexicon(data: { songs: Song[]; chunks: Chunk[]; words: Word[]; c
       meaning: item.meaningIt, type: kind === 'chunk' ? (item as Chunk).type : 'word',
       cefr: item.cefr, register: item.register, topic: item.topic,
       status: statusOf(item, cardsOf.get(item.id) ?? []),
-      where: songIds.length > 1 ? `${songIds.length} canzoni` : title.get(songIds[0] ?? item.songId) ?? '',
+      // Più posti: si dice se sono canzoni, testi o tutti e due.
+      where: songIds.length > 1 ? `${songIds.length} ${songIds.every((id) => isText.has(id)) ? 'testi' : songIds.some((id) => isText.has(id)) ? 'tra canzoni e testi' : 'canzoni'}` : title.get(songIds[0] ?? item.songId) ?? '',
       songId: title.has(item.songId) ? item.songId : songIds[0] ?? item.songId,
     }
   }

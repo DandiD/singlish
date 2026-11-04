@@ -101,7 +101,7 @@ export function Today() {
       ))}
 
       <div class="today-songs-head">
-        <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN_SONGS}`}</span></h2>
+        <h2>Canzoni e testi aperti <span class="note">{`${progress.length} di ${MAX_OPEN_SONGS}`}</span></h2>
         {!full && <a class="link-add" href={href({ name: 'addSong' })} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />Aggiungi</a>}
       </div>
       {full && <p class="note">{LIMIT_NOTE}</p>}

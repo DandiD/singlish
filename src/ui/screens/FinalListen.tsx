@@ -52,7 +52,7 @@ export function FinalListen({ songId }: { songId: string }) {
         <header class="settings-head">
           <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
           <div class="grow">
-            <h1>Riascolto già fatto</h1>
+            <h1>{song.finalListenAt ? 'Riascolto già fatto' : 'Canzone già completata'}</h1>
             <p class="note">{song.title}</p>
           </div>
         </header>
