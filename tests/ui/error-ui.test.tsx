@@ -42,7 +42,11 @@ test('una pagina che si rompe mostra una schermata di riserva, non il bianco', (
   render(<ErrorBoundary><Boom /></ErrorBoundary>)
   expect(screen.getByRole('heading', { name: 'Questa pagina si è bloccata' })).toBeTruthy()
   expect(screen.getByText(/I tuoi dati sono al sicuro\./)).toBeTruthy()
-  expect(screen.queryByText(/render exploded/)).toBeNull()
+  // Il testo tecnico non è nel messaggio: sta solo nei «Dettagli tecnici», chiusi, da mandare per una segnalazione.
+  const details = screen.getByText('Dettagli tecnici').closest('details')!
+  expect(details.open).toBe(false)
+  expect(details.textContent).toContain('TypeError: render exploded')
+  expect(screen.getByText(/I tuoi dati sono al sicuro\./).textContent).not.toContain('render exploded')
   expect(screen.getByRole('button', { name: 'Ricarica' })).toBeTruthy()
   expect(screen.getByRole('link', { name: 'Torna a Oggi' }).getAttribute('href')).toBe('#/')
 })

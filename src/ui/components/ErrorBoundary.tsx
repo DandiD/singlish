@@ -1,6 +1,7 @@
 import { Component, type ComponentChildren } from 'preact'
 import { href } from '../../router'
 import { storageProblem } from '../errors'
+import { errorDetails } from '../crash'
 
 type State = { error: unknown }
 
@@ -23,6 +24,10 @@ export class ErrorBoundary extends Component<{ children: ComponentChildren }, St
         <p class="note">{text}</p>
         <button type="button" class="btn primary" onClick={() => window.location.reload()}>Ricarica</button>
         <a class="btn outline" href={href({ name: 'today' })} onClick={() => this.setState({ error: null })}>Torna a Oggi</a>
+        <details class="error-details">
+          <summary>Dettagli tecnici</summary>
+          <pre>{errorDetails(this.state.error)}</pre>
+        </details>
       </main>
     )
   }
