@@ -121,7 +121,9 @@ export function Settings() {
           const p = geminiProblem(e, probedModel)
           // Il modello si salva da solo come le altre preferenze (anche toccando Prova): si dice quale è salvato.
           const saved = await getSettings(db)
-          setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} La chiave non è stata salvata. Il modello salvato è «${saved.model}».` })
+          // Provando la chiave già salvata non si salva nulla, ma la chiave salvata è proprio quella che non va.
+          const keyNote = probed === saved.apiKey ? 'È la chiave salvata: sostituiscila con una che funziona.' : 'La chiave non è stata salvata.'
+          setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} ${keyNote} Il modello salvato è «${saved.model}».` })
         }
       } catch (saveError) {
         reportError(saveError)

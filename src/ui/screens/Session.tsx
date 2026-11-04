@@ -6,6 +6,7 @@ import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
 import { pendingProductions, saveProduction } from '../../domain/production'
+import { pendingWords } from '../../domain/triage'
 import { useLive } from '../useLive'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
@@ -39,6 +40,8 @@ interface Loaded {
   doneReviews: number
   doneNew: number
   doneWritten: number
+  /** Parole da smistare nelle canzoni in studio: le loro card nuove arrivano solo smistandole. */
+  toTriage: boolean
 }
 
 const goToday = () => goBackTo({ name: 'today' })
@@ -95,6 +98,8 @@ export function Session() {
         doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0,
         // le frasi della sessione contate come altrove (card presente, chunk attivo)
         doneWritten: open ? (await pendingProductions(db)).filter((p) => p.sessionId === open.id).length : 0,
+        toTriage: queue.items.length === 0
+          && (await Promise.all(songs.filter((s) => s.status === 'studying').map((s) => pendingWords(db, s.id)))).some((l) => l.length > 0),
       })
     })().catch(fail)
     return () => { alive = false }
@@ -197,7 +202,8 @@ export function Session() {
   if (items.length > 0 && !finished && !timerReady) return <main class="screen session" aria-busy="true" />
 
   // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
-  if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0 && toCorrect === 0) {
+  // Le frasi da correggere di sessioni chiuse non sono «fatte oggi»: qui si offre di correggerle.
+  if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0 && loaded.doneWritten === 0) {
     const noSongs = loaded.songById.size === 0
     // Le card nuove di una canzone «Da studiare» entrano solo aprendone lo Studio: domani non cambierebbe nulla.
     const toStudy = [...loaded.songById.values()].some((s) => s.status === 'analyzed')
@@ -208,16 +214,21 @@ export function Session() {
         <p class="note">
           {noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
-            : toStudy
+            : loaded.toTriage
+              ? 'Per ora non ci sono card in scadenza. Le card nuove delle parole arrivano quando smisti le parole nello Studio della canzone.'
+              : toStudy
               ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone «Da studiare», le sue card nuove possono entrare nel ripasso.'
               : toAnalyze
-                ? 'Per ora non ci sono card in scadenza. Le canzoni da analizzare si analizzano appena sei online: poi le trovi in Canzoni.'
+                ? 'Per ora non ci sono card in scadenza. Hai canzoni ancora da analizzare: in Canzoni tocca «Analizza ora».'
                 : 'Per ora non ci sono card in scadenza. Torna domani.'}
         </p>
         {noSongs && (
           <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         )}
-        <a class={noSongs ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
+        {toCorrect > 0 && (
+          <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
+        )}
+        <a class={noSongs || toCorrect > 0 ? 'btn outline' : 'btn primary cta'} href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
   }
@@ -511,7 +522,7 @@ function ListenCard({ chunk, song, isNew, onRate }: {
           </>
         ) : (
           <>
-            <p class="note center">Questo browser non sa leggere ad alta voce: ascolta il verso nella canzone, poi scrivilo.</p>
+            <p class="note center">{song?.kind === 'text' ? 'Questo browser non sa leggere ad alta voce: leggi il verso, poi scrivilo.' : 'Questo browser non sa leggere ad alta voce: ascolta il verso nella canzone, poi scrivilo.'}</p>
             <p class="verse" lang="en">{verse}</p>
           </>
         )}

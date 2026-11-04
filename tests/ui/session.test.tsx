@@ -355,6 +355,25 @@ test('niente da ripassare ma una canzone «Da studiare»: dice di aprirne lo Stu
 test('niente da ripassare e solo canzoni da analizzare: dice di completarne l\'analisi, non «Torna domani»', async () => {
   await db.songs.update('s1', { status: 'queued' })
   renderSession()
-  expect(await screen.findByText(/si analizzano appena sei online/)).toBeTruthy()
+  expect(await screen.findByText(/in Canzoni tocca «Analizza ora»/)).toBeTruthy()
+  expect(screen.queryByText(/appena sei online/)).toBeNull()
   expect(screen.queryByText(/Torna domani/)).toBeNull()
+})
+
+test('niente da ripassare ma parole da smistare in una canzone in studio: dice di smistarle', async () => {
+  await db.words.add({ id: 'w1', lemma: 'harbour', surfaceForm: 'harbour', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 1, contexts: [{ songId: 's1', lineIndex: 1 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'porto', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  renderSession()
+  expect(await screen.findByText(/smisti le parole nello Studio/)).toBeTruthy()
+})
+
+test('coda vuota e solo frasi da correggere: non dice «Fatto per oggi · 0 ripassate»', async () => {
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  await db.cards.add({ ...reviewCard('p1', 'c1', 'R', '2026-11-30T10:00:00Z'), kind: 'P' })
+  await db.sessions.add({ id: 'old', kind: 'review', songId: null, startedAt: new Date('2026-10-30T10:00:00Z'), endedAt: new Date('2026-10-30T10:30:00Z'), timer: { durationMs: 1, remainingMs: 1, status: 'stopped', startedAt: null } as never, reviewsDone: 0, newDone: 0,
+    productions: [{ cardId: 'p1', itemId: 'c1', sentence: 'We met by the harbour wall.', elapsedMs: 1, wasNew: false, at: new Date('2026-10-30T10:10:00Z') }] } as never)
+  renderSession()
+  expect(await screen.findByRole('link', { name: /Correggi la frase con Gemini/ })).toBeTruthy()
+  expect(screen.queryByText(/0 ripassate · 0 nuove/)).toBeNull()
+  expect(screen.getByRole('heading', { name: 'Niente da ripassare' })).toBeTruthy()
 })

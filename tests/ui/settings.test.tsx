@@ -104,7 +104,7 @@ describe('Settings', () => {
     fireEvent.change(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
     // il messaggio dice il vero: la chiave rifiutata non si salva, il modello salvato è quello nuovo
-    await screen.findByText(/^La chiave Gemini non funziona\. .*La chiave non è stata salvata\. Il modello salvato è «new-model»\.$/)
+    await screen.findByText(/^La chiave Gemini non funziona\. .*È la chiave salvata: sostituiscila con una che funziona\. Il modello salvato è «new-model»\.$/)
     expect(screen.queryByText(/Nulla è stato salvato/)).toBeNull()
     expect((await getSettings(db)).apiKey).toBe('STORED')
     expect((await getSettings(db)).model).toBe('new-model')

@@ -74,3 +74,10 @@ test('card Ascolta su un testo libero: niente nota di pronuncia pensata per una 
   await screen.findByText('Non ancora')
   expect(screen.queryByText('"get it off" suona ghe-ri-dof.')).toBeNull()
 })
+
+test('senza sintesi vocale su un testo: dice di leggere il verso, non di ascoltarlo nella canzone', async () => {
+  delete (window as unknown as Record<string, unknown>).speechSynthesis
+  await db.songs.update('s1', { kind: 'text', source: 'serie', connectedSpeech: [] })
+  mount()
+  expect(await screen.findByText(/non sa leggere ad alta voce: leggi il verso/)).toBeTruthy()
+})
