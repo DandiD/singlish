@@ -33,13 +33,17 @@ export async function getSettings(db: SinglishDB): Promise<Settings> {
   return row ?? structuredClone(DEFAULT_SETTINGS)
 }
 
+/** Una modifica alle impostazioni; per i timer basta il valore che cambia (l'altro resta quello salvato). */
+export type SettingsPatch = Partial<Omit<Settings, 'id' | 'timerMinutes'>> & { timerMinutes?: Partial<Settings['timerMinutes']> }
+
 export async function saveSettings(
   db: SinglishDB,
-  patch: Partial<Omit<Settings, 'id'>>,
+  patch: SettingsPatch,
 ): Promise<Settings> {
   return db.transaction('rw', db.settings, async () => {
     const current = await getSettings(db)
-    const next: Settings = { ...current, ...patch, id: 'settings' }
+    // I timer si uniscono a quelli salvati dentro la transazione: due campi salvati insieme non si sovrascrivono.
+    const next: Settings = { ...current, ...patch, timerMinutes: { ...current.timerMinutes, ...patch.timerMinutes }, id: 'settings' }
     if (patch.level !== undefined && patch.level !== current.level) {
       const [start, end] = bandForLevel(patch.level)
       if (patch.bandStart === undefined) next.bandStart = start

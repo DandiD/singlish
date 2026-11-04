@@ -161,9 +161,11 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
     // Un link non valido non si salva (resta quello di prima); titolo e artista sì.
     const url = v.link.trim() === '' ? null : parseSpotifyTrackUrl(v.link) ?? song.spotifyUrl
     const changed = v.title.trim() !== song.title || v.artist.trim() !== song.artist || (url ?? null) !== (song.spotifyUrl ?? null)
-    if (!changed || v.title.trim() === '') return
-    const untitled = v.title.trim() === 'Senza titolo'
-    db.songs.update(song.id, { title: v.title.trim(), artist: v.artist.trim(), spotifyUrl: url })
+    if (!changed) return
+    // Titolo svuotato: resta quello di prima, ma link e artista scritti si salvano lo stesso.
+    const title = v.title.trim() || song.title
+    const untitled = title === 'Senza titolo'
+    db.songs.update(song.id, { title, artist: v.artist.trim(), spotifyUrl: url })
       .then(async () => {
         // Link nuovo su una canzone senza titolo vero: il titolo di Spotify arriva anche dopo l'uscita, se intanto non è stato scelto.
         if (!untitled || !url || url === song.spotifyUrl) return

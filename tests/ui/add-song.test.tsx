@@ -517,3 +517,15 @@ test('Aggiungi canzone: toccare il cursore della comprensione senza spostarlo va
   fireEvent.pointerUp(slider)
   expect(screen.getByText('50%')).toBeTruthy()
 })
+
+test('Modifica: titolo svuotato e link valido, uscendo il link si salva e il titolo resta quello di prima', async () => {
+  const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const { unmount } = mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: '' } })
+  fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+  unmount()
+  await waitFor(async () => expect((await db.songs.get(s.id))!.spotifyUrl).toBeTruthy())
+  expect((await db.songs.get(s.id))!.title).toBe('Vecchio')
+})

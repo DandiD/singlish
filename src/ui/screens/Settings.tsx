@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
-import { bandForLevel, getSettings, saveSettings } from '../../domain/settings'
+import { bandForLevel, getSettings, saveSettings, type SettingsPatch } from '../../domain/settings'
 import { formatNumber } from '../format'
 import { callGemini, GeminiError } from '../../domain/gemini/client'
 import { geminiProblem } from '../errors'
@@ -25,9 +25,9 @@ type NumKey = 'newPerDay' | 'study' | 'review'
 const LIMITS: Record<NumKey, [number, number]> = { newPerDay: [1, 40], study: [1, 180], review: [1, 180] }
 const numOf = (s: SettingsRow, k: NumKey) => (k === 'newPerDay' ? s.newPerDay : s.timerMinutes[k])
 /** Le bozze valide e diverse dal salvato, come modifica da salvare (vuoto o non numero: niente; fuori limite: al limite). */
-function draftPatch(s: SettingsRow, d: Partial<Record<NumKey, string>>): Partial<Omit<SettingsRow, 'id'>> {
-  const patch: Partial<Omit<SettingsRow, 'id'>> = {}
-  const timer = { ...s.timerMinutes }
+function draftPatch(s: SettingsRow, d: Partial<Record<NumKey, string>>): SettingsPatch {
+  const patch: SettingsPatch = {}
+  const timer: Partial<SettingsRow['timerMinutes']> = {}
   for (const k of Object.keys(d) as NumKey[]) {
     const raw = d[k] ?? ''
     const n = Number(raw)
@@ -120,7 +120,7 @@ export function Settings() {
     if (raw === undefined) return
     const patch = draftPatch(settings, { [k]: raw })
     if (Object.keys(patch).length === 0) { setDraft((d) => { const n = { ...d }; delete n[k]; return n }); return }
-    setDraft((d) => ({ ...d, [k]: String(numOf({ ...settings, ...patch } as SettingsRow, k)) }))
+    setDraft((d) => ({ ...d, [k]: String(k === 'newPerDay' ? patch.newPerDay : patch.timerMinutes?.[k]) }))
     store(patch)
   }
   const numField = (k: NumKey) => ({

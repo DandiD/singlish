@@ -67,3 +67,8 @@ test('concurrent saves do not clobber the seeded key', async () => {
   expect(s.apiKey).toBe('fake-env-key')
   expect(s.persistAsked).toBe(true)
 })
+
+test('due timer salvati insieme non si sovrascrivono: ognuno cambia solo il suo', async () => {
+  await Promise.all([saveSettings(db, { timerMinutes: { study: 45 } }), saveSettings(db, { timerMinutes: { review: 20 } })])
+  expect((await getSettings(db)).timerMinutes).toEqual({ study: 45, review: 20 })
+})
