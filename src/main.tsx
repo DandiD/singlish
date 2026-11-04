@@ -9,6 +9,8 @@ import { defaultDeps } from './ui/deps'
 import { createSwStore } from './pwa/sw-store'
 import { applyTheme } from './ui/theme'
 import { errors } from './ui/report'
+import { installCrashFallback } from './ui/crash'
+import { ErrorBoundary } from './ui/components/ErrorBoundary'
 import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -18,7 +20,10 @@ const swStore = createSwStore((hooks) => registerSW({ immediate: true, ...hooks 
 
 errors.listen(window)
 applyTheme('auto')
-render(<App swStore={swStore} />, document.getElementById('app')!)
+const root = document.getElementById('app')!
+installCrashFallback(window, root)
+// Anche un errore fuori dalle schermate (barra, avvisi) mostra la pagina di riserva invece dello sfondo vuoto.
+render(<ErrorBoundary><App swStore={swStore} /></ErrorBoundary>, root)
 // La chiave da .env.local solo in sviluppo: Vite copierebbe le variabili VITE_* nel codice costruito.
 seedApiKey(db, import.meta.env.DEV ? import.meta.env.VITE_GEMINI_API_KEY : undefined).catch(() => {})
 // Dati salvati prima della regola «canzone e riga seguono i versi»: si sistemano una volta all'apertura.
