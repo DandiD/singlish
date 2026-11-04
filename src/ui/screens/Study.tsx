@@ -293,7 +293,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         )}
       </footer>
 
-      {itemId && (itemId.startsWith('cs:') ? <SpeechSheet song={song} itemId={itemId} /> : <ItemSheet song={song} itemId={itemId} />)}
+      {/* Una scheda nuova per ogni voce: lo stato di chiusura di quella prima non deve bloccare questa. */}
+      {itemId && (itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}
     </main>
   )
 }

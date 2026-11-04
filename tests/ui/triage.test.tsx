@@ -138,3 +138,21 @@ test('chiusa la scheda, se nel frattempo si va altrove la chiusura ritardata non
   await new Promise((r) => setTimeout(r, 300))
   expect(window.location.hash).toBe('#/lexicon')
 })
+
+test('scheda di una voce che non esiste: si chiude e torna allo Studio', async () => {
+  window.location.hash = '#/songs/s1?item=nope'
+  render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="nope" /></AppDepsProvider>)
+  await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'), { timeout: 1500 })
+})
+
+test('chiusa una scheda e aperta subito un\'altra voce: la nuova scheda si chiude normalmente', async () => {
+  window.location.hash = '#/songs/s1?item=c1'
+  const { rerender } = render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  fireEvent.keyDown(await screen.findByRole('dialog', { name: 'Scheda del chunk' }), { key: 'Escape' })
+  window.location.hash = '#/songs/s1?item=w1' // un'altra voce toccata durante l'animazione di chiusura
+  rerender(<AppDepsProvider value={deps()}><Study songId="s1" itemId="w1" /></AppDepsProvider>)
+  const second = await screen.findByRole('dialog', { name: 'Scheda della parola' })
+  await new Promise((r) => setTimeout(r, 250))
+  fireEvent.keyDown(second, { key: 'Escape' })
+  await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'), { timeout: 1500 })
+})
