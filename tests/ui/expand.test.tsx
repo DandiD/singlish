@@ -94,3 +94,12 @@ test('Espandi aperto dall\'indirizzo su una parola sospesa: lo dice e non chiama
   expect(screen.queryByRole('button', { name: /Chiedi a Gemini/ })).toBeNull()
   expect(f).not.toHaveBeenCalled()
 })
+
+test('scheda aperta dall\'indirizzo su una canzone dove la voce non compare: nessun verso preso da un\'altra canzone', async () => {
+  await db.songs.add({ ...song, id: 's2', title: 'Other Song', lines: ['a line without the word'] })
+  window.location.hash = '#/songs/s2?item=w1'
+  mount(<Study songId="s2" itemId="w1" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
+  expect(screen.queryByText('a line without the word', { selector: '.examples *' })).toBeNull()
+})
