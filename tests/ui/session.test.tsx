@@ -385,6 +385,17 @@ test('una card nuova votata Bene torna più tardi oggi: la fine non dice «Fatto
   fireEvent.click(await screen.findByRole('button', { name: 'Mostra significato' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Bene' }))
   expect(await screen.findByRole('heading', { name: 'Sessione finita' })).toBeTruthy()
-  expect(screen.getByText(/1 card torna più tardi oggi/)).toBeTruthy()
+  expect(screen.getByText(/1 card ancora da fare oggi/)).toBeTruthy()
   expect(screen.queryByRole('heading', { name: 'Fatto per oggi' })).toBeNull()
+})
+
+test('coda vuota perché una voce aspetta la correzione della sua frase: non dice «Torna domani»', async () => {
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  await db.cards.add({ ...reviewCard('p1', 'c1', 'R', '2026-11-30T10:00:00Z'), kind: 'P' })
+  await db.cards.add(reviewCard('k1', 'c1', 'C', '2026-10-30T10:00:00Z'))
+  await db.sessions.add({ id: 'old', kind: 'review', songId: null, startedAt: new Date('2026-10-29T10:00:00Z'), endedAt: new Date('2026-10-29T10:30:00Z'), timer: { durationMs: 1, remainingMs: 1, status: 'stopped', startedAt: null } as never, reviewsDone: 0, newDone: 0,
+    productions: [{ cardId: 'p1', itemId: 'c1', sentence: 'We met by the harbour wall.', elapsedMs: 1, wasNew: false, at: new Date('2026-10-29T10:10:00Z') }] } as never)
+  renderSession()
+  expect(await screen.findByText(/tornano nel ripasso dopo la correzione/)).toBeTruthy()
+  expect(screen.queryByText(/Torna domani/)).toBeNull()
 })

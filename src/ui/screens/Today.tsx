@@ -81,7 +81,7 @@ export function Today() {
         ) : progress.length === 0 ? (
           <a class="btn primary cta" href={href({ name: 'addSong' })} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         ) : (
-          <p class="note">Niente da ripassare oggi.</p>
+          <p class="note">{toCorrect > 0 ? 'Niente da ripassare per ora: le voci con una frase da correggere tornano nel ripasso dopo la correzione.' : 'Niente da ripassare oggi.'}</p>
         )}
       </section>
 

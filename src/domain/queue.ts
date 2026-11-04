@@ -31,6 +31,7 @@ export async function estimateAvgSeconds(db: SinglishDB): Promise<number> {
 export async function buildSessionQueue(
   db: SinglishDB,
   now: Date,
+  ignoreOpen = false,
 ): Promise<{
   items: QueueItem[]
   dueCount: number
@@ -39,6 +40,8 @@ export async function buildSessionQueue(
   newBlockedByLoad: boolean
   /** La sessione di ripasso di oggi lasciata a metà, se c'è. */
   openSession: SessionRow | null
+  /** Una sessione aperta che nascondeva tutto ciò che resta da fare oggi: va chiusa (la coda non la conta più). */
+  staleSession?: SessionRow
 }> {
   const settings = await getSettings(db)
   const avgSeconds = await estimateAvgSeconds(db)
@@ -66,7 +69,7 @@ export async function buildSessionQueue(
   // In una sessione lasciata a metà ciò che è già stato ripassato non torna (spec §4: stessa voce mai due
   // volte nella stessa sessione), anche se FSRS la rimette in scadenza oggi. Oggi e Sessione contano così,
   // e il carico che blocca le nuove è quello che resta davvero.
-  const openSession = await findOpenReviewSession(db, now)
+  const openSession = ignoreOpen ? null : await findOpenReviewSession(db, now)
   const seen = new Set<string>()
   // Una voce con una frase ancora da correggere (card Produci) aspetta la correzione: non torna in coda.
   for (const s of await db.sessions.toArray()) for (const p of s.productions ?? []) seen.add(p.itemId)
@@ -138,6 +141,13 @@ export async function buildSessionQueue(
       seen.add(c.itemId)
       items.push({ card: c, isNew: true })
     }
+  }
+
+  // Una sessione aperta le cui card rimaste sono sparite (sospese, escluse, nuove tolte) nasconderebbe fino a
+  // mezzanotte le card sbagliate che tornano in scadenza: se resta qualcosa da fare, si conta senza di lei.
+  if (openSession && items.length === 0) {
+    const again = await buildSessionQueue(db, now, true)
+    if (again.items.length > 0) return { ...again, staleSession: openSession }
   }
 
   return {

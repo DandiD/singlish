@@ -75,6 +75,8 @@ export function Session() {
 
       // La coda esclude già ciò che la sessione aperta ha fatto vedere: è la stessa che conta Oggi.
       const open = queue.openSession
+      // Una sessione aperta che non ha più nulla da mostrare si chiude: le card tornate in scadenza vanno in una nuova.
+      if (queue.staleSession) await db.sessions.update(queue.staleSession.id, { endedAt: n })
       const chunkIds = queue.items.filter((q) => q.card.itemType === 'chunk').map((q) => q.card.itemId)
       const wordIds = queue.items.filter((q) => q.card.itemType === 'word').map((q) => q.card.itemId)
       const [chunks, words] = await Promise.all([db.chunks.bulkGet(chunkIds), db.words.bulkGet(wordIds)])
@@ -219,7 +221,9 @@ export function Session() {
         <p class="note">
           {noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
-            : loaded.toTriage
+            : toCorrect > 0
+              ? 'Per ora non ci sono altre card da ripassare: le voci con una frase da correggere tornano nel ripasso dopo la correzione.'
+              : loaded.toTriage
               ? 'Per ora non ci sono card in scadenza. Le card nuove delle parole possono arrivare quando smisti le parole nello Studio della canzone o del testo (entro il limite delle nuove del giorno).'
               : toStudy
               ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone o di un testo «Da studiare», le sue card nuove possono entrare nel ripasso.'
@@ -248,7 +252,7 @@ export function Session() {
         <h1>{left > 0 ? 'Sessione finita' : 'Fatto per oggi'}</h1>
         {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
-        {left > 0 && <p class="note">{`${left === 1 ? '1 card torna' : `${left} card tornano`} più tardi oggi: le card nuove e quelle sbagliate si ripassano ancora prima di domani. Le trovi in Oggi.`}</p>}
+        {left > 0 && <p class="note">{`${left === 1 ? '1 card ancora da fare oggi' : `${left} card ancora da fare oggi`}: le card sbagliate tornano dopo pochi minuti, e possono entrarne di nuove o appena sbloccate. Le trovi in Oggi.`}</p>}
         {toCorrect > 0 && (
           <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
