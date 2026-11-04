@@ -1,4 +1,5 @@
 import { useLive } from '../useLive'
+import { useDayTick } from '../useDayTick'
 import { State } from 'ts-fsrs'
 import { useDeps } from '../deps'
 import { href } from '../../router'
@@ -21,6 +22,8 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function Today() {
   const { db, now } = useDeps()
   const gate = useAddGate()
+  // Lasciata aperta la sera, Oggi si ricalcola al mattino (ritorno in primo piano o mezzanotte).
+  const day = useDayTick(now)
   const data = useLive(async () => {
     const [queue, settings, songs, chunks, words] = await Promise.all([
       buildSessionQueue(db, now()),
@@ -46,7 +49,7 @@ export function Today() {
         return { song, total: ids.length, done, toTriage }
       })
     return { queue, settings, progress, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
-  }, [db])
+  }, [db, day])
 
   if (!data) return <main class="screen" aria-busy="true" />
   const { queue, settings, progress, finalDue, toCorrect } = data

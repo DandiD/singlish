@@ -111,3 +111,15 @@ test('fine sessione con una frase da correggere: non dice «Fatto per oggi» (do
   expect(screen.getByText(/Dopo la correzione le loro card possono tornare in scadenza già oggi/)).toBeTruthy()
   expect(screen.queryByRole('heading', { name: 'Fatto per oggi' })).toBeNull()
 })
+
+test('fine sessione con una frase da correggere: «Fatto per oggi» non compare nemmeno per un attimo', async () => {
+  const seen = new Set<string>()
+  const obs = new MutationObserver(() => document.querySelectorAll('h1').forEach((h) => seen.add(h.textContent ?? '')))
+  obs.observe(document.body, { childList: true, subtree: true, characterData: true })
+  mount(<Session />)
+  fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'He was rude but I let it slide.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
+  await screen.findByRole('heading', { name: 'Sessione finita' })
+  obs.disconnect()
+  expect(seen.has('Fatto per oggi')).toBe(false)
+})

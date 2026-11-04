@@ -405,3 +405,14 @@ test('coda vuota perché una voce aspetta la correzione della sua frase: non dic
   expect(await screen.findByText(/tornano nel ripasso dopo la correzione/)).toBeTruthy()
   expect(screen.queryByText(/Torna domani/)).toBeNull()
 })
+
+test('Oggi lasciata aperta di sera si aggiorna al mattino, quando l\'app torna in primo piano', async () => {
+  await db.chunks.add(chunk('c1', 'harbour wall', 1))
+  await db.cards.add(reviewCard('k1', 'c1', 'R', '2026-11-01T09:00:00'))
+  let t = new Date('2026-10-31T23:50:00')
+  render(<AppDepsProvider value={{ ...deps(), now: () => t }}><Today /></AppDepsProvider>)
+  expect(await screen.findByText('Niente da ripassare oggi.')).toBeTruthy()
+  t = new Date('2026-11-01T10:00:00')
+  document.dispatchEvent(new Event('visibilitychange'))
+  expect(await screen.findByRole('link', { name: /Inizia sessione/ })).toBeTruthy()
+})
