@@ -102,3 +102,12 @@ test('fine sessione con sole frasi scritte: il riepilogo le conta, come «N di M
   fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
   expect(await screen.findByText(/0 ripassate · 0 nuove · 1 frase scritta/)).toBeTruthy()
 })
+
+test('fine sessione con una frase da correggere: non dice «Fatto per oggi» (dopo la conferma la card può tornare oggi)', async () => {
+  mount(<Session />)
+  fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'He was rude but I let it slide.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
+  expect(await screen.findByRole('heading', { name: 'Sessione finita' })).toBeTruthy()
+  expect(screen.getByText(/Dopo la correzione le loro card possono tornare in scadenza già oggi/)).toBeTruthy()
+  expect(screen.queryByRole('heading', { name: 'Fatto per oggi' })).toBeNull()
+})

@@ -249,10 +249,12 @@ export function Session() {
     return (
       <main class="screen session session-done">
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
-        <h1>{left > 0 ? 'Sessione finita' : 'Fatto per oggi'}</h1>
+        {/* «Fatto per oggi» solo se oggi non resta nulla: né card in scadenza né frasi da correggere (confermate, possono tornare oggi). */}
+        <h1>{left > 0 || toCorrect > 0 ? 'Sessione finita' : 'Fatto per oggi'}</h1>
         {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
-        {left > 0 && <p class="note">{`${left === 1 ? '1 card ancora da fare oggi' : `${left} card ancora da fare oggi`}: le card sbagliate tornano dopo pochi minuti, e possono entrarne di nuove o appena sbloccate. Le trovi in Oggi.`}</p>}
+        {left > 0 && <p class="note">{left === 1 ? '1 card ancora da fare oggi: la trovi in Oggi.' : `${left} card ancora da fare oggi: le trovi in Oggi.`}</p>}
+        {toCorrect > 0 && <p class="note">Dopo la correzione le loro card possono tornare in scadenza già oggi.</p>}
         {toCorrect > 0 && (
           <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
@@ -325,7 +327,7 @@ export function Session() {
               <div class="stat-box"><strong class="mono">{plural(remainingCards, 'resta', 'restano')}</strong></div>
             </div>
             {loaded.doneWritten + written > 0 && <p class="note">{`E ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')} da correggere.`}</p>}
-            <p class="intro">Chiudendo, le card che restano ti aspettano su Oggi.</p>
+            <p class="intro">Chiudendo, quello che resta da fare oggi lo trovi su Oggi.</p>
             <button
               type="button"
               class="btn primary cta"
