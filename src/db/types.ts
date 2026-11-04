@@ -150,6 +150,8 @@ export interface Settings {
   level: Level
   bandStart: number
   bandEnd: number
+  /** La fascia viene dal test di vocabolario (non dal livello). */
+  bandFromTest?: boolean
   desiredRetention: number
   newPerDay: number
   timerMinutes: { study: number; review: number }

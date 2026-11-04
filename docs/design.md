@@ -265,11 +265,14 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 - Espandi aperto dall'indirizzo su una parola che non si può espandere (`canExpand`: sospesa, da smistare o nata da Espandi) lo dice e non chiama Gemini; `addExpansion` rifiuta comunque. Il riascolto finale di una canzone già completata mostra il risultato salvato e non lo riscrive; su una canzone non in studio (bozza, in coda, «Da studiare», testo libero) lo dice e non la chiude. Dopo l'importazione di un backup la riparazione gira nella stessa transazione: se fallisce, restano i dati di prima.
 - La scheda mostra un verso solo se la voce ne ha uno nella canzone aperta: aperta dall'indirizzo su un'altra canzone, o per una parola del profilo, non mostra nessun verso.
 - Escludere una parola che sapevi già (`wasKnown`) la rimette nel profilo, sia direttamente sia escludendo la sua parola d'origine.
-- Le Impostazioni mostrano la fascia utile in uso e da dove viene (livello o test di vocabolario); cambiare livello la riporta a quella del livello, e lo dicono.
+- Le Impostazioni mostrano la fascia utile in uso e da dove viene (`bandFromTest`: livello o test di vocabolario, anche quando i numeri coincidono); cambiare livello la riporta a quella del livello, e lo dicono.
+- Escludere: il testo di conferma dice l'effetto vero (una parola che sapevi già torna fra quelle che sai).
+- Lo Studio di una canzone già completata non offre di nuovo «Segna come completata».
 - Lo Studio aperto dall'indirizzo su una canzone non ancora analizzata (bozza, in coda) lo dice e non offre «Segna come completata» né «Chiedi a Gemini».
-- Un testo libero non salva note di pronuncia (né dall'analisi né da «Chiedi a Gemini»): niente card Ascolta e niente sezione Pronuncia.
-- «Chiedi a Gemini»: una voce che Gemini restituisce due volte nella stessa risposta prende tutti e due i versi e conta come una voce aggiunta, non come «c'era già».
+- Un testo libero non salva note di pronuncia (né dall'analisi né da «Chiedi a Gemini»). Un chunk nato in una canzone e presente anche in un testo non mostra la sua nota nella scheda del testo, non riceve la card Ascolta se la sua casa è un testo, e la card Ascolta su un testo non mostra la nota.
+- «Chiedi a Gemini»: ogni voce conta una volta sola, come aggiunta o come «c'era già», anche se segnata in più versi o restituita due volte.
 - In Sessione, il voto di una card eliminata nel frattempo da un'altra scheda la salta senza contarla.
+- Voluto: i ripassi restano come storico anche quando la loro canzone viene eliminata, quindi le card nuove viste oggi continuano a contare nel limite delle nuove del giorno e nella memoria reale (lo stesso numero in Oggi, Sessione e Progressi). `chorusDoneAt` si salva per uso futuro e nessuna schermata lo mostra.
 - Voluto: il carico dei 7 giorni (Progressi, sblocco) conta anche le card con una frase in attesa di correzione: dopo la conferma vanno ripassate comunque.
 - Marginale accettato: confermare da un'altra scheda del browser una frase la cui card è stata eliminata o sospesa la conta comunque nella sessione (era già contata in «N di M» quando è stata scritta); un ripasso su una voce sospesa non la rimette in coda.
 - Marginale accettato: `repairHomes` all'apertura non blocca il primo disegno (se IndexedDB restasse bloccato l'app non partirebbe); le query live correggono i numeri subito dopo. Escludere una parola rimette nel profilo le voci di Espandi che erano note (`wasKnown`).

@@ -63,3 +63,14 @@ test('card Ascolta: canzone e riga vengono dallo stesso verso', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Riproduci la frase' }))
   expect(spoken[0].text).toBe("I'm gonna get it off my chest")
 })
+
+test('card Ascolta su un testo libero: niente nota di pronuncia pensata per una canzone', async () => {
+  await db.songs.update('s1', { kind: 'text', source: 'serie', connectedSpeech: [] })
+  mount()
+  delete (window as unknown as Record<string, unknown>).speechSynthesis
+  expect(await screen.findByText('ASCOLTA')).toBeTruthy()
+  fireEvent.input(screen.getByLabelText('Dettato'), { target: { value: 'x' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Controlla' }))
+  await screen.findByText('Non ancora')
+  expect(screen.queryByText('"get it off" suona ghe-ri-dof.')).toBeNull()
+})

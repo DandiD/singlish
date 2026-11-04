@@ -93,6 +93,8 @@ export async function askGemini(
     let existing = 0
     // Le voci create in questa risposta: se Gemini le ripete, prendono il verso ma non contano come «c'era già».
     const created = new Set<string>()
+    // Una voce che c'era già conta una volta sola, anche se segnata in più versi.
+    const counted = new Set<string>()
     for (const c of res.data.chunks.filter((c) => inRange(c.line_index))) {
       const key = normalizeKey(c.base_form)
       const found = await db.chunks.where('key').equals(key).first()
@@ -101,7 +103,7 @@ export async function askGemini(
         graduate(found)
         found.suspended = false // chiesta dallo studente: torna nel ripasso
         await db.chunks.put(found)
-        if (!created.has(found.id)) existing++
+        if (!created.has(found.id) && !counted.has(found.id)) { counted.add(found.id); existing++ }
         continue
       }
       const chunk: Chunk = {
@@ -128,7 +130,7 @@ export async function askGemini(
           if ((await db.cards.where('itemId').equals(found.id).filter((c) => c.kind === 'R').count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))
         }
         await db.words.put(found)
-        if (!created.has(found.id)) existing++
+        if (!created.has(found.id) && !counted.has(found.id)) { counted.add(found.id); existing++ }
         continue
       }
       const word: Word = {

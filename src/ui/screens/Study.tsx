@@ -284,7 +284,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           </div>
         ) : (
           <div class="grid2">
-            <button type="button" class="btn outline" onClick={() => setConfirming('done')}>Segna come completata</button>
+            {song.status !== 'done' && <button type="button" class="btn outline" onClick={() => setConfirming('done')}>Segna come completata</button>}
             <button type="button" class="btn outline danger" onClick={() => setConfirming('delete')}>Elimina canzone</button>
           </div>
         )}

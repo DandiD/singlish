@@ -44,6 +44,7 @@ export async function saveSettings(
       const [start, end] = bandForLevel(patch.level)
       if (patch.bandStart === undefined) next.bandStart = start
       if (patch.bandEnd === undefined) next.bandEnd = end
+      if (patch.bandStart === undefined && patch.bandEnd === undefined) next.bandFromTest = false
     }
     next.desiredRetention = clamp(next.desiredRetention, 0.85, 0.95)
     next.newPerDay = clamp(Math.round(next.newPerDay), 1, 40)

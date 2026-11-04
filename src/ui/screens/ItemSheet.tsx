@@ -131,7 +131,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
               <p lang="en">{item.extraExampleEn}</p>
             </div>
           )}
-          {kind === 'chunk' && item.pronunciationNoteIt && (
+          {kind === 'chunk' && item.pronunciationNoteIt && song.kind !== 'text' && (
             <div>
               <div class="section-label">PRONUNCIA</div>
               <p>{item.pronunciationNoteIt}</p>
@@ -152,7 +152,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
         {mode === 'confirm' ? (
           <div class="confirm" role="alert">
-            <p>{`Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.${children > 0 ? ` Con lei esce anche ${children === 1 ? '1 voce aggiunta' : `${children} voci aggiunte`} con Espandi.` : ''}`}</p>
+            <p>{`Togliere questo elemento e le sue card? ${kind === 'word' && item.wasKnown ? 'Torna fra le parole che sai: non ti verrà riproposta.' : 'Se compare in una canzone nuova, ti verrà proposto di nuovo.'}${children > 0 ? ` Con lei esce anche ${children === 1 ? '1 voce aggiunta' : `${children} voci aggiunte`} con Espandi.` : ''}`}</p>
             <div class="grid2">
               <button type="button" class="btn outline danger" onClick={() => void exclude()}>Sì, escludi</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>

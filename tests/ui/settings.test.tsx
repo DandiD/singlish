@@ -301,3 +301,11 @@ test('le Impostazioni mostrano la fascia utile in uso e da dove viene', async ()
   fireEvent.change(screen.getByLabelText('Livello'), { target: { value: 'B2' } })
   expect(await screen.findByText(/Fascia utile: [\d.]+–[\d.]+, del livello B2/)).toBeTruthy()
 })
+
+test('la fascia del test resta «dal test» anche se coincide con quella del livello', async () => {
+  await saveSettings(db, { level: 'B2' })
+  const s = await getSettings(db)
+  await saveSettings(db, { bandStart: s.bandStart, bandEnd: s.bandEnd, bandFromTest: true })
+  mount()
+  expect(await screen.findByText(/dal test di vocabolario/)).toBeTruthy()
+})

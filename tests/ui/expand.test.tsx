@@ -111,3 +111,32 @@ test('scheda di una parola del profilo (senza versi) che conserva la canzone di 
   await screen.findByRole('dialog')
   expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
 })
+
+test('Escludi una parola che sapevi già: il testo dice che torna fra quelle che sai', async () => {
+  await db.words.update('w1', { wasKnown: true })
+  window.location.hash = '#/songs/s1?item=w1'
+  mount(<Study songId="s1" itemId="w1" />)
+  await screen.findByRole('dialog')
+  fireEvent.click(screen.getByRole('button', { name: 'Escludi' }))
+  expect(screen.getByText(/Torna fra le parole che sai: non ti verrà riproposta/)).toBeTruthy()
+  expect(screen.queryByText(/ti verrà proposto di nuovo/)).toBeNull()
+})
+
+test('in un testo libero la scheda non mostra la pronuncia di un chunk nato in una canzone', async () => {
+  await db.songs.add({ ...song, id: 't1', kind: 'text', source: 'serie', title: 'Episodio', lines: ['running on empty again'] })
+  await db.chunks.add({ id: 'c9', songId: 's1', key: 'running on empty', baseForm: 'running on empty', surfaceForm: 'running on empty', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 't1', lineIndex: 0 }], type: 'idiom', cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'a secco',
+    explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: 'suona runnin', userEdited: false, suspended: false })
+  window.location.hash = '#/songs/t1?item=c9'
+  mount(<Study songId="t1" itemId="c9" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByText('PRONUNCIA')).toBeNull()
+})
+
+test('lo Studio di una canzone già completata non offre di nuovo «Segna come completata»', async () => {
+  await db.songs.update('s1', { status: 'done' })
+  window.location.hash = '#/songs/s1'
+  mount(<Study songId="s1" />)
+  await screen.findByText('running on empty', { exact: false })
+  expect(screen.queryByRole('button', { name: 'Segna come completata' })).toBeNull()
+})

@@ -97,7 +97,7 @@ function VocabResultView({ r, previous }: { r: VocabResult; previous: Settings['
   const label = `Percentuale di parole note per fascia: ${r.bands.map((b) => `${pct(b)}% fino a ${num(b.to)}`).join(', ')}`
   const update = async () => {
     try {
-      await saveSettings(db, { bandStart: from, bandEnd: to })
+      await saveSettings(db, { bandStart: from, bandEnd: to, bandFromTest: true })
       goReplace({ name: 'progress' })
     } catch (e) {
       reportError(e)

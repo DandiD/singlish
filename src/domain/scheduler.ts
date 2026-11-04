@@ -62,7 +62,8 @@ export async function recordReview(
       if (chunk && !kinds.has('A') && chunk.origin !== 'expand') {
         const song = await db.songs.get(chunk.songId)
         const sung = song?.connectedSpeech.some((cs) => cs.lineIndex === chunk.lineIndex) ?? false
-        if (chunk.pronunciationNoteIt.trim() || sung) await add('A')
+        // Un testo libero non si ascolta cantato: niente card Ascolta se la casa è un testo.
+        if (song?.kind !== 'text' && (chunk.pronunciationNoteIt.trim() || sung)) await add('A')
       }
     }
     if (card.kind === 'R' && goodRCount >= 2) {

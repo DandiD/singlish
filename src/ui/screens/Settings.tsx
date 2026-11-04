@@ -266,7 +266,7 @@ export function Settings() {
         </label>
         <p class="note">
           {`Fascia utile: ${formatNumber(settings.bandStart)}–${formatNumber(settings.bandEnd)}, ${
-            bandForLevel(settings.level).join() === `${settings.bandStart},${settings.bandEnd}` ? `del livello ${settings.level}` : 'dal test di vocabolario'
+            settings.bandFromTest || bandForLevel(settings.level).join() !== `${settings.bandStart},${settings.bandEnd}` ? 'dal test di vocabolario' : `del livello ${settings.level}`
           }. Cambiare livello la riporta a quella del livello.`}
         </p>
         <label class="field">
