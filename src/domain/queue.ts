@@ -66,6 +66,8 @@ export async function buildSessionQueue(
   // e il carico che blocca le nuove è quello che resta davvero.
   const openSession = await findOpenReviewSession(db, now)
   const seen = new Set<string>()
+  // Una voce con una frase ancora da correggere (card Produci) aspetta la correzione: non torna in coda.
+  for (const s of await db.sessions.toArray()) for (const p of s.productions ?? []) seen.add(p.itemId)
   if (openSession) {
     const reviewed = await db.reviews.where('reviewedAt').aboveOrEqual(openSession.startedAt).toArray()
     for (const c of await db.cards.bulkGet(reviewed.map((r) => r.cardId))) if (c) seen.add(c.itemId)

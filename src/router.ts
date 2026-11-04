@@ -14,6 +14,7 @@ export type Route =
   | { name: 'settings' }
   | { name: 'lexicon' }
   | { name: 'progress' }
+  | { name: 'feedback' }
   | { name: 'notFound' }
 
 export function parseRoute(hash: string): Route {
@@ -32,6 +33,7 @@ export function parseRoute(hash: string): Route {
   if (a === 'settings' && parts.length === 1) return { name: 'settings' }
   if (a === 'lexicon' && parts.length === 1) return { name: 'lexicon' }
   if (a === 'progress' && parts.length === 1) return { name: 'progress' }
+  if (a === 'feedback' && parts.length === 1) return { name: 'feedback' }
   if (a === 'songs') {
     if (parts.length === 1) return { name: 'songs' }
     if (b === 'new' && parts.length === 2) return { name: 'addSong' }
@@ -75,6 +77,8 @@ export function href(route: Route): string {
       return '#/lexicon'
     case 'progress':
       return '#/progress'
+    case 'feedback':
+      return '#/feedback'
     case 'notFound':
       return '#/404'
   }
@@ -84,7 +88,7 @@ export type NavDirection = 'forward' | 'back' | 'fade' | 'none'
 
 const DEPTH: Record<Route['name'], number> = {
   today: 0, songs: 0, lexicon: 0, notFound: 0,
-  settings: 1, progress: 1, addSong: 1, addText: 1, study: 1, session: 1,
+  settings: 1, progress: 1, feedback: 1, addSong: 1, addText: 1, study: 1, session: 1,
   analyzing: 2, triage: 2, finalListen: 2,
 }
 

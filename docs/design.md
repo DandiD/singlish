@@ -172,6 +172,8 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | — | Progressi (canvas: Progress), da Oggi | `#/progress` |
 | — | Riascolto finale (canvas: FinalListen), da Oggi | `#/songs/:id/final` |
 | — | Aggiungi testo (canvas: AddText), da Canzoni | `#/songs/new-text` |
+| — | Card Produci (canvas: CardP) | `#/session` |
+| — | Le tue frasi (canvas: Feedback), da fine sessione o Oggi | `#/feedback` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -225,6 +227,9 @@ Nello Studio «Chiedi a Gemini» apre la selezione: ogni parola del testo divent
 
 ## Sblocco della canzone successiva
 «Aggiungi» (Canzoni, Oggi) controlla `readiness` in `src/domain/readiness.ts`: voci delle canzoni in corso ancora fuori dal ripasso, carico dei prossimi 7 giorni sotto i minuti del timer, posti liberi. Se non è pronta si apre il foglio (canvas: Unlock) con i tre controlli, «Sblocca lo stesso», «Aspetto, va bene così» e la modalità intensiva (`intensiveUntil`: 25 nuove al giorno per 7 giorni, segnalata in Oggi).
+
+## Card Produci
+Quando la card Completa di un chunk con situazione (`productionPromptIt`) va in ripasso, nasce la card P (anche per i chunk di prima). Nella sessione: situazione in italiano, chunk da usare, frase in inglese (campo con le regole delle risposte); «Non so farla» vale Di nuovo subito, «Salva e avanti» mette la frase in `sessions.productions` senza voto. A fine sessione e in Oggi «Le tue frasi» le corregge tutte con una sola chiamata (verdetto, frase corretta, nota, voto proposto modificabile); «Conferma i voti» registra i ripassi. Finché una frase aspetta, la sua voce non torna in coda.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

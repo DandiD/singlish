@@ -8,6 +8,7 @@ import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
 import { finalListenDue } from '../../domain/finalListen'
 import { INTENSIVE } from '../../domain/readiness'
+import { pendingProductions } from '../../domain/production'
 import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
@@ -43,11 +44,11 @@ export function Today() {
         }).length
         return { song, total: ids.length, done }
       })
-    return { queue, settings, progress, finalDue: finalListenDue(songs, now()) }
+    return { queue, settings, progress, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
   }, [db])
 
   if (!data) return <main class="screen" aria-busy="true" />
-  const { queue, settings, progress, finalDue } = data
+  const { queue, settings, progress, finalDue, toCorrect } = data
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
 
@@ -82,6 +83,14 @@ export function Today() {
           <p class="note">Niente da ripassare oggi.</p>
         )}
       </section>
+
+      {toCorrect > 0 && (
+        <a class="card final-due" href={href({ name: 'feedback' })}>
+          <span class="section-label">LE TUE FRASI</span>
+          <strong>{toCorrect === 1 ? '1 frase da correggere' : `${toCorrect} frasi da correggere`}</strong>
+          <span class="note">Una sola chiamata a Gemini le corregge tutte.</span>
+        </a>
+      )}
 
       {finalDue.map((s) => (
         <a key={s.id} class="card final-due" href={href({ name: 'finalListen', songId: s.id })}>

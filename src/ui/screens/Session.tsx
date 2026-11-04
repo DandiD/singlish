@@ -5,13 +5,14 @@ import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
+import { saveProduction } from '../../domain/production'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
 import { gradeAnswer } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
-import { findForm, formIn } from '../../domain/songItems'
+import { CHUNK_CLASS, findForm, formIn } from '../../domain/songItems'
 import { RatingBar, RATING_LABEL } from '../components/RatingBar'
 import type { Chunk, ChunkType, Rating, Settings, Song, Word } from '../../db/types'
 import { Icon } from '../components/Icon'
@@ -46,6 +47,7 @@ export function Session() {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
+  const [written, setWritten] = useState(0)
   const [sheet, setSheet] = useState(false)
   const busy = useRef(false)
   const resumeRef = useRef<HTMLButtonElement>(null)
@@ -149,7 +151,7 @@ export function Session() {
         ? { reviews: counts.reviews, news: counts.news + 1 }
         : { reviews: counts.reviews + 1, news: counts.news }
       // Voto e contatori della sessione in una sola transazione: o tutti e due, o nessuno.
-      await db.transaction('rw', db.cards, db.reviews, db.sessions, async () => {
+      await db.transaction('rw', db.cards, db.reviews, db.sessions, db.chunks, async () => {
         await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
         await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
       })
@@ -163,10 +165,29 @@ export function Session() {
     }
   }
 
+  // Card Produci: la frase si salva per la correzione di fine sessione; il voto arriva dopo, con Gemini.
+  const produce = async (sentence: string) => {
+    if (busy.current) return
+    const current = items[idx]
+    if (!current || !timerReady) return
+    busy.current = true
+    try {
+      const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
+      await saveProduction(db, sessionId, { cardId: current.card.id, itemId: current.card.itemId, sentence, elapsedMs: elapsed })
+      setWritten((n) => n + 1)
+      setIdx(idx + 1)
+      if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
+    } catch (e) {
+      reportError(e)
+    } finally {
+      busy.current = false
+    }
+  }
+
   if (items.length > 0 && !finished && !timerReady) return <main class="screen session" aria-busy="true" />
 
   // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
-  if (items.length === 0 && counts.reviews + counts.news === 0) {
+  if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0) {
     const noSongs = loaded.songById.size === 0
     return (
       <main class="screen session session-done">
@@ -190,6 +211,9 @@ export function Session() {
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
+        {written > 0 && (
+          <a class="btn primary cta" href={href({ name: 'feedback' })}>{written === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${written} frasi con Gemini`}</a>
+        )}
         <a class="btn primary cta" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>
     )
@@ -227,6 +251,7 @@ export function Session() {
           found={found}
           song={loaded.songById.get(found.item.contexts[0]?.songId ?? found.item.songId)}
           onRate={rate}
+          onProduce={produce}
         />
       ) : (
         <p class="note">Elemento non trovato.</p>
@@ -271,13 +296,15 @@ export function Session() {
   )
 }
 
-function SessionCard({ card, isNew, found, song, onRate }: {
+function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
   card: QueueItem['card']
   isNew: boolean
   found: Item
   song: Song | undefined
   onRate(rating: Rating, auto: boolean, answer: string | null): void
+  onProduce(sentence: string): void
 }) {
+  if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} isNew={isNew} onRate={onRate} onProduce={onProduce} />
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   const verse = song?.lines[ctx.lineIndex] ?? ''
@@ -375,6 +402,39 @@ function SessionCard({ card, isNew, found, song, onRate }: {
           )}
         </form>
       )}
+    </section>
+  )
+}
+
+/** Card Produci: una situazione in italiano e il chunk da usare; la frase si corregge a fine sessione. */
+function ProduceCard({ chunk, isNew, onRate, onProduce }: {
+  chunk: Chunk
+  isNew: boolean
+  onRate(rating: Rating, auto: boolean, answer: string | null): void
+  onProduce(sentence: string): void
+}) {
+  const [sentence, setSentence] = useState('')
+  const ok = sentence.trim().length > 0
+  return (
+    <section class="card session-card produce">
+      <span class="chip">{`PRODUCI${isNew ? ' · NUOVA' : ''}`}</span>
+      <div class="situation">
+        <span class="section-label">SITUAZIONE</span>
+        <p class="verse">{chunk.productionPromptIt}</p>
+        <p class="use"><span class="note">Usa</span> <span class={`hl ${CHUNK_CLASS[chunk.type]}`} lang="en">{chunk.baseForm}</span></p>
+      </div>
+      <form class="c-answer" onSubmit={(e) => { e.preventDefault(); if (ok) onProduce(sentence.trim()) }}>
+        <label class="field">
+          <span>La tua frase in inglese</span>
+          <textarea rows={3} lang="en" autocapitalize="off" ref={noAutocorrect} value={sentence}
+            onInput={(e) => setSentence((e.currentTarget as HTMLTextAreaElement).value)} />
+        </label>
+        <p class="note info-box">La correzione arriva a fine sessione, insieme alle altre frasi: una sola chiamata a Gemini.</p>
+        <div class="grid2">
+          <button type="button" class="btn outline" onClick={() => onRate(1, false, null)}>Non so farla</button>
+          <button type="submit" class="btn primary" disabled={!ok}>Salva e avanti</button>
+        </div>
+      </form>
     </section>
   )
 }

@@ -79,7 +79,8 @@ export interface CardRow {
   id: string
   itemType: 'chunk' | 'word'
   itemId: string
-  kind: 'R' | 'C'
+  /** R Riconosci, C Completa, P Produci (solo chunk, dopo la C in ripasso). */
+  kind: 'R' | 'C' | 'P'
   unlocked: 0 | 1
   due: Date
   fsrs: Card
@@ -113,6 +114,15 @@ export interface SessionRow {
   timer: TimerState
   reviewsDone: number
   newDone: number
+  /** Frasi scritte nelle card Produci, da correggere con Gemini a fine sessione (tutte in una chiamata). */
+  productions?: Production[]
+}
+
+export interface Production {
+  cardId: string
+  itemId: string
+  sentence: string
+  elapsedMs: number
 }
 
 export interface Settings {

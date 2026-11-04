@@ -244,3 +244,15 @@ describe('modalità intensiva', () => {
     expect(q.newCount).toBe(19) // 11 chunk + 8 parole da imparare: tutte, sotto il tetto di 25
   })
 })
+
+describe('frasi in attesa di correzione', () => {
+  test('una voce con la frase ancora da correggere non torna nella coda', async () => {
+    const before = await buildSessionQueue(db, now)
+    const first = before.items[0].card.itemId
+    await db.sessions.add({ id: 'old', kind: 'review', songId: null, startedAt: new Date(now.getTime() - 86400000), endedAt: new Date(now.getTime() - 86000000),
+      timer: { status: 'stopped', durationMs: 1, accumulatedMs: 1, resumedAt: null }, reviewsDone: 0, newDone: 0,
+      productions: [{ cardId: 'x', itemId: first, sentence: 'a', elapsedMs: 1 }] })
+    const after = await buildSessionQueue(db, now)
+    expect(after.items.some((i) => i.card.itemId === first)).toBe(false)
+  })
+})

@@ -33,7 +33,7 @@ export async function recordReview(
   now: Date,
   desiredRetention: number,
 ): Promise<CardRow> {
-  return db.transaction('rw', db.cards, db.reviews, async () => {
+  return db.transaction('rw', db.cards, db.reviews, db.chunks, async () => {
     const card = await db.cards.get(cardId)
     if (!card) throw new Error(`Card not found: ${cardId}`)
     const result = createScheduler(desiredRetention).next(card.fsrs, now, RATING_MAP[input.rating])
@@ -51,6 +51,14 @@ export async function recordReview(
       reviewedAt: now,
       wasNew: card.fsrs.state === State.New,
     })
+    // La Completa di un chunk in ripasso sblocca la Produci (creata ora: i chunk di prima non ce l'hanno).
+    if (card.kind === 'C' && card.itemType === 'chunk' && input.rating !== 1 && result.card.state === State.Review) {
+      const hasP = (await db.cards.where('itemId').equals(card.itemId).filter((c) => c.kind === 'P').count()) > 0
+      const chunk = hasP ? null : await db.chunks.get(card.itemId)
+      if (chunk && chunk.productionPromptIt.trim()) {
+        await db.cards.add({ id: newId(), itemType: 'chunk', itemId: card.itemId, kind: 'P', unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
+      }
+    }
     if (card.kind === 'R' && goodRCount >= 2) {
       const sibling = await db.cards
         .where('itemId')

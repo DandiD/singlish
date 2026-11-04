@@ -12,6 +12,7 @@ import { Today } from './ui/screens/Today'
 import { Session } from './ui/screens/Session'
 import { Lexicon } from './ui/screens/Lexicon'
 import { Progress } from './ui/screens/Progress'
+import { Feedback } from './ui/screens/Feedback'
 import { FinalListen } from './ui/screens/FinalListen'
 import { OfflineBadge } from './ui/components/OfflineBadge'
 import { UpdateToast } from './ui/components/UpdateToast'
@@ -34,12 +35,13 @@ function title(route: Route): string {
     case 'settings': return 'Impostazioni'
     case 'lexicon': return 'Lessico'
     case 'progress': return 'Progressi'
+    case 'feedback': return 'Le tue frasi'
     case 'finalListen': return 'Riascolto finale'
     case 'notFound': return 'Pagina non trovata'
   }
 }
 
-const NO_NAV: Route['name'][] = ['settings', 'progress', 'finalListen', 'addText', 'addSong', 'analyzing', 'study', 'triage', 'session']
+const NO_NAV: Route['name'][] = ['settings', 'progress', 'feedback', 'finalListen', 'addText', 'addSong', 'analyzing', 'study', 'triage', 'session']
 
 export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
@@ -77,6 +79,8 @@ export function App({ swStore }: { swStore?: SwStore }) {
               <Lexicon />
             ) : route.name === 'progress' ? (
               <Progress />
+            ) : route.name === 'feedback' ? (
+              <Feedback />
             ) : route.name === 'finalListen' ? (
               <FinalListen key={route.songId} songId={route.songId} />
             ) : (
