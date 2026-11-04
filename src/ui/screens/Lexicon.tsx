@@ -5,6 +5,7 @@ import { href } from '../../router'
 import { coverage, lexicon, TOPICS, type LexChip, type LexEntry } from '../../domain/lexicon'
 import { CHUNK_CLASS } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
+import { useAddGate } from '../components/UnlockSheet'
 import { plural } from '../plural'
 
 const CHIPS: [LexChip, string][] = [
@@ -22,6 +23,7 @@ export function Lexicon() {
   const [q, setQ] = useState('')
   const [chip, setChip] = useState<LexChip>('tutti')
   const [topic, setTopic] = useState('')
+  const gate = useAddGate()
 
   if (!data) return <main class="screen lexicon" aria-busy="true" />
   const all = lexicon(data, {})
@@ -77,7 +79,7 @@ export function Lexicon() {
       {all.length === 0 ? (
         <div class="empty">
           <p class="note">Il lessico si riempie con le espressioni e le parole delle tue canzoni.</p>
-          <a class="btn primary cta" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi una canzone</a>
+          <a class="btn primary cta" href={href({ name: 'addSong' })} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />Aggiungi una canzone</a>
         </div>
       ) : (
         <>
@@ -98,6 +100,7 @@ export function Lexicon() {
           </ul>
         </>
       )}
+      {gate.sheet}
     </main>
   )
 }

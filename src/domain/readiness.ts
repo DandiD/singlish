@@ -7,7 +7,8 @@ export const INTENSIVE = { newPerDay: 25, days: 7 }
 const DAY = 86_400_000
 
 export function effectiveNewPerDay(settings: Settings, now: Date): number {
-  return settings.intensiveUntil && settings.intensiveUntil > now ? INTENSIVE.newPerDay : settings.newPerDay
+  // L'intensiva alza le nuove a 25, non le abbassa a chi ne ha scelte di più.
+  return settings.intensiveUntil && settings.intensiveUntil > now ? Math.max(INTENSIVE.newPerDay, settings.newPerDay) : settings.newPerDay
 }
 
 export interface Readiness {

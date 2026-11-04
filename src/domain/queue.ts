@@ -3,6 +3,7 @@ import type { SinglishDB } from '../db/db'
 import type { CardRow, SessionRow } from '../db/types'
 import { getSettings } from './settings'
 import { effectiveNewPerDay } from './readiness'
+import { pendingProductions } from './production'
 
 export const DEFAULT_SECONDS_PER_REVIEW = 12
 const AVG_WINDOW = 200
@@ -105,8 +106,7 @@ export async function buildSessionQueue(
     .count()
   // Anche le frasi scritte oggi su card Produci nuove, ancora da correggere, hanno usato una nuova di oggi.
   const dayStart = startOfLocalDay(now).getTime()
-  const writtenNewToday = (await db.sessions.toArray())
-    .flatMap((s) => s.productions ?? [])
+  const writtenNewToday = (await pendingProductions(db)) // solo frasi con la card ancora presente e il chunk attivo
     .filter((p) => p.wasNew && p.at && p.at.getTime() >= dayStart && p.at <= now).length
   let budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday - writtenNewToday)
   const newBlockedByLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review

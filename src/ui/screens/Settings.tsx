@@ -263,6 +263,7 @@ export function Settings() {
             <option value="C1">C1</option>
           </select>
         </label>
+        <p class="note">Cambiare livello reimposta la fascia utile delle parole (anche quella scelta dal test di vocabolario).</p>
         <label class="field">
           <span>Nuove al giorno</span>
           <input

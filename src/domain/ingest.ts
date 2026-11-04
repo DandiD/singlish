@@ -309,14 +309,22 @@ export async function retryQueuedSongs(
  * al primo verso che resta, con la forma di quel verso. I ripassi già fatti restano come storico.
  */
 export async function deleteSong(db: SinglishDB, songId: string): Promise<void> {
-  await db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
+  await db.transaction('rw', db.songs, db.chunks, db.words, db.cards, db.reviews, async () => {
     for (const table of [db.chunks, db.words] as const) {
       const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
       for (const item of items.filter((i) => i.origin !== 'expand' && (i.songId === songId || i.contexts.some((x) => x.songId === songId)))) {
         const rest = item.contexts.filter((x) => x.songId !== songId)
         if (rest.length === 0) {
+          const cards = await db.cards.where('itemId').equals(item.id).toArray()
           await db.cards.where('itemId').equals(item.id).delete()
-          await table.delete(item.id)
+          // Il profilo delle parole note (spec §7: «note o già studiate») non si perde: la parola esce dal
+          // ripasso ma resta nota, così non torna in Smista con la prossima canzone.
+          const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
+          if ('triage' in item && (item.triage === 'known' || (item.triage === 'learn' && studied))) {
+            await db.words.update(item.id, { triage: 'known', contexts: [] })
+          } else {
+            await table.delete(item.id)
+          }
           continue
         }
         const patch: Partial<Chunk & Word> = { contexts: rest }
