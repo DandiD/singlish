@@ -46,6 +46,13 @@ export async function createSong(db: SinglishDB, input: SongInput, now: Date): P
 export const contextOf = (songId: string, lineIndex: number, surface: string, itemSurface: string): Context =>
   surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
 
+/** Una voce di Espandi che compare in un verso diventa una voce di canzone come le altre. */
+export function graduate(item: Chunk | Word): void {
+  if (item.origin !== 'expand') return
+  delete item.origin
+  delete item.fromItemId
+}
+
 export const addContext = (contexts: Context[], ctx: Context): boolean => {
   const same = contexts.find((c) => c.songId === ctx.songId && c.lineIndex === ctx.lineIndex)
   if (same) {
@@ -80,6 +87,7 @@ export async function saveAnalysis(
       const existing = await db.chunks.where('key').equals(key).first()
       if (existing) {
         if (addContext(existing.contexts, contextOf(songId, c.line_index, c.surface_form, existing.surfaceForm))) {
+          graduate(existing)
           await db.chunks.put(existing)
           contextsAdded++
         }
@@ -119,6 +127,7 @@ export async function saveAnalysis(
       if (known.has(lemma)) {
         const existing = await db.words.where('lemma').equals(lemma).first()
         if (existing && addContext(existing.contexts, contextOf(songId, w.line_index, w.surface_form, existing.surfaceForm))) {
+          graduate(existing)
           await db.words.put(existing)
         }
       } else if (extraLines.has(lemma)) {
@@ -326,4 +335,30 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
     }
     await db.songs.delete(songId)
   })
+}
+
+/**
+ * Escludi una voce: esce con le sue card e con le voci nate da lei con Espandi (che restano solo finché esiste).
+ * Restituisce quante voci figlie sono uscite.
+ */
+export async function excludeItem(db: SinglishDB, itemId: string): Promise<{ children: number }> {
+  return db.transaction('rw', db.chunks, db.words, db.cards, async () => {
+    const children = [
+      ...(await db.chunks.filter((c) => c.fromItemId === itemId).toArray()).map((c) => ({ id: c.id, table: db.chunks as typeof db.chunks | typeof db.words })),
+      ...(await db.words.filter((w) => w.fromItemId === itemId).toArray()).map((w) => ({ id: w.id, table: db.words as typeof db.chunks | typeof db.words })),
+    ]
+    for (const ch of children) {
+      await db.cards.where('itemId').equals(ch.id).delete()
+      await ch.table.delete(ch.id)
+    }
+    await db.cards.where('itemId').equals(itemId).delete()
+    await db.chunks.delete(itemId)
+    await db.words.delete(itemId)
+    return { children: children.length }
+  })
+}
+
+/** Quante voci sono nate da questa con Espandi. */
+export async function expandChildren(db: SinglishDB, itemId: string): Promise<number> {
+  return (await db.chunks.filter((c) => c.fromItemId === itemId).count()) + (await db.words.filter((w) => w.fromItemId === itemId).count())
 }

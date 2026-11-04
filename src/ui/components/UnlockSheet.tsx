@@ -16,24 +16,24 @@ const DAY = 86_400_000
  * «Aggiungi»: se le canzoni in corso hanno ancora voci fuori dal ripasso o il carico supera il tetto,
  * prima di aprire Aggiungi canzone un foglio spiega perché e lascia scegliere (canvas: Unlock).
  */
-export function useAddGate(): { request(): void; sheet: JSX.Element | null } {
+export function useAddGate(): { request(target?: 'addSong' | 'addText'): void; sheet: JSX.Element | null } {
   const { db, now } = useDeps()
-  const [state, setState] = useState<{ r: Readiness; settings: Settings } | null>(null)
-  const request = () => {
+  const [state, setState] = useState<{ r: Readiness; settings: Settings; target: 'addSong' | 'addText' } | null>(null)
+  const request = (target: 'addSong' | 'addText' = 'addSong') => {
     void (async () => {
       const [settings, songs, chunks, words, cards, avgSeconds] = await Promise.all([
         getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), estimateAvgSeconds(db),
       ])
       const r = readiness({ settings, songs, chunks, words, cards, avgSeconds }, now())
-      if (r.ready) window.location.hash = href({ name: 'addSong' })
-      else setState({ r, settings })
+      if (r.ready) window.location.hash = href({ name: target })
+      else setState({ r, settings, target })
     })().catch(reportError)
   }
   const sheet = state ? <UnlockSheet {...state} onClose={() => setState(null)} /> : null
   return { request, sheet }
 }
 
-function UnlockSheet({ r, settings, onClose }: { r: Readiness; settings: Settings; onClose(): void }) {
+function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings: Settings; target: 'addSong' | 'addText'; onClose(): void }) {
   const { db, now } = useDeps()
   const ref = useRef<HTMLElement>(null)
   const [intensive, setIntensive] = useState(!!settings.intensiveUntil && settings.intensiveUntil > now())
@@ -81,7 +81,7 @@ function UnlockSheet({ r, settings, onClose }: { r: Readiness; settings: Setting
           <input type="checkbox" checked={intensive} onChange={(e) => toggleIntensive((e.currentTarget as HTMLInputElement).checked)} />
         </label>
         <div class="grid-stack">
-          <button type="button" class="btn primary cta" disabled={r.openSongs >= MAX_OPEN_SONGS} onClick={() => { onClose(); window.location.hash = href({ name: 'addSong' }) }}>Sblocca lo stesso</button>
+          <button type="button" class="btn primary cta" disabled={r.openSongs >= MAX_OPEN_SONGS} onClick={() => { onClose(); window.location.hash = href({ name: target }) }}>Sblocca lo stesso</button>
           <button type="button" class="btn ghost-link" onClick={onClose}>Aspetto, va bene così</button>
         </div>
       </section>

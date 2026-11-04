@@ -3,6 +3,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goBackTo, href } from '../../router'
+import { excludeItem, expandChildren } from '../../domain/ingest'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, formIn } from '../../domain/songItems'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
@@ -17,16 +18,17 @@ const TYPE_LABEL: Record<ChunkType, string> = {
 }
 const REGISTER_LABEL: Record<Register, string> = { usable: 'Usabile', informal: 'Informale', song_only: 'Solo canzone' }
 
-type Found = { kind: 'chunk'; item: Chunk } | { kind: 'word'; item: Word } | null
+type Found = ({ kind: 'chunk'; item: Chunk } | { kind: 'word'; item: Word }) & { children: number } | null
 
 export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const { db } = useDeps()
   const found = useLive(
     async (): Promise<Found> => {
+      const children = await expandChildren(db, itemId)
       const c = await db.chunks.get(itemId)
-      if (c) return { kind: 'chunk', item: c }
+      if (c) return { kind: 'chunk', item: c, children }
       const w = await db.words.get(itemId)
-      return w ? { kind: 'word', item: w } : null
+      return w ? { kind: 'word', item: w, children } : null
     },
     [db, itemId],
   )
@@ -42,7 +44,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   }, [found])
 
   if (!found) return null
-  const { kind, item } = found
+  const { kind, item, children } = found
   const table = kind === 'chunk' ? db.chunks : db.words
   const title = kind === 'chunk' ? item.baseForm : item.lemma
   const own = item.contexts.find((c) => c.songId === song.id)
@@ -71,10 +73,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   }
   const exclude = async () => {
     try {
-      await db.transaction('rw', db.chunks, db.words, db.cards, async () => {
-        await db.cards.where('itemId').equals(item.id).delete()
-        await table.delete(item.id)
-      })
+      await excludeItem(db, item.id)
       void close()
     } catch (e) {
       reportError(e)
@@ -150,7 +149,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
 
         {mode === 'confirm' ? (
           <div class="confirm" role="alert">
-            <p>Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.</p>
+            <p>{`Togliere questo elemento e le sue card? Se compare in una canzone nuova, ti verrà proposto di nuovo.${children > 0 ? ` Con lei esce anche ${children === 1 ? '1 voce aggiunta' : `${children} voci aggiunte`} con Espandi.` : ''}`}</p>
             <div class="grid2">
               <button type="button" class="btn outline danger" onClick={() => void exclude()}>Sì, escludi</button>
               <button type="button" class="btn outline" onClick={() => setMode('view')}>Annulla</button>

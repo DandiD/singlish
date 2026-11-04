@@ -80,3 +80,16 @@ test('Oggi ricorda le frasi da correggere', async () => {
   mount(<Today />)
   expect((await screen.findByRole('link', { name: /1 frase da correggere/ })).getAttribute('href')).toBe('#/feedback')
 })
+
+test('fine sessione: il numero di frasi da correggere è quello di Oggi, anche riprendendo una sessione', async () => {
+  // una sessione di oggi lasciata a metà, con due frasi già scritte su un'altra voce
+  await db.chunks.add({ ...chunk, id: 'c2', key: 'k2', baseForm: 'run out of' })
+  await db.cards.add({ id: 'p2', itemType: 'chunk', itemId: 'c2', kind: 'P', unlocked: 1, due: now, fsrs: { ...newFsrsCard(now), state: State.Review }, goodRCount: 0 })
+  await db.sessions.add({ id: 'open', kind: 'review', songId: null, startedAt: new Date(now.getTime() - 60000), endedAt: null,
+    timer: { status: 'paused', durationMs: 1800000, accumulatedMs: 1000, resumedAt: null }, reviewsDone: 0, newDone: 0 })
+  await saveProduction(db, 'open', { cardId: 'p2', itemId: 'c2', sentence: 'We ran out of time.', elapsedMs: 1 })
+  mount(<Session />)
+  fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'I let it slide.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
+  expect(await screen.findByRole('link', { name: 'Correggi le 2 frasi con Gemini' })).toBeTruthy()
+})

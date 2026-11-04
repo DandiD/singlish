@@ -251,7 +251,10 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 ## Conteggi condivisi delle funzioni nuove
 - Sblocco, Oggi, Studio, riascolto finale: le voci di una canzone sono quelle con un verso lì (`contexts`), mai le voci di Espandi.
 - Carico dei prossimi 7 giorni (Progressi e sblocco): voci in scadenza, una per voce come nella sessione (`dueItemsWithin`).
-- Frasi da correggere (Oggi e «Le tue frasi»): solo quelle con la card ancora presente e il chunk non sospeso.
+- Frasi da correggere (Oggi, «Le tue frasi», fine sessione): `pendingProductions`, solo quelle con la card ancora presente e il chunk non sospeso.
+- Una voce di Espandi che riceve un verso (analisi di una canzone, «Chiedi a Gemini») diventa voce di canzone (`graduate`): perde `origin`/`fromItemId` e da lì vale come le altre ovunque.
+- Escludi (`excludeItem`) fa uscire anche le voci nate con Espandi dalla voce esclusa; la conferma dice quante.
+- «Aggiungi testo» passa dal controllo di sblocco come «Aggiungi».
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

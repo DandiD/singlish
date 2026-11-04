@@ -261,3 +261,19 @@ test('una voce sospesa si riattiva dalla sua scheda', async () => {
   await waitFor(async () => expect((await db.chunks.get('c1'))!.suspended).toBe(false))
   expect(await screen.findByRole('button', { name: 'Sospendi' })).toBeTruthy()
 })
+
+test('escludere una parola: la conferma dice quante voci di Espandi escono con lei', async () => {
+  await db.words.bulkAdd([
+    { id: 'w1', lemma: 'rely', surfaceForm: 'rely', pos: 'verb', freqRank: 1, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }], cefr: 'B1', register: 'usable',
+      topic: 'other', meaningIt: 'contare su', explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: false },
+    { id: 'w2', lemma: 'reliable', surfaceForm: 'reliable', pos: 'adjective', freqRank: 0, songId: 's1', lineIndex: 0, contexts: [], cefr: 'B1', register: 'usable',
+      topic: 'other', meaningIt: 'affidabile', explanationIt: '', extraExampleEn: 'x', triage: 'learn', userEdited: false, suspended: false, origin: 'expand', fromItemId: 'w1' },
+  ])
+  window.location.hash = '#/songs/s1?item=w1'
+  render(<AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}><Study songId="s1" itemId="w1" /></AppDepsProvider>)
+  await screen.findByRole('dialog')
+  fireEvent.click(screen.getByRole('button', { name: 'Escludi' }))
+  expect(await screen.findByText(/Con lei esce anche 1 voce aggiunta con Espandi\./)).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Sì, escludi' }))
+  await waitFor(async () => expect(await db.words.count()).toBe(0), { timeout: 3000 })
+})

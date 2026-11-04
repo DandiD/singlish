@@ -5,7 +5,8 @@ import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack, onBackTo } from '../../router'
 import { buildSessionQueue, type QueueItem } from '../../domain/queue'
 import { recordReview } from '../../domain/scheduler'
-import { saveProduction } from '../../domain/production'
+import { pendingProductions, saveProduction } from '../../domain/production'
+import { useLive } from '../useLive'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
 import { gradeAnswer, gradeDictation } from '../../domain/text'
@@ -48,6 +49,8 @@ export function Session() {
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [written, setWritten] = useState(0)
+  // Le frasi da correggere sono tutte quelle in attesa, come in Oggi e in «Le tue frasi» (anche di una sessione ripresa).
+  const toCorrect = useLive(() => pendingProductions(db), [db])?.length ?? 0
   const [sheet, setSheet] = useState(false)
   const busy = useRef(false)
   const resumeRef = useRef<HTMLButtonElement>(null)
@@ -187,7 +190,7 @@ export function Session() {
   if (items.length > 0 && !finished && !timerReady) return <main class="screen session" aria-busy="true" />
 
   // Niente in coda e niente fatto: non è "Fatto per oggi", è che non c'è nulla da ripassare.
-  if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0) {
+  if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0 && toCorrect === 0) {
     const noSongs = loaded.songById.size === 0
     return (
       <main class="screen session session-done">
@@ -211,8 +214,8 @@ export function Session() {
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         <h1>Fatto per oggi</h1>
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}`}</p>
-        {written > 0 && (
-          <a class="btn primary cta" href={href({ name: 'feedback' })}>{written === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${written} frasi con Gemini`}</a>
+        {toCorrect > 0 && (
+          <a class="btn primary cta" href={href({ name: 'feedback' })}>{toCorrect === 1 ? 'Correggi la frase con Gemini' : `Correggi le ${toCorrect} frasi con Gemini`}</a>
         )}
         <a class="btn primary cta" href={href({ name: 'today' })} onClick={onBackTo({ name: 'today' })}>Torna a Oggi</a>
       </main>

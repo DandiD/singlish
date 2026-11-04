@@ -4,7 +4,7 @@ import type { Chunk, Level, Word } from '../db/types'
 import { callGemini, GeminiError } from './gemini/client'
 import { ChunkSchema, WordSchema } from './gemini/parse'
 import { RESPONSE_SCHEMA } from './gemini/prompt'
-import { addContext, contextOf } from './ingest'
+import { addContext, contextOf, graduate } from './ingest'
 import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
 import { normalizeKey } from './text'
@@ -95,7 +95,10 @@ export async function askGemini(
       const key = normalizeKey(c.base_form)
       const found = await db.chunks.where('key').equals(key).first()
       if (found) {
-        if (addContext(found.contexts, contextOf(songId, c.line_index, c.surface_form, found.surfaceForm))) await db.chunks.put(found)
+        if (addContext(found.contexts, contextOf(songId, c.line_index, c.surface_form, found.surfaceForm))) {
+          graduate(found)
+          await db.chunks.put(found)
+        }
         existing++
         continue
       }
@@ -113,7 +116,7 @@ export async function askGemini(
       const lemma = w.lemma.trim().toLowerCase()
       const found = await db.words.where('lemma').equals(lemma).first()
       if (found) {
-        addContext(found.contexts, contextOf(songId, w.line_index, w.surface_form, found.surfaceForm))
+        if (addContext(found.contexts, contextOf(songId, w.line_index, w.surface_form, found.surfaceForm))) graduate(found)
         if (found.triage !== 'learn') {
           found.triage = 'learn'
           if ((await db.cards.where('itemId').equals(found.id).count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))

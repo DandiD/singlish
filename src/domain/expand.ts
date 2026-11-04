@@ -79,7 +79,8 @@ export function expansionPlan(words: Word[], chunks: Chunk[], word: Word, pick: 
     seen.add(lemma)
     const found = byLemma.get(lemma)
     if (!found) newWords.push(r)
-    else if (found.triage !== 'learn') toLearn.push(found)
+    // Una parola sospesa resta com'è: le sue card resterebbero fuori dal ripasso.
+    else if (found.triage !== 'learn' && !found.suspended) toLearn.push(found)
   }
   const newChunks = e.collocations.filter((c) => pick.collocations.includes(c.base_form) && !keys.has(normalizeKey(c.base_form)))
   const hasS = cards.some((c) => c.itemId === word.id && c.kind === 'S')

@@ -51,13 +51,13 @@ export function Songs() {
           type="button"
           class="btn primary pill"
           disabled={full}
-          onClick={gate.request}
+          onClick={() => gate.request()}
         >
           <Icon name="plus" size={18} />Aggiungi
         </button>
       </header>
       {full ? <p class="note">{LIMIT_NOTE}</p> : (
-        <a class="link-add" href={href({ name: 'addText' })}><Icon name="plus" size={18} />Aggiungi testo</a>
+        <a class="link-add" href={href({ name: 'addText' })} onClick={(e) => { e.preventDefault(); gate.request('addText') }}><Icon name="plus" size={18} />Aggiungi testo</a>
       )}
       {songs.length === 0 && <p class="note">Nessuna canzone. Aggiungine una per cominciare.</p>}
       <ul class="song-list">

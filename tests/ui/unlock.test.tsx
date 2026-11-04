@@ -57,3 +57,13 @@ test('Oggi: con la modalità intensiva attiva lo dice', async () => {
   render(<AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}><Today /></AppDepsProvider>)
   expect(await screen.findByText('Modalità intensiva fino al 11 novembre: fino a 25 nuove al giorno.')).toBeTruthy()
 })
+
+test('anche Aggiungi testo passa dal controllo di sblocco', async () => {
+  await db.chunks.add(chunk('a'))
+  await db.cards.bulkAdd(newCardPair('chunk', 'a', now))
+  mount()
+  fireEvent.click(await screen.findByRole('link', { name: 'Aggiungi testo' }))
+  expect(await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Sblocca lo stesso' }))
+  await waitFor(() => expect(window.location.hash).toBe('#/songs/new-text'))
+})
