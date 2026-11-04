@@ -285,3 +285,19 @@ test('Studio aperto dall\'indirizzo su una canzone non ancora analizzata: lo dic
   expect(screen.queryByRole('button', { name: /Segna come completata/ })).toBeNull()
   expect((await db.songs.get('s1'))!.status).toBe('draft')
 })
+
+test('una parola su due righe della stessa canzone: la scheda mostra la riga toccata', async () => {
+  await db.songs.update('s1', { lines: ['Every night I let it slide', 'and every night the harbour sleeps'] })
+  await db.words.add({ id: 'night', lemma: 'night', surfaceForm: 'night', pos: 'noun', freqRank: 900, songId: 's1', lineIndex: 0,
+    contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 's1', lineIndex: 1 }], cefr: 'B1', register: 'usable', topic: '', meaningIt: 'notte',
+    explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: false })
+  const { container } = mount()
+  await screen.findByText(/harbour/)
+  const second = [...container.querySelectorAll<HTMLAnchorElement>('.lyrics p')][1].querySelector('a')!
+  expect(second.getAttribute('href')).toBe('#/songs/s1?item=night%401')
+  cleanup()
+  window.location.hash = '#/songs/s1?item=night%401'
+  render(<AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}><Study songId="s1" itemId="night@1" /></AppDepsProvider>)
+  await screen.findByRole('dialog')
+  expect(screen.getByText('NELLA CANZONE · RIGA 2')).toBeTruthy()
+})

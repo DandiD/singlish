@@ -79,7 +79,7 @@ export function Songs() {
               {(s.status === 'queued' || s.status === 'draft') && (
                 <a class="btn outline" href={href({ name: 'analyzing', songId: s.id })}>Analizza ora</a>
               )}
-              {(s.status === 'analyzed' || s.status === 'studying') && (
+              {(s.status === 'analyzed' || s.status === 'studying' || s.status === 'done') && (
                 <a class="btn outline" href={href({ name: 'study', songId: s.id })}>Apri</a>
               )}
               {s.spotifyUrl && (

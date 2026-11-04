@@ -21,8 +21,12 @@ const REGISTER_LABEL: Record<Register, string> = { usable: 'Usabile', informal: 
 
 type Found = ({ kind: 'chunk'; item: Chunk } | { kind: 'word'; item: Word }) & { children: number } | null
 
-export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
+export function ItemSheet({ song, itemId: routeId }: { song: Song; itemId: string }) {
   const { db } = useDeps()
+  // «id@riga»: la voce toccata su una riga precisa (compare su più righe di questa canzone).
+  const at = routeId.lastIndexOf('@')
+  const itemId = at > 0 ? routeId.slice(0, at) : routeId
+  const tapped = at > 0 ? Number(routeId.slice(at + 1)) : undefined
   const found = useLive(
     async (): Promise<Found> => {
       const children = await expandChildren(db, itemId)
@@ -38,7 +42,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const [explanation, setExplanation] = useState('')
   // Chiudendo la scheda mentre si modifica (velo, Esc, X), la modifica si salva invece di perdersi.
   const editing = useRef<(() => Promise<void>) | null>(null)
-  const { ref, closing, close } = useSheet(song.id, itemId, !!found, () => editing.current?.())
+  const { ref, closing, close } = useSheet(song.id, routeId, !!found, () => editing.current?.())
 
   useEffect(() => {
     if (found === null) void close() // elemento inesistente o appena eliminato
@@ -48,7 +52,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const { kind, item, children } = found
   const table = kind === 'chunk' ? db.chunks : db.words
   const title = kind === 'chunk' ? item.baseForm : item.lemma
-  const own = item.contexts.find((c) => c.songId === song.id)
+  const own = item.contexts.find((c) => c.songId === song.id && c.lineIndex === tapped) ?? item.contexts.find((c) => c.songId === song.id)
   const lineIdx = own?.lineIndex ?? item.lineIndex
   // Una voce di Espandi non viene dal testo: niente verso della canzone, resta l'esempio.
   // Nemmeno se la voce non ha un verso in questa canzone (scheda aperta dall'indirizzo, parola del profilo): niente riga altrui.

@@ -104,6 +104,9 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   // Le voci di questa canzone: le stesse per l'evidenziazione nel testo e per i conteggi in testa (e per Oggi).
   const placed = itemsInSong(song, chunks, words)
   const hrefFor = (id: string) => href({ name: 'study', songId, itemId: id })
+  // Una voce su più righe di questa canzone: la scheda deve mostrare la riga toccata, che va nell'indirizzo.
+  const multiLine = new Set([...chunks, ...words].filter((x) => x.contexts.filter((c) => c.songId === songId).length > 1).map((x) => x.id))
+  const hrefAt = (i: number) => (id: string) => (multiLine.has(id) ? href({ name: 'study', songId, itemId: `${id}@${i}` }) : hrefFor(id))
 
   const picks = groupSelection(song.lines, picked)
   const toggle = (key: string) => setPicked((cur) => {
@@ -196,7 +199,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
             {asking ? (
               <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} />
             ) : (
-              <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefFor} />
+              <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
             )}
           </p>
         ))}

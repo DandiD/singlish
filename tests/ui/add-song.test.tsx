@@ -434,3 +434,11 @@ test('Modifica di un testo libero: solo il titolo, niente link Spotify né artis
   expect(within(card).queryByLabelText('Link Spotify')).toBeNull()
   expect(within(card).queryByLabelText('Artista')).toBeNull()
 })
+
+test('una canzone completata si può ancora aprire da Canzoni (per smistare o ripassare il testo)', async () => {
+  const s = await createSong(db, { title: 'Done Song', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  await db.songs.update(s.id, { status: 'done' })
+  mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Done Song' })).closest('li')!
+  expect(within(card).getByRole('link', { name: 'Apri' }).getAttribute('href')).toBe(`#/songs/${s.id}`)
+})
