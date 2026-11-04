@@ -38,6 +38,7 @@ interface Loaded {
   songById: Map<string, Song>
   doneReviews: number
   doneNew: number
+  doneWritten: number
 }
 
 const goToday = () => goBackTo({ name: 'today' })
@@ -91,7 +92,7 @@ export function Session() {
       setCounts({ reviews: open?.reviewsDone ?? 0, news: open?.newDone ?? 0 })
       setLoaded({
         settings, sessionId: queue.items.length === 0 ? '' : sessionId, items: queue.items, itemById, songById,
-        doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0,
+        doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0, doneWritten: open?.productions?.length ?? 0,
       })
     })().catch(fail)
     return () => { alive = false }
@@ -130,8 +131,9 @@ export function Session() {
 
   if (!loaded) return <main class="screen session" aria-busy="true" />
 
-  const total = loaded.doneReviews + loaded.doneNew + items.length
-  const position = loaded.doneReviews + loaded.doneNew + idx
+  // Anche le frasi già scritte nella sessione ripresa contano come card fatte: «N di M» non cala riprendendo.
+  const total = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + items.length
+  const position = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + idx
 
   const closeSession = async () => {
     timerRef.current.stop()

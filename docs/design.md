@@ -252,7 +252,11 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 - Sblocco, Oggi, Studio, riascolto finale: le voci di una canzone sono quelle con un verso lì (`contexts`), mai le voci di Espandi.
 - Carico dei prossimi 7 giorni (Progressi e sblocco): voci in scadenza, una per voce come nella sessione (`dueItemsWithin`).
 - Frasi da correggere (Oggi, «Le tue frasi», fine sessione): `pendingProductions`, solo quelle con la card ancora presente e il chunk non sospeso.
-- Una voce di Espandi che riceve un verso (analisi di una canzone, «Chiedi a Gemini») diventa voce di canzone (`graduate`): perde `origin`/`fromItemId` e da lì vale come le altre ovunque.
+- Una voce di Espandi che riceve un verso (analisi di una canzone, «Chiedi a Gemini») diventa voce di canzone (`graduate`): perde `origin`/`fromItemId`, prende canzone, riga e forma di quel verso, e da lì vale come le altre ovunque.
+- «Espandi» si offre solo sulle parole in studio (non da smistare, non sospese) e non sulle voci nate da Espandi: niente card Sfumature su parole fuori dal ripasso, niente voci di voci.
+- Una parola che passa in studio (Chiedi a Gemini, Espandi) riceve Riconosci e Completa se non ha la R, anche se ha già un'altra card.
+- Sessione ripresa: anche le frasi già scritte contano nel «N di M».
+- Voluto: sospendere una parola non sospende le voci nate da lei con Espandi (sospendere è reversibile, le voci figlie sono voci a sé); escludere invece le toglie. Una canzone «Da studiare» conta nello sblocco finché non se ne apre lo Studio, perché le sue card nuove non entrano finché non la si studia.
 - Escludi (`excludeItem`) fa uscire anche le voci nate con Espandi dalla voce esclusa; la conferma dice quante.
 - «Aggiungi testo» passa dal controllo di sblocco come «Aggiungi».
 

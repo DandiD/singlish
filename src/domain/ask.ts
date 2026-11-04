@@ -119,7 +119,8 @@ export async function askGemini(
         if (addContext(found.contexts, contextOf(songId, w.line_index, w.surface_form, found.surfaceForm))) graduate(found)
         if (found.triage !== 'learn') {
           found.triage = 'learn'
-          if ((await db.cards.where('itemId').equals(found.id).count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))
+          // Riconosci e Completa servono anche se la parola ha già un'altra card (es. Sfumature).
+          if ((await db.cards.where('itemId').equals(found.id).filter((c) => c.kind === 'R').count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))
         }
         await db.words.put(found)
         existing++

@@ -143,7 +143,8 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
           )}
         </div>
 
-        {kind === 'word' && mode === 'view' && (
+        {/* Espandi solo per le parole in studio, e non per quelle nate da Espandi (niente voci di voci). */}
+        {kind === 'word' && mode === 'view' && item.triage === 'learn' && !item.suspended && item.origin !== 'expand' && (
           <a class="btn outline expand-link" href={href({ name: 'expand', wordId: item.id })}>Espandi</a>
         )}
 

@@ -89,6 +89,8 @@ test('fine sessione: il numero di frasi da correggere è quello di Oggi, anche r
     timer: { status: 'paused', durationMs: 1800000, accumulatedMs: 1000, resumedAt: null }, reviewsDone: 0, newDone: 0 })
   await saveProduction(db, 'open', { cardId: 'p2', itemId: 'c2', sentence: 'We ran out of time.', elapsedMs: 1 })
   mount(<Session />)
+  // la frase già scritta conta come card fatta: questa è la seconda di due
+  expect(await screen.findByText('2 di 2')).toBeTruthy()
   fireEvent.input(await screen.findByLabelText('La tua frase in inglese'), { target: { value: 'I let it slide.' } })
   fireEvent.click(screen.getByRole('button', { name: 'Salva e avanti' }))
   expect(await screen.findByRole('link', { name: 'Correggi le 2 frasi con Gemini' })).toBeTruthy()

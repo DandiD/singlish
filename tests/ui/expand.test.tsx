@@ -72,3 +72,16 @@ test('card Sfumature: si sceglie, si vede la spiegazione, si vota', async () => 
   fireEvent.click(screen.getByRole('button', { name: 'Di nuovo' }))
   await waitFor(async () => expect((await db.reviews.toArray())[0]).toMatchObject({ cardId: 's-1', rating: 1, answer: 'hollow' }))
 })
+
+test('Espandi si offre solo per le parole in studio, non da smistare né nate da Espandi', async () => {
+  window.location.hash = '#/songs/s1?item=w1'
+  await db.words.update('w1', { triage: 'pending' })
+  const { unmount } = mount(<Study songId="s1" itemId="w1" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByRole('link', { name: 'Espandi' })).toBeNull()
+  unmount()
+  await db.words.update('w1', { triage: 'learn', origin: 'expand', fromItemId: 'x' })
+  mount(<Study songId="s1" itemId="w1" />)
+  await screen.findByRole('dialog')
+  expect(screen.queryByRole('link', { name: 'Espandi' })).toBeNull()
+})

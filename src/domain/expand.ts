@@ -85,7 +85,7 @@ export function expansionPlan(words: Word[], chunks: Chunk[], word: Word, pick: 
   const newChunks = e.collocations.filter((c) => pick.collocations.includes(c.base_form) && !keys.has(normalizeKey(c.base_form)))
   const hasS = cards.some((c) => c.itemId === word.id && c.kind === 'S')
   const nuance = pick.nuance && !!e.nuance && !hasS
-  const withoutCards = toLearn.filter((w) => !cards.some((c) => c.itemId === w.id)).length
+  const withoutCards = toLearn.filter((w) => !cards.some((c) => c.itemId === w.id && c.kind === 'R')).length
   return { newWords, toLearn, newChunks, nuance, cards: newWords.length * 2 + withoutCards * 2 + newChunks.length * 2 + (nuance ? 1 : 0) }
 }
 
@@ -109,7 +109,7 @@ export async function addExpansion(db: SinglishDB, wordId: string, pick: Expansi
     // Una parola già nota o da smistare, scelta qui, passa in studio (come in «Chiedi a Gemini»).
     for (const w of plan.toLearn) {
       await db.words.update(w.id, { triage: 'learn' })
-      if ((await db.cards.where('itemId').equals(w.id).count()) === 0) { await db.cards.bulkAdd(newCardPair('word', w.id, now)); cards += 2 }
+      if ((await db.cards.where('itemId').equals(w.id).filter((c) => c.kind === 'R').count()) === 0) { await db.cards.bulkAdd(newCardPair('word', w.id, now)); cards += 2 }
     }
     for (const c of plan.newChunks) {
       const chunk: Chunk = {

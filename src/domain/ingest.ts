@@ -51,6 +51,13 @@ export function graduate(item: Chunk | Word): void {
   if (item.origin !== 'expand') return
   delete item.origin
   delete item.fromItemId
+  // Canzone, riga e forma passano al verso: Lessico, scheda, card Ascolta e coda la vedono lì.
+  const ctx = item.contexts[0]
+  if (ctx) {
+    item.songId = ctx.songId
+    item.lineIndex = ctx.lineIndex
+    if (ctx.surfaceForm) { item.surfaceForm = ctx.surfaceForm; delete ctx.surfaceForm }
+  }
 }
 
 export const addContext = (contexts: Context[], ctx: Context): boolean => {
