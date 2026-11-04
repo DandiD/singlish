@@ -4,7 +4,7 @@ import { Icon } from './Icon'
 export function InstallCard({ state, onInstall }: { state: InstallState; onInstall(): void }) {
   return (
     <div class="install-card">
-      <img class="install-icon" src="/icons/icon-192.png" alt="" width={48} height={48} />
+      <img class="install-icon" src={`${import.meta.env.BASE_URL}icons/icon-192.png`} alt="" width={48} height={48} />
       {state === 'installed' && <p class="note">App installata su questo dispositivo.</p>}
       {state === 'available' && (
         <>
