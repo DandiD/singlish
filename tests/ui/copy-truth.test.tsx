@@ -128,3 +128,14 @@ test('la card Produci dice dove arriva davvero la correzione', () => {
   expect(session).not.toContain('La correzione arriva a fine sessione')
   expect(session).toContain('La correggi con Gemini da «Le tue frasi»')
 })
+
+test('carico appena sopra o sotto il tetto: il decimale va dalla parte giusta', async () => {
+  const { loadLabel } = await import('../../src/ui/components/UnlockSheet')
+  expect(loadLabel(30.02, 30)).toBe('30,1')
+  expect(loadLabel(29.98, 30)).toBe('29,9')
+})
+
+test('Progressi si ricalcola al cambio di giorno come Oggi', () => {
+  const progress = readFileSync('src/ui/screens/Progress.tsx', 'utf8')
+  expect(progress).toContain('useDayTick(now)')
+})

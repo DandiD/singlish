@@ -15,7 +15,10 @@ const DAY = 86_400_000
 /** Minuti al giorno da mostrare: vicino al tetto si mostra un decimale, così «30′» non sembra «oltre i 30′». */
 export function loadLabel(minutes: number, limit: number): string {
   const rounded = Math.round(minutes)
-  return Math.abs(minutes - limit) < 1 && rounded === limit && minutes !== limit ? minutes.toFixed(1).replace('.', ',') : String(rounded)
+  if (!(Math.abs(minutes - limit) < 1 && rounded === limit && minutes !== limit)) return String(rounded)
+  // Il decimale va dalla parte giusta del tetto: sopra si arrotonda in su, sotto in giù.
+  const tenth = minutes > limit ? Math.ceil(minutes * 10) / 10 : Math.floor(minutes * 10) / 10
+  return tenth.toFixed(1).replace('.', ',')
 }
 
 /**

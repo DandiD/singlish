@@ -1,4 +1,5 @@
 import { useLive } from '../useLive'
+import { useDayTick } from '../useDayTick'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
 import { getSettings } from '../../domain/settings'
@@ -38,12 +39,14 @@ function ComprehensionChart({ points, threshold }: { points: { title: string; pc
 
 export function Progress() {
   const { db, now } = useDeps()
+  // Lasciati aperti, memoria e carico si ricalcolano al ritorno in primo piano e a mezzanotte (come Oggi).
+  const day = useDayTick(now)
   const data = useLive(async () => {
     const [settings, songs, chunks, words, cards, reviews, avgSeconds] = await Promise.all([
       getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db),
     ])
     return { settings, gain: averageGain(songs), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, now()) }
-  }, [db])
+  }, [db, day])
 
   if (!data) return <main class="screen progress" aria-busy="true" />
   const { settings, gain, stats: p } = data
