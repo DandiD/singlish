@@ -340,10 +340,17 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
       const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
       for (const item of items.filter((i) => i.origin === 'expand' && i.songId === songId)) {
         const parent = item.fromItemId ? await db.words.get(item.fromItemId) : undefined
-        if (parent && parent.songId !== songId) {
+        if (parent && parent.songId !== songId && parent.contexts.length > 0) {
           await (table as typeof db.chunks).update(item.id, { songId: parent.songId, lineIndex: parent.lineIndex })
+          continue
+        }
+        // La parola d'origine non è più in una canzone: vale la regola del profilo, come per le altre parole.
+        const cards = await db.cards.where('itemId').equals(item.id).toArray()
+        await db.cards.where('itemId').equals(item.id).delete()
+        const studied = cards.length > 0 && (await db.reviews.where('cardId').anyOf(cards.map((c) => c.id)).count()) > 0
+        if ('triage' in item && (item.triage === 'known' || studied)) {
+          await db.words.update(item.id, { triage: 'known', contexts: [], origin: undefined, fromItemId: undefined })
         } else {
-          await db.cards.where('itemId').equals(item.id).delete()
           await table.delete(item.id)
         }
       }

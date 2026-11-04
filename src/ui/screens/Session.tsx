@@ -92,7 +92,9 @@ export function Session() {
       setCounts({ reviews: open?.reviewsDone ?? 0, news: open?.newDone ?? 0 })
       setLoaded({
         settings, sessionId: queue.items.length === 0 ? '' : sessionId, items: queue.items, itemById, songById,
-        doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0, doneWritten: open?.productions?.length ?? 0,
+        doneReviews: open?.reviewsDone ?? 0, doneNew: open?.newDone ?? 0,
+        // le frasi della sessione contate come altrove (card presente, chunk attivo)
+        doneWritten: open ? (await pendingProductions(db)).filter((p) => p.sessionId === open.id).length : 0,
       })
     })().catch(fail)
     return () => { alive = false }

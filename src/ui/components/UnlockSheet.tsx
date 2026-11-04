@@ -76,7 +76,7 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
         <label class="intensive">
           <span>
             <strong>Modalità intensiva</strong>
-            <span class="note">{`Fino a ${INTENSIVE.newPerDay} nuove al giorno per ${INTENSIVE.days} giorni. Poi il ripasso può superare i 40′.`}</span>
+            <span class="note">{`Fino a ${Math.max(INTENSIVE.newPerDay, settings.newPerDay)} nuove al giorno per ${INTENSIVE.days} giorni. Poi il ripasso può superare i ${settings.timerMinutes.review}′ del timer.`}</span>
           </span>
           <input type="checkbox" checked={intensive} onChange={(e) => toggleIntensive((e.currentTarget as HTMLInputElement).checked)} />
         </label>

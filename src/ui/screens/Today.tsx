@@ -72,7 +72,7 @@ export function Today() {
         </div>
         <p class="note">{`su ${plural(minutes, 'minuto', 'minuti')}`}</p>
         {settings.intensiveUntil && settings.intensiveUntil > now() && (
-          <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${INTENSIVE.newPerDay} nuove al giorno.`}</p>
+          <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${Math.max(INTENSIVE.newPerDay, settings.newPerDay)} nuove al giorno.`}</p>
         )}
         {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}`}</p>}
         {queue.items.length > 0 ? (
