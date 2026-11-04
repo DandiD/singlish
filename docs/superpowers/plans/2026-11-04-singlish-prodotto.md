@@ -1,5 +1,7 @@
 # Singlish da MVP a prodotto — piano
 
+Stato al 4 novembre 2026: fasi 1–5 completate su `main` (anche la lista di frequenza vera da wordfreq).
+
 Obiettivo: un'app completa da usare ogni giorno, non più un MVP. Si lavora su `main`, un task alla volta, con TDD e un commit per task. Ogni schermata nuova segue il suo disegno nel canvas (https://claude.ai/artifact/6wE9aRMt77EJmgR2gFwgZx) e passa le prove nel browser (Chromium e WebKit, 360–1440 px, axe, temi chiaro e scuro).
 
 ## Fase 1 — Fondamenta del prodotto

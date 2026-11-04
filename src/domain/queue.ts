@@ -108,7 +108,8 @@ export async function buildSessionQueue(
     const sortKey = (c: CardRow) => {
       const item = itemOf(c)!
       return {
-        group: c.itemType === 'chunk' ? 0 : 1,
+        // Priorità (spec §2): chunk delle canzoni, poi parole da imparare, poi espansioni e sfumature.
+        group: item.origin === 'expand' || c.kind === 'S' ? 2 : c.itemType === 'chunk' ? 0 : 1,
         added: songAdded.get(item.songId) ?? 0,
         line: item.lineIndex,
         kind: c.kind === 'R' ? 0 : 1,

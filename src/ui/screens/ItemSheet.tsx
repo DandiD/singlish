@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
-import { goBackTo } from '../../router'
+import { goBackTo, href } from '../../router'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, formIn } from '../../domain/songItems'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
@@ -47,9 +47,10 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
   const title = kind === 'chunk' ? item.baseForm : item.lemma
   const own = item.contexts.find((c) => c.songId === song.id)
   const lineIdx = own?.lineIndex ?? item.lineIndex
-  const line = song.lines[lineIdx]
+  // Una voce di Espandi non viene dal testo: niente verso della canzone, resta l'esempio.
+  const line = item.origin === 'expand' ? undefined : song.lines[lineIdx]
   const surface = formIn(line ?? '', [own?.surfaceForm, item.surfaceForm, kind === 'chunk' ? item.baseForm : item.lemma])
-  const translation = song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt
+  const translation = line ? song.lineTranslations?.find((t) => t.lineIndex === lineIdx)?.textIt : undefined
 
   const startEdit = () => { setMeaning(item.meaningIt); setExplanation(item.explanationIt); setMode('edit') }
   const canSave = meaning.trim() !== ''
@@ -142,6 +143,10 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
             </div>
           )}
         </div>
+
+        {kind === 'word' && mode === 'view' && (
+          <a class="btn outline expand-link" href={href({ name: 'expand', wordId: item.id })}>Espandi</a>
+        )}
 
         {mode === 'confirm' ? (
           <div class="confirm" role="alert">

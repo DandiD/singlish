@@ -55,6 +55,8 @@ export interface Chunk {
   pronunciationNoteIt: string
   userEdited: boolean
   suspended: boolean
+  /** Aggiunta da Espandi: senza verso, con l'esempio di Gemini; in coda dopo le voci delle canzoni. */
+  origin?: 'expand'
 }
 
 export interface Word {
@@ -75,14 +77,19 @@ export interface Word {
   triage: 'pending' | 'known' | 'learn'
   userEdited: boolean
   suspended: boolean
+  origin?: 'expand'
+  /** Risultato di Espandi (una chiamata, poi salvato). */
+  expansion?: import('../domain/expand').Expansion
+  /** Card Sfumature: scelta fra parole vicine in una situazione. */
+  nuance?: import('../domain/expand').Nuance
 }
 
 export interface CardRow {
   id: string
   itemType: 'chunk' | 'word'
   itemId: string
-  /** R Riconosci, C Completa, P Produci e A Ascolta (solo chunk, dopo la C in ripasso). */
-  kind: 'R' | 'C' | 'P' | 'A'
+  /** R Riconosci, C Completa, P Produci e A Ascolta (chunk, dopo la C in ripasso), S Sfumature (parole, da Espandi). */
+  kind: 'R' | 'C' | 'P' | 'A' | 'S'
   unlocked: 0 | 1
   due: Date
   fsrs: Card

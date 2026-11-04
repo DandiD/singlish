@@ -177,6 +177,8 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | — | Card Ascolta (canvas: CardA) | `#/session` |
 | — | Test di vocabolario (canvas: VocabTest, VocabResult), da Progressi | `#/vocab-test` |
 | — | Ritornello a voce (canvas: Chorus), dallo Studio | `#/songs/:id/chorus` |
+| — | Espandi (canvas: Expand), dalla scheda di una parola | `#/expand/:wordId` |
+| — | Card Sfumature (canvas: CardNuance) | `#/session` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -242,6 +244,9 @@ Nasce insieme alla Produci, solo per i chunk con nota di pronuncia o parlato con
 
 ## Ritornello a voce
 Il ritornello sono le righe ripetute del testo (`chorusLines`, al massimo sei); il pulsante compare nello Studio solo se esiste. Si canta con Spotify, si tocca una riga per coprirla; «Ancora» conta un tentativo, «Ce l'ho, senza testo» salva `chorusDoneAt` e torna allo Studio.
+
+## Espandi e Sfumature
+Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a richiesta, famiglia, collocazioni, contrari e sfumature (`src/domain/expand.ts`); il risultato resta in `words.expansion`. Le voci scelte diventano parole o collocazioni (`origin: 'expand'`, senza verso: frase = esempio di Gemini) e in coda vengono dopo chunk e parole delle canzoni. Le sfumature creano sulla parola la card S: situazione, frase con il buco, opzioni, spiegazione, voto proposto (Bene se giusta, Di nuovo se no).
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

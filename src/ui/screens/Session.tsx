@@ -306,9 +306,12 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
 }) {
   if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} isNew={isNew} onRate={onRate} onProduce={onProduce} />
   if (card.kind === 'A' && found.kind === 'chunk') return <ListenCard chunk={found.item} song={song} isNew={isNew} onRate={onRate} />
+  if (card.kind === 'S' && found.kind === 'word' && found.item.nuance) return <NuanceCard word={found.item} isNew={isNew} onRate={onRate} />
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
-  const verse = song?.lines[ctx.lineIndex] ?? ''
+  // Una voce aggiunta da Espandi non ha verso: la sua frase è l'esempio di Gemini.
+  const fromExpand = item.origin === 'expand'
+  const verse = fromExpand ? item.extraExampleEn : song?.lines[ctx.lineIndex] ?? ''
   // La stessa forma che lo Studio evidenzia: salvata per il verso, originale, base o irregolare.
   const surface = formIn(verse, [ctx.surfaceForm, item.surfaceForm, found.kind === 'chunk' ? found.item.baseForm : found.item.lemma])
   const [revealed, setRevealed] = useState(false)
@@ -348,7 +351,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           )}
         </p>
       )}
-      <p class="note">{`${song?.title ?? ''} · riga ${ctx.lineIndex + 1}`}</p>
+      <p class="note">{fromExpand ? 'Esempio' : `${song?.title ?? ''} · riga ${ctx.lineIndex + 1}`}</p>
 
       {!isC && !revealed && (
         <button type="button" class="btn primary cta" onClick={() => setRevealed(true)}>Mostra significato</button>
@@ -508,6 +511,39 @@ function ListenCard({ chunk, song, isNew, onRate }: {
           </>
         )}
       </form>
+    </section>
+  )
+}
+
+/** Card Sfumature: una situazione, una frase con il buco, la parola giusta fra quelle vicine. */
+function NuanceCard({ word, isNew, onRate }: { word: Word; isNew: boolean; onRate(rating: Rating, auto: boolean, answer: string | null): void }) {
+  const n = word.nuance!
+  const [choice, setChoice] = useState<string | null>(null)
+  const right = choice === n.answer
+  return (
+    <section class="card session-card nuance">
+      <span class="chip">{`SFUMATURE${isNew ? ' · NUOVA' : ''}`}</span>
+      <div class="situation">
+        <span class="section-label">SITUAZIONE</span>
+        <p>{n.situation_it}</p>
+        <p class="verse" lang="en">{n.sentence_en}</p>
+      </div>
+      <div class="nuance-options" role="group" aria-label="Scegli la parola">
+        {n.options.map((o) => (
+          <button key={o} type="button" lang="en" disabled={choice !== null}
+            class={choice === null ? 'nuance-opt' : o === n.answer ? 'nuance-opt right' : o === choice ? 'nuance-opt wrong' : 'nuance-opt'}
+            aria-pressed={choice === o} onClick={() => setChoice(o)}>{o}</button>
+        ))}
+      </div>
+      {choice !== null && (
+        <>
+          <div class={`feedback ${right ? 'f3' : 'f1'}`}>
+            <strong>{right ? `Giusto: ${n.answer}` : `Non è ${choice}: è ${n.answer}`}</strong>
+            <p>{n.explanation_it}</p>
+          </div>
+          <RatingBar selected={right ? 3 : 1} onSelect={(r) => onRate(r, r === (right ? 3 : 1), choice)} />
+        </>
+      )}
     </section>
   )
 }

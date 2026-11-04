@@ -412,3 +412,20 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .chorus-line[aria-pressed="true"] { border: 1px dashed var(--line-strong); color: var(--muted-2); }
 .chorus-foot { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .chorus-foot > .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
+
+/* Espandi */
+.expand { display: flex; flex-direction: column; gap: 10px; }
+.expand-link { display: flex; align-items: center; justify-content: center; text-decoration: none; margin-bottom: 10px; }
+.ex-group { display: flex; flex-direction: column; }
+.ex-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; min-height: 44px; border-bottom: 1px solid var(--divider); cursor: pointer; }
+.ex-row input { width: 22px; height: 22px; min-width: 22px; margin-top: 1px; accent-color: var(--accent); }
+.ex-row > span { display: flex; flex-direction: column; gap: 2px; }
+.ex-title { font-size: 16px; font-weight: 600; }
+.ex-foot { position: sticky; bottom: 0; display: flex; flex-direction: column; gap: 6px; margin: 0 -20px; padding: 12px 20px calc(16px + env(safe-area-inset-bottom)); background: var(--bg); border-top: 1px solid var(--line); }
+
+/* Card Sfumature */
+.nuance-options { display: flex; flex-direction: column; gap: 8px; }
+.nuance-opt { min-height: 56px; border-radius: 14px; font-size: 18px; font-weight: 600; background: var(--surface); border: 1px solid var(--line-strong); color: var(--text); cursor: pointer; }
+.nuance-opt.right { border: 2px solid var(--green); background: color-mix(in srgb, var(--green) 14%, transparent); }
+.nuance-opt.wrong { border: 2px solid var(--danger-line); }
+.nuance-opt:disabled { cursor: default; opacity: 1; }
