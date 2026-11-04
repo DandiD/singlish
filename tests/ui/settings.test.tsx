@@ -313,3 +313,23 @@ test('la fascia del test resta «dal test» anche se coincide con quella del liv
   mount()
   expect(await screen.findByText(/dal test di vocabolario/)).toBeTruthy()
 })
+
+test('prova della chiave salvata con un modello sbagliato: non dà la colpa alla chiave', async () => {
+  await saveSettings(db, { apiKey: 'STORED', model: 'old-model' })
+  const f = vi.fn(async () => new Response('{"error":{"code":404}}', { status: 404 })) as unknown as typeof fetch
+  mount(f)
+  await screen.findByLabelText('Chiave API')
+  fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+  await screen.findByText(/La chiave salvata non è cambiata\. Il modello salvato è «old-model»\.$/)
+  expect(screen.queryByText(/sostituiscila/)).toBeNull()
+})
+
+test('prova offline con la chiave già salvata: non dice che non è salvata', async () => {
+  await saveSettings(db, { apiKey: 'STORED' })
+  Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+  mount()
+  await screen.findByLabelText('Chiave API')
+  fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
+  await screen.findByText(/^Sei offline: la chiave salvata non è stata provata\. Il modello salvato è «.+»\.$/)
+  Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+})

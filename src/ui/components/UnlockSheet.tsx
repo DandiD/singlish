@@ -71,7 +71,7 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
         </ul>
         <div class="unlock-warn">
           <strong>Se forzi lo sblocco</strong>
-          <span>Le card nuove della canzone entrano nella coda insieme a quelle che aspettano già: il ripasso dei prossimi giorni cresce.</span>
+          <span>{`${target === 'addText' ? 'Le card nuove del testo' : 'Le card nuove della canzone'} entrano nella coda insieme a quelle che aspettano già: il ripasso dei prossimi giorni cresce.`}</span>
         </div>
         <label class="intensive">
           <span>

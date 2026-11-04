@@ -82,7 +82,9 @@ export function Settings() {
 
   const probe = async () => {
     if (!navigator.onLine) {
-      setKeyStatus({ tone: 'error', text: `Sei offline: la chiave non è stata provata né salvata. Il modello salvato è «${(await getSettings(db)).model}».` })
+      const saved = await getSettings(db)
+      const which = effectiveKey === saved.apiKey ? 'la chiave salvata non è stata provata' : 'la chiave non è stata provata né salvata'
+      setKeyStatus({ tone: 'error', text: `Sei offline: ${which}. Il modello salvato è «${saved.model}».` })
       return
     }
     setKeyStatus({ tone: 'running', text: 'Provo la chiave…' })
@@ -122,7 +124,9 @@ export function Settings() {
           // Il modello si salva da solo come le altre preferenze (anche toccando Prova): si dice quale è salvato.
           const saved = await getSettings(db)
           // Provando la chiave già salvata non si salva nulla, ma la chiave salvata è proprio quella che non va.
-          const keyNote = probed === saved.apiKey ? 'È la chiave salvata: sostituiscila con una che funziona.' : 'La chiave non è stata salvata.'
+          // Solo un rifiuto della chiave è colpa della chiave: per gli altri errori la chiave salvata non cambia.
+          const keyNote = probed !== saved.apiKey ? 'La chiave non è stata salvata.'
+            : code === 'bad_key' ? 'È la chiave salvata: sostituiscila con una che funziona.' : 'La chiave salvata non è cambiata.'
           setKeyStatus({ tone: 'error', text: `${p.title}. ${p.text} ${keyNote} Il modello salvato è «${saved.model}».` })
         }
       } catch (saveError) {

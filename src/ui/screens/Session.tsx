@@ -99,7 +99,7 @@ export function Session() {
         // le frasi della sessione contate come altrove (card presente, chunk attivo)
         doneWritten: open ? (await pendingProductions(db)).filter((p) => p.sessionId === open.id).length : 0,
         toTriage: queue.items.length === 0
-          && (await Promise.all(songs.filter((s) => s.status === 'studying').map((s) => pendingWords(db, s.id)))).some((l) => l.length > 0),
+          && (await Promise.all(songs.filter((s) => s.status === 'studying' || s.status === 'done').map((s) => pendingWords(db, s.id)))).some((l) => l.length > 0),
       })
     })().catch(fail)
     return () => { alive = false }
@@ -215,11 +215,11 @@ export function Session() {
           {noSongs
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
             : loaded.toTriage
-              ? 'Per ora non ci sono card in scadenza. Le card nuove delle parole arrivano quando smisti le parole nello Studio della canzone.'
+              ? 'Per ora non ci sono card in scadenza. Le card nuove delle parole possono arrivare quando smisti le parole nello Studio della canzone o del testo (entro il limite delle nuove del giorno).'
               : toStudy
-              ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone «Da studiare», le sue card nuove possono entrare nel ripasso.'
+              ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone o di un testo «Da studiare», le sue card nuove possono entrare nel ripasso.'
               : toAnalyze
-                ? 'Per ora non ci sono card in scadenza. Hai canzoni ancora da analizzare: in Canzoni tocca «Analizza ora».'
+                ? 'Per ora non ci sono card in scadenza. Hai canzoni o testi ancora da analizzare: in Canzoni tocca «Analizza ora».'
                 : 'Per ora non ci sono card in scadenza. Torna domani.'}
         </p>
         {noSongs && (

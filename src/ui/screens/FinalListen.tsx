@@ -128,7 +128,7 @@ export function FinalListen({ songId }: { songId: string }) {
           {gain !== null && (
             <div class="result-gain"><span class="gain-num">{gain > 0 ? `+${gain}` : String(gain)}</span><span class="note">punti</span></div>
           )}
-          <p class="note result-note">{`${items > 0 ? `${inReview} di ${items} chunk e parole nel ripasso: restano lì, e le altre entrano con le prossime sessioni. ` : ''}La canzone passa tra le completate.`}</p>
+          <p class="note result-note">{`${items > 0 ? `${inReview} di ${items} chunk e parole nel ripasso: restano lì${inReview < items ? ', e le altre entrano con le prossime sessioni' : ''}. ` : ''}La canzone passa tra le completate.`}</p>
         </section>
       )}
 

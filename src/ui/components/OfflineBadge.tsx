@@ -20,7 +20,7 @@ export function OfflineBadge() {
   const online = useOnline()
   if (online) return null
   return (
-    <div class="offline-badge" role="status" title="Senza rete l'analisi delle canzoni aspetta: il resto funziona.">
+    <div class="offline-badge" role="status" title="Senza rete aspetta tutto ciò che chiede a Gemini (analisi, Chiedi a Gemini, Espandi, correzione delle frasi); il ripasso funziona.">
       <Icon name="offline" size={16} />
       <span>Offline</span>
     </div>
