@@ -13,6 +13,7 @@ import { Session } from './ui/screens/Session'
 import { Lexicon } from './ui/screens/Lexicon'
 import { Progress } from './ui/screens/Progress'
 import { Feedback } from './ui/screens/Feedback'
+import { VocabTest } from './ui/screens/VocabTest'
 import { FinalListen } from './ui/screens/FinalListen'
 import { OfflineBadge } from './ui/components/OfflineBadge'
 import { UpdateToast } from './ui/components/UpdateToast'
@@ -36,12 +37,13 @@ function title(route: Route): string {
     case 'lexicon': return 'Lessico'
     case 'progress': return 'Progressi'
     case 'feedback': return 'Le tue frasi'
+    case 'vocabTest': return 'Test di vocabolario'
     case 'finalListen': return 'Riascolto finale'
     case 'notFound': return 'Pagina non trovata'
   }
 }
 
-const NO_NAV: Route['name'][] = ['settings', 'progress', 'feedback', 'finalListen', 'addText', 'addSong', 'analyzing', 'study', 'triage', 'session']
+const NO_NAV: Route['name'][] = ['settings', 'progress', 'feedback', 'vocabTest', 'finalListen', 'addText', 'addSong', 'analyzing', 'study', 'triage', 'session']
 
 export function App({ swStore }: { swStore?: SwStore }) {
   const route = useRoute()
@@ -81,6 +83,8 @@ export function App({ swStore }: { swStore?: SwStore }) {
               <Progress />
             ) : route.name === 'feedback' ? (
               <Feedback />
+            ) : route.name === 'vocabTest' ? (
+              <VocabTest />
             ) : route.name === 'finalListen' ? (
               <FinalListen key={route.songId} songId={route.songId} />
             ) : (

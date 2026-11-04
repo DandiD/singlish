@@ -87,7 +87,7 @@ export async function correctProductions(db: SinglishDB, deps: { fetch: typeof f
 /** Registra i voti confermati e toglie le frasi dall'elenco da correggere. */
 export async function confirmProductions(db: SinglishDB, items: Pick<Feedback, 'sessionId' | 'cardId' | 'sentence' | 'elapsedMs' | 'rating'>[], now: Date, retention: number): Promise<void> {
   for (const it of items) {
-    await db.transaction('rw', db.cards, db.reviews, db.chunks, db.sessions, async () => {
+    await db.transaction('rw', db.cards, db.reviews, db.chunks, db.sessions, db.songs, async () => {
       if (await db.cards.get(it.cardId)) {
         await recordReview(db, it.cardId, { rating: it.rating, auto: false, answer: it.sentence, elapsedMs: it.elapsedMs }, now, retention)
       }

@@ -378,3 +378,27 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .fb-old { color: var(--text-2); }
 .fb-rating { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 14px; }
 .fb-rating select { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface-2); color: var(--text); font: inherit; }
+
+/* Card Ascolta */
+.listen-player { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 12px 0; }
+.play-btn { width: 96px; height: 96px; border-radius: 50%; border: 0; background: var(--accent); color: var(--on-accent); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.play-btn .icon { fill: currentColor; }
+
+/* Test di vocabolario */
+.vocab-test { display: flex; flex-direction: column; gap: 16px; min-height: 100dvh; }
+.vt-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+.vt-word { font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-weight: 700; font-size: 52px; overflow-wrap: anywhere; text-align: center; }
+.vt-answers .btn { min-height: 72px; font-size: 17px; }
+.vt-estimate { display: flex; flex-direction: column; gap: 4px; }
+.vt-num { font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-weight: 700; font-size: 44px; line-height: 1.05; }
+.vt-delta { font-size: 14px; font-weight: 600; color: var(--muted); }
+.vt-delta.up { color: var(--green-text); }
+.vt-bands { display: flex; flex-direction: column; gap: 10px; }
+.vt-bands h2 { margin: 0; font-size: 15px; font-weight: 600; font-family: inherit; }
+.bars { display: flex; gap: 6px; }
+.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.bar-col .note { font-size: 11px; }
+.bar-track { width: 100%; height: 96px; display: flex; align-items: flex-end; }
+.bar-v { width: 100%; background: var(--line-strong); border-radius: 4px 4px 0 0; min-height: 2px; }
+.bar-v.useful { background: var(--accent); }
+.vt-tile { color: var(--text); text-decoration: none; }

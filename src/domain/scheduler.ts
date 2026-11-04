@@ -33,7 +33,7 @@ export async function recordReview(
   now: Date,
   desiredRetention: number,
 ): Promise<CardRow> {
-  return db.transaction('rw', db.cards, db.reviews, db.chunks, async () => {
+  return db.transaction('rw', db.cards, db.reviews, db.chunks, db.songs, async () => {
     const card = await db.cards.get(cardId)
     if (!card) throw new Error(`Card not found: ${cardId}`)
     const result = createScheduler(desiredRetention).next(card.fsrs, now, RATING_MAP[input.rating])
@@ -51,12 +51,18 @@ export async function recordReview(
       reviewedAt: now,
       wasNew: card.fsrs.state === State.New,
     })
-    // La Completa di un chunk in ripasso sblocca la Produci (creata ora: i chunk di prima non ce l'hanno).
+    // La Completa di un chunk in ripasso sblocca la Produci e l'Ascolta (create ora: i chunk di prima non le hanno).
     if (card.kind === 'C' && card.itemType === 'chunk' && input.rating !== 1 && result.card.state === State.Review) {
-      const hasP = (await db.cards.where('itemId').equals(card.itemId).filter((c) => c.kind === 'P').count()) > 0
-      const chunk = hasP ? null : await db.chunks.get(card.itemId)
-      if (chunk && chunk.productionPromptIt.trim()) {
-        await db.cards.add({ id: newId(), itemType: 'chunk', itemId: card.itemId, kind: 'P', unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
+      const kinds = new Set((await db.cards.where('itemId').equals(card.itemId).toArray()).map((c) => c.kind))
+      const chunk = await db.chunks.get(card.itemId)
+      const add = (kind: 'P' | 'A') =>
+        db.cards.add({ id: newId(), itemType: 'chunk', itemId: card.itemId, kind, unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
+      if (chunk && !kinds.has('P') && chunk.productionPromptIt.trim()) await add('P')
+      // La card Ascolta solo dove l'ascolto aggiunge qualcosa: nota di pronuncia o parlato connesso nel verso.
+      if (chunk && !kinds.has('A')) {
+        const song = await db.songs.get(chunk.songId)
+        const sung = song?.connectedSpeech.some((cs) => cs.lineIndex === chunk.lineIndex) ?? false
+        if (chunk.pronunciationNoteIt.trim() || sung) await add('A')
       }
     }
     if (card.kind === 'R' && goodRCount >= 2) {

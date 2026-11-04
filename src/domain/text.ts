@@ -56,3 +56,25 @@ export function gradeAnswer(given: string, expected: string): { rating: 1 | 2 | 
   )
   return { rating: distance === 0 ? 3 : distance === 1 ? 2 : 1, distance }
 }
+
+/** Le parole di una frase normalizzata (spec §5), senza punteggiatura. */
+const words = (s: string): string[] => normalizeAnswer(s).replace(/[^a-z0-9' ]+/g, ' ').split(' ').filter(Boolean)
+
+/** Distanza fra due elenchi di parole (Levenshtein a parole). */
+function wordDistance(a: string[], b: string[]): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j)
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i]
+    for (let j = 1; j <= b.length; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+    prev = cur
+  }
+  return prev[b.length]
+}
+
+/** Dettato della card Ascolta: tutte le parole giuste = Bene, una sbagliata o mancante = Difficile, di più = Di nuovo. */
+export function gradeDictation(given: string, expected: string): { rating: 1 | 2 | 3; wrongWords: number } {
+  // Come per le risposte: si confrontano anche le parole senza apostrofi né contrazioni espanse («im» = «I'm»).
+  const plain = (s: string) => squeeze(fixQuotes(s.toLowerCase())).replace(/'/g, '').replace(/[^a-z0-9 ]+/g, ' ').split(' ').filter(Boolean)
+  const wrongWords = Math.min(wordDistance(words(given), words(expected)), wordDistance(plain(given), plain(expected)))
+  return { rating: wrongWords === 0 ? 3 : wrongWords === 1 ? 2 : 1, wrongWords }
+}

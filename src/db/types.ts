@@ -79,8 +79,8 @@ export interface CardRow {
   id: string
   itemType: 'chunk' | 'word'
   itemId: string
-  /** R Riconosci, C Completa, P Produci (solo chunk, dopo la C in ripasso). */
-  kind: 'R' | 'C' | 'P'
+  /** R Riconosci, C Completa, P Produci e A Ascolta (solo chunk, dopo la C in ripasso). */
+  kind: 'R' | 'C' | 'P' | 'A'
   unlocked: 0 | 1
   due: Date
   fsrs: Card
@@ -139,4 +139,6 @@ export interface Settings {
   persistAsked: boolean
   /** Modalità intensiva: fino a questa data le card nuove al giorno salgono a 25. */
   intensiveUntil?: Date | null
+  /** Test di vocabolario fatti, dal più vecchio. */
+  vocabTests?: { at: Date; estimate: number; falseAlarms: number }[]
 }

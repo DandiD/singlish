@@ -8,17 +8,25 @@ export function ranksFromList(lemmas: string[]): Map<string, number> {
 }
 
 let cache: Map<string, number> | null = null
+let listCache: string[] | null = null
 
 export function resetRanksCache(): void {
   cache = null
+  listCache = null
+}
+
+/** La lista di frequenza (lemmi in ordine di rango). */
+export async function loadFreqList(fetchFn: typeof fetch = fetch): Promise<string[]> {
+  if (listCache) return listCache
+  const res = await fetchFn(import.meta.env.BASE_URL + 'freq.json')
+  if (!res.ok) throw new Error(`freq.json: HTTP ${res.status}`)
+  listCache = (await res.json()) as string[]
+  return listCache
 }
 
 export async function loadRanks(fetchFn: typeof fetch = fetch): Promise<Map<string, number>> {
   if (cache) return cache
-  const res = await fetchFn(import.meta.env.BASE_URL + 'freq.json')
-  if (!res.ok) throw new Error(`freq.json: HTTP ${res.status}`)
-  const list = (await res.json()) as string[]
-  cache = ranksFromList(list)
+  cache = ranksFromList(await loadFreqList(fetchFn))
   return cache
 }
 

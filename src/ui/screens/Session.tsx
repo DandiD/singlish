@@ -8,7 +8,7 @@ import { recordReview } from '../../domain/scheduler'
 import { saveProduction } from '../../domain/production'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
-import { gradeAnswer } from '../../domain/text'
+import { gradeAnswer, gradeDictation } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
@@ -151,7 +151,7 @@ export function Session() {
         ? { reviews: counts.reviews, news: counts.news + 1 }
         : { reviews: counts.reviews + 1, news: counts.news }
       // Voto e contatori della sessione in una sola transazione: o tutti e due, o nessuno.
-      await db.transaction('rw', db.cards, db.reviews, db.sessions, db.chunks, async () => {
+      await db.transaction('rw', db.cards, db.reviews, db.sessions, db.chunks, db.songs, async () => {
         await recordReview(db, current.card.id, { rating, auto, answer, elapsedMs: elapsed }, now(), loaded.settings.desiredRetention)
         await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
       })
@@ -305,6 +305,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
   onProduce(sentence: string): void
 }) {
   if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} isNew={isNew} onRate={onRate} onProduce={onProduce} />
+  if (card.kind === 'A' && found.kind === 'chunk') return <ListenCard chunk={found.item} song={song} isNew={isNew} onRate={onRate} />
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   const verse = song?.lines[ctx.lineIndex] ?? ''
@@ -434,6 +435,78 @@ function ProduceCard({ chunk, isNew, onRate, onProduce }: {
           <button type="button" class="btn outline" onClick={() => onRate(1, false, null)}>Non so farla</button>
           <button type="submit" class="btn primary" disabled={!ok}>Salva e avanti</button>
         </div>
+      </form>
+    </section>
+  )
+}
+
+type Speech = { speechSynthesis?: { cancel(): void; speak(u: unknown): void } }
+const speak = (text: string, rate: number) => {
+  const synth = (window as unknown as Speech).speechSynthesis
+  const Utter = (globalThis as unknown as { SpeechSynthesisUtterance?: new (t: string) => { rate: number; lang: string } }).SpeechSynthesisUtterance
+  if (!synth || !Utter) return
+  synth.cancel()
+  const u = new Utter(text)
+  u.lang = 'en-US'
+  u.rate = rate
+  synth.speak(u)
+}
+
+/** Card Ascolta: l'app legge il verso (sintesi vocale del dispositivo), si scrive quello che si sente. */
+function ListenCard({ chunk, song, isNew, onRate }: {
+  chunk: Chunk
+  song: Song | undefined
+  isNew: boolean
+  onRate(rating: Rating, auto: boolean, answer: string | null): void
+}) {
+  const verse = song?.lines[chunk.lineIndex] ?? chunk.extraExampleEn
+  const notes = [chunk.pronunciationNoteIt, ...(song?.connectedSpeech.filter((cs) => cs.lineIndex === chunk.lineIndex).map((cs) => cs.noteIt) ?? [])].filter((n) => n.trim())
+  const canSpeak = !!(window as unknown as Speech).speechSynthesis
+  const [slow, setSlow] = useState(false)
+  const [answer, setAnswer] = useState('')
+  const [result, setResult] = useState<{ rating: Rating; wrongWords: number } | null>(null)
+  const [selected, setSelected] = useState<Rating | null>(null)
+  const check = () => { const g = gradeDictation(answer, verse); setResult(g); setSelected(g.rating) }
+  const verdict = result === null ? '' : result.wrongWords === 0 ? 'Esatto' : result.wrongWords === 1 ? 'Quasi: una parola' : 'Non ancora'
+  return (
+    <section class="card session-card listen">
+      <span class="chip">{`ASCOLTA${isNew ? ' · NUOVA' : ''}`}</span>
+      <div class="listen-player">
+        {canSpeak ? (
+          <>
+            <button type="button" class="play-btn" aria-label="Riproduci la frase" onClick={() => speak(verse, slow ? 0.7 : 1)}><Icon name="play" size={36} /></button>
+            <div class="chips-row" role="group" aria-label="Velocità">
+              <button type="button" class="filter-chip" aria-pressed={!slow} onClick={() => setSlow(false)}>Velocità naturale</button>
+              <button type="button" class="filter-chip" aria-pressed={slow} onClick={() => setSlow(true)}>Più lenta</button>
+            </div>
+            <p class="note center">Scrivi quello che senti. Fai attenzione a come si fondono le parole.</p>
+          </>
+        ) : (
+          <>
+            <p class="note center">Questo browser non sa leggere ad alta voce: ascolta il verso nella canzone, poi scrivilo.</p>
+            <p class="verse" lang="en">{verse}</p>
+          </>
+        )}
+      </div>
+      <form class="c-answer" onSubmit={(e) => { e.preventDefault(); if (result === null) check(); else onRate(selected ?? result.rating, (selected ?? result.rating) === result.rating, answer) }}>
+        <label class="field">
+          <span>Dettato</span>
+          <input type="text" lang="en" autocomplete="off" autocapitalize="off" ref={noAutocorrect} enterKeyHint="go" value={answer}
+            readOnly={result !== null} onInput={(e) => setAnswer((e.currentTarget as HTMLInputElement).value)} />
+        </label>
+        {result === null ? (
+          <button type="submit" class="btn primary cta" disabled={!answer.trim()}>Controlla</button>
+        ) : (
+          <>
+            <div class={`feedback f${result.rating}`}>
+              <strong>{verdict}</strong>
+              {canSpeak && <p lang="en">{verse}</p>}
+              {notes.map((n, i) => <p key={i}>{n}</p>)}
+            </div>
+            <RatingBar selected={selected ?? result.rating} onSelect={setSelected} />
+            <button type="submit" class="btn primary cta">Conferma</button>
+          </>
+        )}
       </form>
     </section>
   )

@@ -174,6 +174,8 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | — | Aggiungi testo (canvas: AddText), da Canzoni | `#/songs/new-text` |
 | — | Card Produci (canvas: CardP) | `#/session` |
 | — | Le tue frasi (canvas: Feedback), da fine sessione o Oggi | `#/feedback` |
+| — | Card Ascolta (canvas: CardA) | `#/session` |
+| — | Test di vocabolario (canvas: VocabTest, VocabResult), da Progressi | `#/vocab-test` |
 
 Navigazione in basso: Oggi, Canzoni, Lessico. Azioni principali nella metà bassa dello schermo. Telefono di riferimento: 390 × 844.
 
@@ -230,6 +232,12 @@ Nello Studio «Chiedi a Gemini» apre la selezione: ogni parola del testo divent
 
 ## Card Produci
 Quando la card Completa di un chunk con situazione (`productionPromptIt`) va in ripasso, nasce la card P (anche per i chunk di prima). Nella sessione: situazione in italiano, chunk da usare, frase in inglese (campo con le regole delle risposte); «Non so farla» vale Di nuovo subito, «Salva e avanti» mette la frase in `sessions.productions` senza voto. A fine sessione e in Oggi «Le tue frasi» le corregge tutte con una sola chiamata (verdetto, frase corretta, nota, voto proposto modificabile); «Conferma i voti» registra i ripassi. Finché una frase aspetta, la sua voce non torna in coda.
+
+## Card Ascolta
+Nasce insieme alla Produci, solo per i chunk con nota di pronuncia o parlato connesso nel verso. Il verso si ascolta con la sintesi vocale del dispositivo (naturale o più lenta), si scrive il dettato; `gradeDictation` conta le parole sbagliate (contrazioni e apostrofi tollerati): 0 Bene, 1 Difficile, di più Di nuovo. Senza sintesi vocale la card lo dice e mostra il verso.
+
+## Test di vocabolario
+80 parole sì/no (`src/domain/vocabTest.ts`): 10 per fascia di rango dalla lista di frequenza e 20 inventate; la quota di sì per fascia si corregge con i sì alle inventate. Il risultato (stima, grafico per fascia, fascia utile suggerita) si salva in `settings.vocabTests` e va in Progressi. Usa solo le fasce che la lista copre per intero; sotto tre fasce il test non è disponibile e lo dice.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

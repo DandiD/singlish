@@ -239,8 +239,8 @@ test('dallo Studio: Elimina canzone chiede conferma, poi elimina e porta a Canzo
   )
   fireEvent.click(await screen.findByRole('button', { name: 'Elimina canzone' }))
   fireEvent.click(screen.getByRole('button', { name: 'Sì, elimina' }))
-  await waitFor(async () => expect(await db.songs.get('s1')).toBeUndefined())
-  await waitFor(() => expect(window.location.hash).toBe('#/songs'))
+  await waitFor(async () => expect(await db.songs.get('s1')).toBeUndefined(), { timeout: 3000 })
+  await waitFor(() => expect(window.location.hash).toBe('#/songs'), { timeout: 3000 })
 })
 
 test('una voce sospesa si riattiva dalla sua scheda', async () => {

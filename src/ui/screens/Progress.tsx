@@ -6,7 +6,10 @@ import { estimateAvgSeconds } from '../../domain/queue'
 import { LEVEL_UP, progressStats } from '../../domain/progress'
 import { averageGain } from '../../domain/finalListen'
 import { Icon } from '../components/Icon'
+import { formatNumber } from '../format'
 
+const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
+const monthFmt = new Intl.DateTimeFormat('it-IT', { month: 'long' })
 const comma = (n: number, digits = 2) => n.toFixed(digits).replace('.', ',')
 
 /** Una serie sola: la comprensione al primo ascolto, canzone per canzone, con la soglia del livello successivo. */
@@ -44,6 +47,7 @@ export function Progress() {
   if (!data) return <main class="screen progress" aria-busy="true" />
   const { settings, gain, stats: p } = data
   const minutes = settings.timerMinutes.review
+  const lastTest = settings.vocabTests?.at(-1)
 
   return (
     <main class="screen progress">
@@ -93,6 +97,18 @@ export function Progress() {
           <span class="tile-sub">{`al giorno su ${minutes}, prossimi 7`}</span>
         </section>
       </div>
+
+      <a class="tile vt-tile" href={href({ name: 'vocabTest' })}>
+        <span class="note">Vocabolario stimato</span>
+        {lastTest ? (
+          <>
+            <span class="tile-num">{`≈ ${formatNumber(lastTest.estimate)} parole`}</span>
+            <span class="tile-sub">{`test del ${dayFmt.format(lastTest.at)} · prossimo a ${monthFmt.format(new Date(lastTest.at.getTime() + 90 * 86400000))}`}</span>
+          </>
+        ) : (
+          <span class="tile-sub">Fai il test: 80 parole, circa 4 minuti</span>
+        )}
+      </a>
 
       {p.nextLevel && (
         <section class="level-up">
