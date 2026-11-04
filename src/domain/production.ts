@@ -19,7 +19,10 @@ export async function saveProduction(db: SinglishDB, sessionId: string, p: Produ
 /** Tutte le frasi ancora da correggere, in qualunque sessione. */
 export async function pendingProductions(db: SinglishDB): Promise<Pending[]> {
   const sessions = await db.sessions.toArray()
-  return sessions.flatMap((s) => (s.productions ?? []).map((p) => ({ sessionId: s.id, ...p })))
+  const all = sessions.flatMap((s) => (s.productions ?? []).map((p) => ({ sessionId: s.id, ...p })))
+  // Una frase la cui card non c'è più (canzone eliminata, chunk escluso) non si può correggere: non conta.
+  const alive = new Set((await db.cards.bulkGet(all.map((p) => p.cardId))).flatMap((c) => (c ? [c.id] : [])))
+  return all.filter((p) => alive.has(p.cardId))
 }
 
 export const CORRECT_SYSTEM_PROMPT = `Sei un insegnante di inglese madrelingua che lavora con studenti italiani.
