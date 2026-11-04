@@ -108,7 +108,10 @@ export function FinalListen({ songId }: { songId: string }) {
           <label class="field grow">
             <span>Quanto hai capito adesso?</span>
             <input type="range" min={0} max={100} step={1} value={after ?? before ?? 50}
-              onInput={(e) => setAfter(Number((e.currentTarget as HTMLInputElement).value))} />
+              onInput={(e) => setAfter(Number((e.currentTarget as HTMLInputElement).value))}
+              // Toccare il cursore senza spostarlo (o un tasto) vale come risposta: si conferma la percentuale mostrata.
+              onPointerUp={(e) => setAfter(Number((e.currentTarget as HTMLInputElement).value))}
+              onKeyUp={(e) => setAfter(Number((e.currentTarget as HTMLInputElement).value))} />
           </label>
           <output class="mono range-value">{after === null ? '—' : `${after}%`}</output>
         </div>

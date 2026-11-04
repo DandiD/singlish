@@ -148,3 +148,23 @@ test('Oggi: una canzone «Da studiare» con voci e parole da smistare le nomina 
   mount(<Today />)
   expect(await screen.findByText(/Da studiare · 1 chunk e parole · 1 parola da smistare/)).toBeTruthy()
 })
+
+test('Riascolto finale: toccare il cursore senza spostarlo conferma la stessa percentuale', async () => {
+  mount(<FinalListen songId="s1" />)
+  const slider = await screen.findByRole('slider')
+  expect((screen.getByRole('button', { name: 'Chiudi la canzone' }) as HTMLButtonElement).disabled).toBe(true)
+  fireEvent.pointerUp(slider)
+  const close = screen.getByRole('button', { name: 'Chiudi la canzone' }) as HTMLButtonElement
+  expect(close.disabled).toBe(false)
+  fireEvent.click(close)
+  await waitFor(async () => expect((await db.songs.get('s1'))!.comprehensionAfter).toBe(60))
+})
+
+test('Oggi: una canzone completata con parole ancora da smistare compare, con il link allo Studio', async () => {
+  await db.songs.update('s1', { status: 'done', comprehensionAfter: 80 })
+  await db.words.add({ id: 'wd', lemma: 'd', surfaceForm: 'd', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'd', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  mount(<Today />)
+  const link = await screen.findByRole('link', { name: /Glass Harbour.*Completata.*1 parola da smistare/ })
+  expect(link.getAttribute('href')).toBe('#/songs/s1')
+})

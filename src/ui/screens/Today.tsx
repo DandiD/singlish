@@ -50,11 +50,15 @@ export function Today() {
         const suspended = [...chunks, ...words].filter((x) => x.suspended && x.contexts.some((c) => c.songId === song.id)).length
         return { song, total: ids.length, done, toTriage, suspended }
       })
-    return { queue, settings, progress, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
+    // Canzoni completate con parole mai smistate: non contano fra le aperte, ma Oggi le nomina (lo sblocco e la Sessione vuota ne parlano).
+    const doneLeft = (await db.songs.where('status').equals('done').toArray())
+      .map((song) => ({ song, toTriage: [...itemsInSong(song, chunks, words).words].filter((id) => pendingIds.has(id)).length }))
+      .filter((x) => x.toTriage > 0)
+    return { queue, settings, progress, doneLeft, finalDue: finalListenDue(songs, now()), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
 
   if (!data) return <main class="screen" aria-busy="true" />
-  const { queue, settings, progress, finalDue, toCorrect } = data
+  const { queue, settings, progress, doneLeft, finalDue, toCorrect } = data
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
 
@@ -135,6 +139,14 @@ export function Today() {
             </li>
           ),
         )}
+        {doneLeft.map(({ song, toTriage }) => (
+          <li key={song.id}>
+            <a class="song-card left-to-triage" href={href({ name: 'study', songId: song.id })}>
+              <h3>{song.title}</h3>
+              <p class="note">{`${song.kind === 'text' ? 'Completato' : 'Completata'} · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare`}</p>
+            </a>
+          </li>
+        ))}
       </ul>
       {gate.sheet}
     </main>

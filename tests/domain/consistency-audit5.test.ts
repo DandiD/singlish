@@ -51,3 +51,17 @@ test('una frase confermata conta fra i ripassi della sua sessione', async () => 
   await confirmProductions(db, [{ sessionId: 'r1', cardId: 'p1', sentence: 'We rely on it.', elapsedMs: 1, rating: 3 }], now, 0.9)
   expect((await db.sessions.get('r1'))!.reviewsDone).toBe(3)
 })
+
+test('confermare due volte la stessa frase (doppio tocco, ripetizione dopo un errore) la conta una volta sola', async () => {
+  await db.songs.add(song('A', 'studying'))
+  await db.chunks.add({ id: 'c1', songId: 'A', key: 'k', baseForm: 'rely on', surfaceForm: 'rely on', lineIndex: 0, contexts: [{ songId: 'A', lineIndex: 0 }], type: 'collocation',
+    cefr: 'B1', register: 'usable', topic: 'other', meaningIt: '', explanationIt: '', extraExampleEn: '', productionPromptIt: 'x', pronunciationNoteIt: '', userEdited: false, suspended: false })
+  await db.cards.add({ id: 'p1', itemType: 'chunk', itemId: 'c1', kind: 'P', unlocked: 1, due: now, fsrs: { ...newFsrsCard(now), state: State.Review, stability: 3, difficulty: 5, reps: 2 }, goodRCount: 0 })
+  await db.sessions.add({ id: 'r1', kind: 'review', songId: null, startedAt: now, endedAt: null, timer: { status: 'paused', durationMs: 1, accumulatedMs: 1, resumedAt: null }, reviewsDone: 2, newDone: 1 })
+  await saveProduction(db, 'r1', { cardId: 'p1', itemId: 'c1', sentence: 'We rely on it.', elapsedMs: 1 })
+  const items = [{ sessionId: 'r1', cardId: 'p1', sentence: 'We rely on it.', elapsedMs: 1, rating: 3 as const }]
+  await Promise.all([confirmProductions(db, items, now, 0.9), confirmProductions(db, items, now, 0.9)])
+  await confirmProductions(db, items, now, 0.9)
+  expect(await db.reviews.count()).toBe(1)
+  expect((await db.sessions.get('r1'))!.reviewsDone).toBe(3)
+})

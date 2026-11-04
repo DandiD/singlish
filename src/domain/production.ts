@@ -98,6 +98,9 @@ export async function confirmProductions(
 ): Promise<void> {
   for (const it of items) {
     await db.transaction('rw', db.cards, db.reviews, db.chunks, db.sessions, db.songs, async () => {
+      // Già confermata (doppio tocco, ripetizione dopo un errore a metà): la frase non è più in attesa, non si conta di nuovo.
+      const waiting = await db.sessions.get(it.sessionId)
+      if (!waiting?.productions?.some((p) => p.cardId === it.cardId)) return
       // Il ripasso porta la data in cui la frase è stata scritta: conta in quel giorno, una volta sola.
       if (await db.cards.get(it.cardId)) {
         await recordReview(db, it.cardId, { rating: it.rating, auto: false, answer: it.sentence, elapsedMs: it.elapsedMs }, it.at ?? now, retention)
