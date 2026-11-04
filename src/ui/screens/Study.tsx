@@ -197,7 +197,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         {song.lines.map((l, i) => (
           <p key={i}>
             {asking ? (
-              <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} />
+              <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} disabled={askBusy} />
             ) : (
               <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
             )}
@@ -211,7 +211,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           {!online && <p class="note">Sei offline: per chiedere a Gemini serve la connessione.</p>}
           <div class="ask-row">
             <span class="note">{`${picks.length} da chiedere`}</span>
-            <button type="button" class="btn outline" onClick={() => { setAsking(false); setPicked(new Set()); setAskMsg(null) }}>Annulla</button>
+            <button type="button" class="btn outline" disabled={askBusy} onClick={() => { setAsking(false); setPicked(new Set()); setAskMsg(null) }}>Annulla</button>
             <button type="button" class="btn primary" disabled={picks.length === 0 || askBusy || !online} onClick={() => void ask()}>
               {askBusy ? 'Chiedo…' : 'Chiedi a Gemini'}
             </button>
@@ -299,14 +299,15 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 }
 
 /** Un verso in modalità selezione: ogni parola è un pulsante che si segna e si toglie. */
-function PickLine({ line, lineIndex, picked, onToggle }: { line: string; lineIndex: number; picked: Set<string>; onToggle(key: string): void }) {
+// Durante la richiesta le parole non si toccano: quelle segnate adesso non partirebbero e sparirebbero al successo.
+function PickLine({ line, lineIndex, picked, onToggle, disabled }: { line: string; lineIndex: number; picked: Set<string>; onToggle(key: string): void; disabled?: boolean }) {
   const out: preact.ComponentChildren[] = []
   let pos = 0
   tokenize(line).forEach((t, ti) => {
     if (t.start > pos) out.push(line.slice(pos, t.start))
     const key = `${lineIndex}:${ti}`
     out.push(
-      <button key={key} type="button" class="tok" aria-pressed={picked.has(key)} onClick={() => onToggle(key)}>{t.text}</button>,
+      <button key={key} type="button" class="tok" aria-pressed={picked.has(key)} disabled={disabled} onClick={() => onToggle(key)}>{t.text}</button>,
     )
     pos = t.end
   })

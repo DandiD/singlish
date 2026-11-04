@@ -257,6 +257,9 @@ export async function analyzeSong(
     await saveAnalysis(db, songId, analysis, deps.ranks, deps.now)
     return 'analyzed'
   } catch (e) {
+    // Un'altra analisi della stessa canzone (coda all'apertura, «Analizza ora») è riuscita nel frattempo: vale quella.
+    const now = await db.songs.get(songId)
+    if (now && isAnalyzed(now)) return 'analyzed'
     if (
       e instanceof GeminiError &&
       (e.code === 'rate_limited' ||

@@ -301,3 +301,20 @@ test('una parola su due righe della stessa canzone: la scheda mostra la riga toc
   await screen.findByRole('dialog')
   expect(screen.getByText('NELLA CANZONE · RIGA 2')).toBeTruthy()
 })
+
+test('Chiedi a Gemini: mentre la richiesta è in corso le parole e «Annulla» non si toccano', async () => {
+  const { saveSettings } = await import('../../src/domain/settings')
+  await saveSettings(db, { apiKey: 'k' })
+  let release!: () => void
+  const slow = (() => new Promise<Response>((r) => { release = () => r(new Response('{}', { status: 400 })) })) as unknown as typeof fetch
+  window.location.hash = '#/songs/s1'
+  render(<AppDepsProvider value={{ db, fetch: slow, sleep: async () => {}, now: () => now }}><Study songId="s1" /></AppDepsProvider>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Chiedi a Gemini' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'night' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Chiedi a Gemini' }))
+  await screen.findByRole('button', { name: 'Chiedo…' })
+  expect((screen.getByRole('button', { name: 'Annulla' }) as HTMLButtonElement).disabled).toBe(true)
+  expect((screen.getAllByRole('button', { name: 'Every' })[0] as HTMLButtonElement).disabled).toBe(true)
+  await waitFor(() => expect(release).toBeTypeOf('function'))
+  release()
+})

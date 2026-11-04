@@ -146,6 +146,18 @@ describe('analyzeSong', () => {
     expect(await db.chunks.count()).toBe(3)
     expect(await activeSongCount(db)).toBe(1)
   })
+  test('un\'altra analisi riuscita nel frattempo vince sull\'errore di questa: si dice «analizzata», non «in coda»', async () => {
+    await saveSettings(db, { apiKey: 'k' })
+    const song = await createSong(db, input, now)
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const slow429 = vi.fn(async () => { await gate; return new Response('{}', { status: 429 }) }) as unknown as typeof fetch
+    const failing = analyzeSong(db, song.id, deps({ fetch: slow429 }))
+    expect(await analyzeSong(db, song.id, deps({ fetch: okFetch() }))).toBe('analyzed')
+    release()
+    expect(await failing).toBe('analyzed')
+    expect((await db.songs.get(song.id))!.status).toBe('analyzed')
+  })
   test('offline queues without calling', async () => {
     const song = await createSong(db, input, now)
     const f = vi.fn()
