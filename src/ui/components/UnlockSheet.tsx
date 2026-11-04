@@ -73,7 +73,10 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
         <ul class="checks">
           {r.notInReview.map((x, i) => (
             <li key={`${i}:${x.title}`} class="todo">
-              {`${x.title}: ${[x.chunks ? plural(x.chunks, 'chunk', 'chunk') : '', x.words ? plural(x.words, 'parola', 'parole') : ''].filter(Boolean).join(' e ')} non ancora nel ripasso`}
+              {`${x.title}: ${[
+                x.chunks + x.words > 0 ? `${[x.chunks ? plural(x.chunks, 'chunk', 'chunk') : '', x.words ? plural(x.words, 'parola', 'parole') : ''].filter(Boolean).join(' e ')} non ancora nel ripasso` : '',
+                x.toTriage ? plural(x.toTriage, 'parola da smistare', 'parole da smistare') : '',
+              ].filter(Boolean).join('; ')}`}
             </li>
           ))}
           <li class={r.loadOk ? 'ok' : 'todo'}>

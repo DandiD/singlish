@@ -3,7 +3,7 @@ import { State } from 'ts-fsrs'
 import { readiness, effectiveNewPerDay, INTENSIVE } from '../../src/domain/readiness'
 import { DEFAULT_SETTINGS } from '../../src/domain/settings'
 import { newFsrsCard } from '../../src/domain/scheduler'
-import type { CardRow, Chunk, Song } from '../../src/db/types'
+import type { CardRow, Chunk, Song, Word } from '../../src/db/types'
 
 const now = new Date('2026-11-04T10:00:00')
 const song = (id: string, status: Song['status'] = 'studying'): Song => ({
@@ -26,7 +26,7 @@ test('pronta: voci tutte nel ripasso, carico sotto il tetto, posti liberi', () =
 test('non pronta: una canzone ha ancora voci fuori dal ripasso', () => {
   const r = readiness({ settings: DEFAULT_SETTINGS, songs: [song('a')], chunks: [chunk('c1', 'a'), chunk('c2', 'a')], words: [], cards: [card('c1', State.Review), card('c2', State.New)], avgSeconds: 12 }, now)
   expect(r.ready).toBe(false)
-  expect(r.notInReview).toEqual([{ title: 'a', chunks: 1, words: 0 }])
+  expect(r.notInReview).toEqual([{ title: 'a', chunks: 1, words: 0, toTriage: 0 }])
 })
 
 test('non pronta: il carico dei prossimi 7 giorni supera il tetto', () => {
@@ -42,4 +42,12 @@ test('modalità intensiva: 25 nuove al giorno finché dura, poi torna il valore 
   expect(effectiveNewPerDay(on, now)).toBe(INTENSIVE.newPerDay)
   expect(effectiveNewPerDay({ ...on, intensiveUntil: new Date(now.getTime() - 1) }, now)).toBe(16)
   expect(effectiveNewPerDay(DEFAULT_SETTINGS, now)).toBe(DEFAULT_SETTINGS.newPerDay)
+})
+
+test('non pronta: una canzone in studio ha parole mai smistate (come Oggi e lo Studio)', () => {
+  const pending: Word = { id: 'w1', lemma: 'w', surfaceForm: 'w', pos: 'noun', freqRank: 4000, songId: 'a', lineIndex: 0, contexts: [{ songId: 'a', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: '', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false }
+  const r = readiness({ settings: DEFAULT_SETTINGS, songs: [song('a')], chunks: [chunk('c1', 'a')], words: [{ ...pending }], cards: [card('c1', State.Review)], avgSeconds: 12 }, now)
+  expect(r.ready).toBe(false)
+  expect(r.notInReview).toEqual([{ title: 'a', chunks: 0, words: 0, toTriage: 1 }])
 })

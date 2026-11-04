@@ -444,3 +444,11 @@ test('«Fatto per oggi» lasciato aperto la sera: al mattino diventa «Sessione 
   expect(await screen.findByRole('heading', { name: 'Sessione finita' })).toBeTruthy()
   expect(screen.getByText(/card ancora da fare oggi/)).toBeTruthy()
 })
+
+test('Sessione vuota: se intanto una canzone in coda viene analizzata, il motivo si aggiorna', async () => {
+  await db.songs.update('s1', { status: 'queued' })
+  renderSession()
+  expect(await screen.findByText(/ancora da analizzare/)).toBeTruthy()
+  await db.songs.update('s1', { status: 'analyzed' })
+  expect(await screen.findByText(/Aprendo lo Studio di una canzone o di un testo «Da studiare»/)).toBeTruthy()
+})

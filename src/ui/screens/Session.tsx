@@ -58,6 +58,16 @@ export function Session() {
   const [later, setLater] = useState<number | null>(null)
   // Le frasi da correggere sono tutte quelle in attesa, come in Oggi e in «Le tue frasi» (anche di una sessione ripresa).
   const toCorrect = useLive(() => pendingProductions(db), [db])?.length ?? 0
+  // Il motivo della Sessione vuota segue i dati: una canzone in coda analizzata intanto, parole smistate altrove.
+  const why = useLive(async () => {
+    const songs = await db.songs.toArray()
+    const triage = await Promise.all(songs.filter((s) => s.status === 'studying' || s.status === 'done').map((s) => pendingWords(db, s.id)))
+    return {
+      toStudy: songs.some((s) => s.status === 'analyzed'),
+      toAnalyze: songs.some((s) => s.status === 'draft' || s.status === 'queued'),
+      toTriage: triage.some((l) => l.length > 0),
+    }
+  }, [db])
   const [sheet, setSheet] = useState(false)
   const busy = useRef(false)
   const resumeRef = useRef<HTMLButtonElement>(null)
@@ -222,8 +232,8 @@ export function Session() {
   if (items.length === 0 && counts.reviews + counts.news === 0 && written === 0 && loaded.doneWritten === 0) {
     const noSongs = loaded.songById.size === 0
     // Le card nuove di una canzone «Da studiare» entrano solo aprendone lo Studio: domani non cambierebbe nulla.
-    const toStudy = [...loaded.songById.values()].some((s) => s.status === 'analyzed')
-    const toAnalyze = [...loaded.songById.values()].some((s) => s.status === 'draft' || s.status === 'queued')
+    const toStudy = why?.toStudy ?? [...loaded.songById.values()].some((s) => s.status === 'analyzed')
+    const toAnalyze = why?.toAnalyze ?? [...loaded.songById.values()].some((s) => s.status === 'draft' || s.status === 'queued')
     return (
       <main class="screen session session-done">
         <h1>{(later ?? 0) > 0 ? 'Ci sono card da ripassare' : 'Niente da ripassare'}</h1>
@@ -234,7 +244,7 @@ export function Session() {
             ? 'Aggiungi una canzone: le sue espressioni e parole diventano le card del ripasso.'
             : toCorrect > 0
               ? 'Per ora non ci sono altre card da ripassare: le voci con una frase da correggere tornano nel ripasso dopo la correzione.'
-              : loaded.toTriage
+              : (why?.toTriage ?? loaded.toTriage)
               ? 'Per ora non ci sono card in scadenza. Le card nuove delle parole possono arrivare quando smisti le parole nello Studio della canzone o del testo (entro il limite delle nuove del giorno).'
               : toStudy
               ? 'Per ora non ci sono card in scadenza. Aprendo lo Studio di una canzone o di un testo «Da studiare», le sue card nuove possono entrare nel ripasso.'

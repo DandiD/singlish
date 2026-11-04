@@ -138,3 +138,13 @@ test('Oggi: una canzone «Da studiare» senza nessuna voce non dice «0 chunk e 
   expect(await screen.findByText(/Da studiare · nessuna voce da ripassare/)).toBeTruthy()
   expect(screen.queryByText(/0 chunk e parole/)).toBeNull()
 })
+
+test('Oggi: una canzone «Da studiare» con voci e parole da smistare le nomina tutte e due', async () => {
+  await db.songs.update('s1', { status: 'analyzed' })
+  await db.chunks.add({ id: 'ca', songId: 's1', key: 'a', baseForm: 'a', surfaceForm: 'a', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    type: 'idiom', cefr: 'B1', register: 'usable', topic: '', meaningIt: 'a', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false })
+  await db.words.add({ id: 'wa', lemma: 'b', surfaceForm: 'b', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'b', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  mount(<Today />)
+  expect(await screen.findByText(/Da studiare · 1 chunk e parole · 1 parola da smistare/)).toBeTruthy()
+})

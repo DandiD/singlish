@@ -14,7 +14,7 @@ export function effectiveNewPerDay(settings: Settings, now: Date): number {
 export interface Readiness {
   ready: boolean
   /** Canzoni in corso con voci non ancora entrate nel ripasso (card Riconosci mai vista). */
-  notInReview: { title: string; chunks: number; words: number }[]
+  notInReview: { title: string; chunks: number; words: number; toTriage: number }[]
   loadMinutesPerDay: number
   loadOk: boolean
   openSongs: number
@@ -36,9 +36,11 @@ export function readiness(
         title: s.title,
         chunks: d.chunks.filter((c) => inSong(c) && waiting(c)).length,
         words: d.words.filter((w) => inSong(w) && w.triage === 'learn' && waiting(w)).length,
+        // Parole mai smistate: Oggi e lo Studio le nominano, quindi anche lo sblocco le conta.
+        toTriage: d.words.filter((w) => inSong(w) && w.triage === 'pending' && !w.suspended).length,
       }
     })
-    .filter((x) => x.chunks + x.words > 0)
+    .filter((x) => x.chunks + x.words + x.toTriage > 0)
   const live = new Set([...d.chunks, ...d.words].filter((i) => !i.suspended).map((i) => i.id))
   const due7 = dueItemsWithin(d.cards, live, now, 7)
   const loadMinutesPerDay = (due7 * d.avgSeconds) / 60 / 7
