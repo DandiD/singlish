@@ -85,3 +85,12 @@ test('Espandi si offre solo per le parole in studio, non da smistare né nate da
   await screen.findByRole('dialog')
   expect(screen.queryByRole('link', { name: 'Espandi' })).toBeNull()
 })
+
+test('Espandi aperto dall\'indirizzo su una parola sospesa: lo dice e non chiama Gemini', async () => {
+  await db.words.update('w1', { suspended: true })
+  const f = reply()
+  mount(<Expand wordId="w1" />, f as unknown as typeof fetch)
+  expect(await screen.findByText(/Questa parola non si può espandere/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /Chiedi a Gemini/ })).toBeNull()
+  expect(f).not.toHaveBeenCalled()
+})

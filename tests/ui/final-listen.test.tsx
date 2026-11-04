@@ -71,3 +71,11 @@ test('il riepilogo dice gli stessi numeri di Oggi: quante voci sono già nel rip
   fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
   expect(screen.getByText(/1 di 2 chunk e parole nel ripasso/)).toBeTruthy()
 })
+
+test('una canzone già completata, aperta dall\'indirizzo: mostra il riascolto fatto e non si richiude', async () => {
+  await db.songs.update('s1', { status: 'done', comprehensionAfter: 85, finalListenAt: daysAgo(1) })
+  mount(<FinalListen songId="s1" />)
+  expect(await screen.findByText(/Riascolto già fatto/)).toBeTruthy()
+  expect(screen.getByText(/85%/)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Chiudi la canzone' })).toBeNull()
+})

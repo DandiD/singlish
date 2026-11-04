@@ -4,6 +4,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goBackTo, href } from '../../router'
 import { excludeItem, expandChildren } from '../../domain/ingest'
+import { canExpand } from '../../domain/expand'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, formIn } from '../../domain/songItems'
 import type { Chunk, ChunkType, Register, Song, Word } from '../../db/types'
@@ -144,7 +145,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
         </div>
 
         {/* Espandi solo per le parole in studio, e non per quelle nate da Espandi (niente voci di voci). */}
-        {kind === 'word' && mode === 'view' && item.triage === 'learn' && !item.suspended && item.origin !== 'expand' && (
+        {kind === 'word' && mode === 'view' && canExpand(item as Word) && (
           <a class="btn outline expand-link" href={href({ name: 'expand', wordId: item.id })}>Espandi</a>
         )}
 

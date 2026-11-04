@@ -43,6 +43,24 @@ export function FinalListen({ songId }: { songId: string }) {
     )
   }
   const before = song.comprehensionBefore
+  // Aperta dall'indirizzo su una canzone già completata: si mostra il riascolto fatto, senza riscriverlo.
+  if (song.status === 'done') {
+    const done = song.comprehensionAfter
+    const doneGain = done != null && before != null ? done - before : null
+    return (
+      <main class="screen final-listen">
+        <header class="settings-head">
+          <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
+          <div class="grow">
+            <h1>Riascolto già fatto</h1>
+            <p class="note">{song.title}</p>
+          </div>
+        </header>
+        <p class="intro">{done == null ? 'La canzone è già tra le completate.' : `Dopo lo studio avevi capito il ${done}%${doneGain === null ? '' : ` (${doneGain > 0 ? `+${doneGain}` : doneGain} punti)`}. La canzone è già tra le completate.`}</p>
+        <a class="btn outline" href={href({ name: 'songs' })} onClick={onBackTo({ name: 'songs' })}>Torna alle canzoni</a>
+      </main>
+    )
+  }
   const gain = after !== null && before !== null ? after - before : null
 
   const close = async () => {

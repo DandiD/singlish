@@ -4,7 +4,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { geminiProblem } from '../errors'
 import { goBack, href, onBack } from '../../router'
-import { addExpansion, expansionPlan, requestExpansion, type Expansion } from '../../domain/expand'
+import { addExpansion, canExpand, expansionPlan, requestExpansion, type Expansion } from '../../domain/expand'
 import { getSettings } from '../../domain/settings'
 import { useOnline } from '../components/OfflineBadge'
 import { Icon } from '../components/Icon'
@@ -78,7 +78,12 @@ export function Expand({ wordId }: { wordId: string }) {
           <p class="note">{[song?.title, POS[word.pos] ?? word.pos, word.cefr].filter(Boolean).join(' · ')}</p>
         </div>
       </header>
-      {!e ? (
+      {!canExpand(word) ? (
+        <>
+          <p class="note info-box">Questa parola non si può espandere: Espandi vale per le parole in studio e attive, non per quelle sospese, da smistare o nate da Espandi.</p>
+          <a class="btn outline" href={href({ name: 'lexicon' })} onClick={onBack({ name: 'lexicon' })}>Torna al Lessico</a>
+        </>
+      ) : !e ? (
         <>
           <p class="note info-box">Gemini propone le parole della stessa famiglia, le collocazioni, i contrari e le sfumature da non confondere. Una sola chiamata: il risultato resta salvato.</p>
           {error && <p class="note danger" role="alert">{error}</p>}

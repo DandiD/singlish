@@ -25,7 +25,8 @@ export async function startStudying(db: SinglishDB, songId: string, now: Date): 
 
 /** Registra la comprensione dopo lo studio e completa la canzone. */
 export async function saveFinalListen(db: SinglishDB, songId: string, pct: number, now: Date): Promise<void> {
-  await db.songs.update(songId, { comprehensionAfter: pct, finalListenAt: now, status: 'done' })
+  // Una canzone già completata non si riscrive: il guadagno in Progressi resta quello del primo riascolto finale.
+  await db.songs.where('id').equals(songId).filter((s) => s.status !== 'done').modify({ comprehensionAfter: pct, finalListenAt: now, status: 'done' })
 }
 
 /** Punti guadagnati in media fra primo ascolto e riascolto finale; null se nessuna canzone ha entrambi. */

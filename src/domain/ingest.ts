@@ -47,10 +47,15 @@ export const contextOf = (songId: string, lineIndex: number, surface: string, it
   surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
 
 /** Una voce di Espandi che compare in un verso diventa una voce di canzone come le altre. */
+/** La casa di una voce (canzone e riga) è il suo primo verso: Sessione, Lessico, scheda e card Ascolta lo leggono da lì. */
+export const isHome = (item: Chunk | Word): boolean => {
+  const first = item.contexts[0]
+  return !!first && first.songId === item.songId && first.lineIndex === item.lineIndex
+}
+
 export function graduate(item: Chunk | Word): void {
-  // Anche una voce senza casa (parola del profilo, canzone eliminata) si sposta sul verso che ha ricevuto.
-  const homeless = !item.contexts.some((x) => x.songId === item.songId)
-  if (item.origin !== 'expand' && !homeless) return
+  // Anche una voce senza casa (parola del profilo, canzone eliminata, dati vecchi) si sposta sul verso che ha ricevuto.
+  if (item.origin !== 'expand' && isHome(item)) return
   delete item.origin
   delete item.fromItemId
   // Canzone, riga e forma passano al verso: Lessico, scheda, card Ascolta e coda la vedono lì.
@@ -58,7 +63,10 @@ export function graduate(item: Chunk | Word): void {
   if (ctx) {
     item.songId = ctx.songId
     item.lineIndex = ctx.lineIndex
+    const old = item.surfaceForm
     if (ctx.surfaceForm) { item.surfaceForm = ctx.surfaceForm; delete ctx.surfaceForm }
+    // Gli altri versi senza forma propria valevano per quella vecchia: la ricevono, così restano evidenziati.
+    if (item.surfaceForm !== old) for (const x of item.contexts) if (x !== ctx && !x.surfaceForm) x.surfaceForm = old
   }
 }
 
@@ -403,9 +411,9 @@ export async function repairHomes(db: SinglishDB): Promise<number> {
     for (const table of [db.chunks, db.words] as const) {
       const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
       for (const item of items) {
-        const first = item.contexts[0]
-        if (!first || item.contexts.some((x) => x.songId === item.songId && x.lineIndex === item.lineIndex)) continue
-        await (table as typeof db.chunks).update(item.id, { songId: first.songId, lineIndex: first.lineIndex })
+        if (item.contexts.length === 0 || isHome(item)) continue
+        graduate(item)
+        await (table as typeof db.chunks).put(item as Chunk)
         fixed++
       }
     }
