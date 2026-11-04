@@ -118,4 +118,15 @@ describe('cronologia dell\'app', () => {
     expect(f.win.location.hash).toBe('#/')
     expect(f.win.entries).toHaveLength(2)
   })
+
+  test('sostituire con la pagina che c\'è già prima non lascia due voci uguali: si torna a quella (un solo Indietro basta)', () => {
+    const s = setup('#/')
+    s.win.push('#/progress')
+    s.win.push('#/vocab-test')
+    s.nav.replace('#/progress') // «Aggiorna la fascia» alla fine del test
+    expect(s.win.location.hash).toBe('#/progress')
+    expect(s.index).toBe(1)
+    s.nav.back('#/')
+    expect(s.win.location.hash).toBe('#/')
+  })
 })

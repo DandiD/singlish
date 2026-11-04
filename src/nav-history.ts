@@ -85,6 +85,8 @@ export function createNavHistory(win: NavWindow, storage: Storage) {
     /** Sostituisce la voce corrente (esiti di un'azione: il ritorno non deve ripassarci). */
     replace(target: string) {
       if (hash() === target) return
+      // La voce precedente è già `target`: si torna a quella invece di lasciarne due uguali (un Indietro a vuoto).
+      if (idx > 0 && saved.hashes[idx - 1] === target) { win.history.back(); return }
       replacing = true
       win.history.replaceState({ idx }, '', target)
       win.dispatchEvent(new Event('hashchange'))
