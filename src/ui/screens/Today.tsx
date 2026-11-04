@@ -4,7 +4,7 @@ import { State } from 'ts-fsrs'
 import { useDeps } from '../deps'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
-import { getSettings } from '../../domain/settings'
+import { getSettings, saveSettings } from '../../domain/settings'
 import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
 import { finalListenDue } from '../../domain/finalListen'
@@ -13,6 +13,8 @@ import { pendingProductions } from '../../domain/production'
 import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
+import { useInstall } from '../../pwa/install'
+import { InstallBanner } from '../components/InstallBanner'
 
 
 const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
@@ -22,6 +24,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 export function Today() {
   const { db, now } = useDeps()
   const gate = useAddGate()
+  const install = useInstall()
   // Lasciata aperta la sera, Oggi si ricalcola al mattino (ritorno in primo piano o mezzanotte).
   const day = useDayTick(now)
   const data = useLive(async () => {
@@ -72,6 +75,14 @@ export function Today() {
         </span>
       </header>
       <p class="note">{capitalize(dateFmt.format(now()))}</p>
+
+      {!settings.installBannerDismissed && (
+        <InstallBanner
+          state={install.state}
+          onInstall={() => void install.install()}
+          onDismiss={() => void saveSettings(db, { installBannerDismissed: true }).catch(() => {})}
+        />
+      )}
 
       <section class="card today-card">
         <h1>Ripasso di oggi</h1>

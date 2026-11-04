@@ -156,6 +156,8 @@ export interface Settings {
   newPerDay: number
   timerMinutes: { study: number; review: number }
   persistAsked: boolean
+  /** Il banner «Installa» di Oggi è stato chiuso: non ricompare (l'installazione resta nelle Impostazioni). */
+  installBannerDismissed?: boolean
   /** Modalità intensiva: fino a questa data le card nuove al giorno salgono a 25. */
   intensiveUntil?: Date | null
   /** Test di vocabolario fatti, dal più vecchio. */
