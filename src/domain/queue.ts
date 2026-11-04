@@ -82,7 +82,9 @@ export async function buildSessionQueue(
   }
   const inStudy = (c: CardRow) => {
     const item = itemOf(c)!
-    return studied(item.songId) || item.contexts.some((x) => studied(x.songId))
+    // Una voce di Espandi non ha versi: segue la parola da cui è nata.
+    const anchor = item.fromItemId ? wordById.get(item.fromItemId) ?? item : item
+    return studied(anchor.songId) || anchor.contexts.some((x) => studied(x.songId))
   }
   const items: QueueItem[] = []
 

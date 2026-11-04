@@ -257,6 +257,8 @@ Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a 
 - Una parola che passa in studio (Chiedi a Gemini, Espandi) riceve Riconosci e Completa se non ha la R, anche se ha già un'altra card.
 - Sessione ripresa: anche le frasi già scritte contano nel «N di M».
 - Voluto: sospendere una parola non sospende le voci nate da lei con Espandi (sospendere è reversibile, le voci figlie sono voci a sé); escludere invece le toglie. Una canzone «Da studiare» conta nello sblocco finché non se ne apre lo Studio, perché le sue card nuove non entrano finché non la si studia.
+- Le voci di Espandi entrano in coda se la parola da cui sono nate compare in una canzone in studio (o completata). Una frase confermata in «Le tue frasi» conta fra i ripassi della sua sessione. «Chiedi a Gemini» su una voce sospesa la riattiva.
+- Voluto: aprire una voce dal Lessico apre lo Studio della sua canzone (e quindi, se era «Da studiare», la mette in studio); la card Ascolta guarda il parlato connesso del verso d'origine del chunk; l'intestazione di Espandi mostra la canzone d'origine della parola.
 - Escludi (`excludeItem`) fa uscire anche le voci nate con Espandi dalla voce esclusa; la conferma dice quante.
 - «Aggiungi testo» passa dal controllo di sblocco come «Aggiungi».
 

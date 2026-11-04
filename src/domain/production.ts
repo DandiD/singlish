@@ -97,7 +97,8 @@ export async function confirmProductions(db: SinglishDB, items: Pick<Feedback, '
         await recordReview(db, it.cardId, { rating: it.rating, auto: false, answer: it.sentence, elapsedMs: it.elapsedMs }, now, retention)
       }
       const s = await db.sessions.get(it.sessionId)
-      if (s) await db.sessions.update(it.sessionId, { productions: (s.productions ?? []).filter((p) => p.cardId !== it.cardId) })
+      // La frase confermata diventa un ripasso della sua sessione: «N di M» e «Fatto per oggi» non la perdono.
+      if (s) await db.sessions.update(it.sessionId, { productions: (s.productions ?? []).filter((p) => p.cardId !== it.cardId), reviewsDone: s.reviewsDone + 1 })
     })
   }
 }

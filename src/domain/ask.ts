@@ -95,10 +95,10 @@ export async function askGemini(
       const key = normalizeKey(c.base_form)
       const found = await db.chunks.where('key').equals(key).first()
       if (found) {
-        if (addContext(found.contexts, contextOf(songId, c.line_index, c.surface_form, found.surfaceForm))) {
-          graduate(found)
-          await db.chunks.put(found)
-        }
+        addContext(found.contexts, contextOf(songId, c.line_index, c.surface_form, found.surfaceForm))
+        graduate(found)
+        found.suspended = false // chiesta dallo studente: torna nel ripasso
+        await db.chunks.put(found)
         existing++
         continue
       }
@@ -117,6 +117,7 @@ export async function askGemini(
       const found = await db.words.where('lemma').equals(lemma).first()
       if (found) {
         if (addContext(found.contexts, contextOf(songId, w.line_index, w.surface_form, found.surfaceForm))) graduate(found)
+        found.suspended = false // chiesta dallo studente: torna nel ripasso
         if (found.triage !== 'learn') {
           found.triage = 'learn'
           // Riconosci e Completa servono anche se la parola ha già un'altra card (es. Sfumature).

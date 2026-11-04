@@ -82,7 +82,14 @@ export function expansionPlan(words: Word[], chunks: Chunk[], word: Word, pick: 
     // Una parola sospesa resta com'è: le sue card resterebbero fuori dal ripasso.
     else if (found.triage !== 'learn' && !found.suspended) toLearn.push(found)
   }
-  const newChunks = e.collocations.filter((c) => pick.collocations.includes(c.base_form) && !keys.has(normalizeKey(c.base_form)))
+  // Collocazioni uguali a meno di maiuscole o apostrofi sono un solo chunk.
+  const newChunks = e.collocations.filter((c) => {
+    if (!pick.collocations.includes(c.base_form)) return false
+    const k = normalizeKey(c.base_form)
+    if (keys.has(k)) return false
+    keys.add(k)
+    return true
+  })
   const hasS = cards.some((c) => c.itemId === word.id && c.kind === 'S')
   const nuance = pick.nuance && !!e.nuance && !hasS
   const withoutCards = toLearn.filter((w) => !cards.some((c) => c.itemId === w.id && c.kind === 'R')).length

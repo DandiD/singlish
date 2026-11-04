@@ -59,8 +59,8 @@ function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings:
         <div class="sheet-handle" aria-hidden="true" />
         <h1>{title}</h1>
         <ul class="checks">
-          {r.notInReview.map((x) => (
-            <li key={x.title} class="todo">
+          {r.notInReview.map((x, i) => (
+            <li key={`${i}:${x.title}`} class="todo">
               {`${x.title}: ${[x.chunks ? plural(x.chunks, 'chunk', 'chunk') : '', x.words ? plural(x.words, 'parola', 'parole') : ''].filter(Boolean).join(' e ')} non ancora nel ripasso`}
             </li>
           ))}
