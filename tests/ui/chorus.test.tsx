@@ -48,3 +48,15 @@ test('si copre una riga toccandola, Ancora conta un tentativo, Ce l\'ho lo segna
   await waitFor(async () => expect((await db.songs.get('s1'))!.chorusDoneAt).toEqual(now))
   await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'))
 })
+
+test('«Ce l\'ho» toccato due volte di fila salva e torna allo Studio una volta sola', async () => {
+  const { vi } = await import('vitest')
+  mount(<Chorus songId="s1" />)
+  const btn = await screen.findByRole('button', { name: "Ce l'ho, senza testo" })
+  const spy = vi.spyOn(db.songs, 'update')
+  fireEvent.click(btn)
+  fireEvent.click(btn)
+  await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'))
+  expect(spy).toHaveBeenCalledTimes(1)
+  spy.mockRestore()
+})

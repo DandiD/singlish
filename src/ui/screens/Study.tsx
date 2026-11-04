@@ -31,6 +31,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const { db, now, fetch, sleep } = useDeps()
   const [sessionId, setSessionId] = useState('')
   const [confirming, setConfirming] = useState<false | 'done' | 'delete'>(false)
+  const acting = useRef(false)
   // Chiedere a Gemini le parole segnate nel testo, tutte insieme.
   const [asking, setAsking] = useState(false)
   const [picked, setPicked] = useState<Set<string>>(new Set())
@@ -250,11 +251,14 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn primary"
                 onClick={async () => {
+                  if (acting.current) return // doppio tocco: una volta sola
+                  acting.current = true
                   const here = stillHere()
                   try {
                     await db.songs.update(songId, { status: 'done' })
                     if (here()) goBackTo({ name: 'songs' })
                   } catch (e) {
+                    acting.current = false
                     reportError(e)
                     setConfirming(false)
                   }
@@ -272,11 +276,14 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 type="button"
                 class="btn outline danger"
                 onClick={async () => {
+                  if (acting.current) return
+                  acting.current = true
                   const here = stillHere()
                   try {
                     await deleteSong(db, songId)
                     if (here()) goReplace({ name: 'songs' })
                   } catch (e) {
+                    acting.current = false
                     reportError(e)
                     setConfirming(false)
                   }

@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
@@ -24,12 +24,17 @@ export function Chorus({ songId }: { songId: string }) {
   }
   const lines = chorusLines(song.lines)
   const toggle = (i: number) => setHidden((cur) => { const n = new Set(cur); if (n.has(i)) n.delete(i); else n.add(i); return n })
+  // Un doppio tocco salva e torna indietro una volta sola.
+  const acting = useRef(false)
   const done = async () => {
+    if (acting.current) return
+    acting.current = true
     const here = stillHere()
     try {
       await db.songs.update(songId, { chorusDoneAt: now() })
       if (here()) goBackTo({ name: 'study', songId })
     } catch (e) {
+      acting.current = false
       reportError(e)
     }
   }

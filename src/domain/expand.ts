@@ -96,10 +96,10 @@ export function expansionPlan(words: Word[], chunks: Chunk[], word: Word, pick: 
   return { newWords, toLearn, newChunks, nuance, cards: newWords.length * 2 + withoutCards * 2 + newChunks.length * 2 + (nuance ? 1 : 0) }
 }
 
-/** Aggiunge al ripasso le voci scelte (e la card Sfumature sulla parola); restituisce quante card sono nate. */
 /** Espandi vale per le parole in studio e attive, non per quelle nate da Espandi (niente voci di voci). */
 export const canExpand = (w: Word): boolean => w.triage === 'learn' && !w.suspended && w.origin !== 'expand'
 
+/** Aggiunge al ripasso le voci scelte (e la card Sfumature sulla parola); restituisce quante card sono nate. */
 export async function addExpansion(db: SinglishDB, wordId: string, pick: ExpansionPick, now: Date): Promise<number> {
   return db.transaction('rw', db.words, db.chunks, db.cards, async () => {
     const word = await db.words.get(wordId)

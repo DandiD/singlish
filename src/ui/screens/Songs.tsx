@@ -146,6 +146,19 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
     el.addEventListener('blur', h)
     return () => el.removeEventListener('blur', h)
   })
+  // Chiuso con Salva o Annulla: uscendo dalla pagina non si salva di nuovo. Altrimenti (barra in basso, Indietro)
+  // quello che si è scritto e vale si salva, come la scheda di una voce.
+  const closed = useRef(false)
+  const latest = useRef({ title, artist, link })
+  latest.current = { title, artist, link }
+  useEffect(() => () => {
+    if (closed.current) return
+    const v = latest.current
+    const url = parseSpotifyTrackUrl(v.link)
+    const changed = v.title.trim() !== song.title || v.artist.trim() !== song.artist || (url ?? null) !== (song.spotifyUrl ?? null)
+    if (!changed || v.title.trim() === '' || (v.link.trim() !== '' && !url)) return
+    db.songs.update(song.id, { title: v.title.trim(), artist: v.artist.trim(), spotifyUrl: url }).catch(reportError)
+  }, [])
   const save = async () => {
     if (!canSave) return
     if (link.trim() !== '' && !canonical) {
@@ -153,11 +166,19 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
       return
     }
     setBusy(true)
+    closed.current = true
     try {
-      await db.songs.update(song.id, { title: title.trim(), artist: artist.trim(), spotifyUrl: canonical })
+      // Link appena incollato e Salva subito, su una canzone senza titolo vero: si aspetta Spotify (massimo 4 s), come in Aggiungi.
+      let finalTitle = title.trim()
+      if (canonical && canonical !== song.spotifyUrl && (finalTitle === '' || finalTitle === 'Senza titolo')) {
+        const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000))
+        finalTitle = ((await Promise.race([fetchTrackTitle(canonical, fetch), timeout])) ?? '').trim() || finalTitle
+      }
+      await db.songs.update(song.id, { title: finalTitle, artist: artist.trim(), spotifyUrl: canonical })
       onDone()
     } catch (e) {
       reportError(e)
+      closed.current = false
       setBusy(false)
     }
   }
@@ -189,7 +210,7 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
       </label>}
       <div class="grid2">
         <button type="submit" class="btn primary" disabled={!canSave}>Salva</button>
-        <button type="button" class="btn outline" onClick={onDone}>Annulla</button>
+        <button type="button" class="btn outline" onClick={() => { closed.current = true; onDone() }}>Annulla</button>
       </div>
     </form>
   )

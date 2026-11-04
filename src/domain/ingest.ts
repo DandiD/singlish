@@ -46,13 +46,13 @@ export async function createSong(db: SinglishDB, input: SongInput, now: Date): P
 export const contextOf = (songId: string, lineIndex: number, surface: string, itemSurface: string): Context =>
   surface && surface !== itemSurface ? { songId, lineIndex, surfaceForm: surface } : { songId, lineIndex }
 
-/** Una voce di Espandi che compare in un verso diventa una voce di canzone come le altre. */
 /** La casa di una voce (canzone e riga) è il suo primo verso: Sessione, Lessico, scheda e card Ascolta lo leggono da lì. */
 export const isHome = (item: Chunk | Word): boolean => {
   const first = item.contexts[0]
   return !!first && first.songId === item.songId && first.lineIndex === item.lineIndex
 }
 
+/** Una voce di Espandi che compare in un verso diventa una voce di canzone come le altre. */
 export function graduate(item: Chunk | Word): void {
   // Anche una voce senza casa (parola del profilo, canzone eliminata, dati vecchi) si sposta sul verso che ha ricevuto.
   if (item.origin !== 'expand' && isHome(item)) return

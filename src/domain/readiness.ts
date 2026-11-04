@@ -13,7 +13,7 @@ export function effectiveNewPerDay(settings: Settings, now: Date): number {
 
 export interface Readiness {
   ready: boolean
-  /** Canzoni in corso con voci non ancora entrate nel ripasso (card Riconosci mai vista). */
+  /** Canzoni in corso con voci non ancora entrate nel ripasso (card Riconosci mai vista), e canzoni (anche completate) con parole mai smistate. */
   notInReview: { title: string; chunks: number; words: number; toTriage: number }[]
   loadMinutesPerDay: number
   loadOk: boolean

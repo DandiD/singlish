@@ -443,3 +443,35 @@ test('una canzone completata si può ancora aprire da Canzoni (per smistare o ri
   const card = (await screen.findByRole('heading', { name: 'Done Song' })).closest('li')!
   expect(within(card).getByRole('link', { name: 'Apri' }).getAttribute('href')).toBe(`#/songs/${s.id}`)
 })
+
+test('Modifica: link incollato e Salva subito, la canzone «Senza titolo» prende comunque il titolo da Spotify', async () => {
+  const s = await createSong(db, { title: 'Senza titolo', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  mount(<Songs />, oembed('Midnight Harbor'))
+  const card = (await screen.findByRole('heading', { name: 'Senza titolo' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+  fireEvent.click(within(card).getByRole('button', { name: 'Salva' }))
+  await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Midnight Harbor'))
+})
+
+test('Modifica: uscendo dalla pagina a metà, titolo e artista scritti non si perdono', async () => {
+  const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const { unmount } = mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
+  unmount() // un tocco sulla barra in basso
+  await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Nuovo'))
+})
+
+test('Modifica: Annulla non salva nemmeno uscendo dopo', async () => {
+  const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const { unmount } = mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
+  fireEvent.click(within(card).getByRole('button', { name: 'Annulla' }))
+  unmount()
+  await new Promise((r) => setTimeout(r, 30))
+  expect((await db.songs.get(s.id))!.title).toBe('Vecchio')
+})

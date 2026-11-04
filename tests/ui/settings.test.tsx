@@ -333,3 +333,9 @@ test('prova offline con la chiave già salvata: non dice che non è salvata', as
   await screen.findByText(/^Sei offline: la chiave salvata non è stata provata\. Il modello salvato è «.+»\.$/)
   Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
 })
+
+test('una chiave scritta e non provata: la pagina dice che si salva con «Prova»', async () => {
+  mount()
+  fireEvent.input(await screen.findByLabelText('Chiave API'), { target: { value: 'NEWKEY' } })
+  expect(screen.getByText(/La chiave si salva quando tocchi «Prova»/)).toBeTruthy()
+})

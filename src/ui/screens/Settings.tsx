@@ -256,7 +256,8 @@ export function Settings() {
           </button>
         </div>
         <p role="status" class={keyStatus.tone === 'error' ? 'note danger' : 'note'}>{keyStatus.text}</p>
-        <p class="note">La chiave resta su questo telefono.</p>
+        {/* La chiave, a differenza degli altri campi, si salva solo dopo una prova riuscita: lo si dice. */}
+        <p class="note">{typedKey.trim() !== '' ? 'La chiave si salva quando tocchi «Prova» e Gemini la accetta. Resta su questo telefono.' : 'La chiave resta su questo telefono.'}</p>
       </section>
 
       <section aria-labelledby="s-studio">
