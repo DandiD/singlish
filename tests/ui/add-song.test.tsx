@@ -475,3 +475,38 @@ test('Modifica: Annulla non salva nemmeno uscendo dopo', async () => {
   await new Promise((r) => setTimeout(r, 30))
   expect((await db.songs.get(s.id))!.title).toBe('Vecchio')
 })
+
+test('Modifica: uscendo subito dopo aver incollato il link, la canzone «Senza titolo» prende il titolo da Spotify', async () => {
+  const s = await createSong(db, { title: 'Senza titolo', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const { unmount } = mount(<Songs />, oembed('Midnight Harbor'))
+  const card = (await screen.findByRole('heading', { name: 'Senza titolo' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+  unmount()
+  await waitFor(async () => expect((await db.songs.get(s.id))!).toMatchObject({ title: 'Midnight Harbor' }))
+})
+
+test('Modifica: uscendo con un link non valido, il titolo nuovo si salva e il link resta quello di prima', async () => {
+  const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const { unmount } = mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
+  fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: 'https://open.spotify.com/album/x' } })
+  unmount()
+  await waitFor(async () => expect((await db.songs.get(s.id))!).toMatchObject({ title: 'Nuovo', spotifyUrl: null }))
+})
+
+test('Canzoni: «Sì, elimina» toccato due volte elimina una volta sola', async () => {
+  await createSong(db, { title: 'Doppia', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  mount(<Songs />)
+  const card = (await screen.findByRole('heading', { name: 'Doppia' })).closest('li')!
+  fireEvent.click(within(card).getByRole('button', { name: /Elimina/ }))
+  const yes = await within(card).findByRole('button', { name: 'Sì, elimina' })
+  const spy = vi.spyOn(db, 'transaction')
+  fireEvent.click(yes)
+  fireEvent.click(yes)
+  await waitFor(async () => expect(await db.songs.count()).toBe(0))
+  expect(spy).toHaveBeenCalledTimes(1)
+  spy.mockRestore()
+})

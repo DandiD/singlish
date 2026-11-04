@@ -26,6 +26,8 @@ function mount(fakeFetch: typeof fetch = vi.fn() as unknown as typeof fetch) {
   )
 }
 
+/** Scrive nel campo e lo lascia, come sul telefono (con preact/compat onBlur ascolta focusout). */
+const leave = (el: Element, value: string) => { fireEvent.input(el, { target: { value } }); fireEvent.focusOut(el) }
 const okBody = () =>
   new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }), { status: 200 })
 
@@ -101,7 +103,7 @@ describe('Settings', () => {
     await screen.findByLabelText('Chiave API')
     fireEvent.input(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
     // toccando Prova il campo perde il fuoco: il modello (una preferenza) si salva da solo, come le altre
-    fireEvent.change(screen.getByLabelText('Modello'), { target: { value: 'new-model' } })
+    leave(screen.getByLabelText('Modello'), 'new-model')
     fireEvent.click(screen.getByRole('button', { name: 'Prova' }))
     // il messaggio dice il vero: la chiave rifiutata non si salva, il modello salvato è quello nuovo
     await screen.findByText(/^La chiave Gemini non funziona\. .*È la chiave salvata: sostituiscila con una che funziona\. Il modello salvato è «new-model»\.$/)
@@ -226,7 +228,7 @@ describe('nessun valore perso nelle Impostazioni', () => {
     mount()
     const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
     fireEvent.input(model, { target: { value: ' gemini-2.5-flash ' } })
-    fireEvent.change(model, { target: { value: ' gemini-2.5-flash ' } })
+    leave(model, ' gemini-2.5-flash ')
     await waitFor(async () => expect((await getSettings(db)).model).toBe('gemini-2.5-flash'))
   })
   test('un modello cancellato non si salva vuoto: torna quello salvato', async () => {
@@ -234,7 +236,7 @@ describe('nessun valore perso nelle Impostazioni', () => {
     mount()
     const model = (await screen.findByLabelText('Modello')) as HTMLInputElement
     fireEvent.input(model, { target: { value: '  ' } })
-    fireEvent.change(model, { target: { value: '  ' } })
+    leave(model, '  ')
     await waitFor(() => expect(model.value).toBe('gemini-a'))
     expect((await getSettings(db)).model).toBe('gemini-a')
   })
@@ -242,16 +244,16 @@ describe('nessun valore perso nelle Impostazioni', () => {
     await saveSettings(db, { newPerDay: 16 })
     mount()
     const n = (await screen.findByLabelText('Nuove al giorno')) as HTMLInputElement
-    fireEvent.change(n, { target: { value: '' } })
+    leave(n, '')
     expect(n.value).toBe('16')
-    fireEvent.change(n, { target: { value: '500' } })
+    leave(n, '500')
     await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(40))
     expect(n.value).toBe('40')
-    fireEvent.change(n, { target: { value: '0' } })
+    leave(n, '0')
     await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(1))
     const study = screen.getByLabelText('Studio') as HTMLInputElement
     const before = study.value
-    fireEvent.change(study, { target: { value: '' } })
+    leave(study, '')
     expect(study.value).toBe(before)
   })
   test('scrivendo durante la prova della chiave, si salva la chiave provata e il testo nuovo resta nel campo', async () => {
@@ -280,10 +282,10 @@ test('memoria obiettivo: due scatti di fila salvano il secondo e l\'etichetta no
   mount()
   const slider = (await screen.findByLabelText(/Memoria obiettivo/)) as HTMLInputElement
   fireEvent.input(slider, { target: { value: '91' } })
-  fireEvent.change(slider, { target: { value: '91' } })
+  fireEvent.input(slider, { target: { value: '91' } }); fireEvent.pointerUp(slider)
   expect(slider.value).toBe('91')
   fireEvent.input(slider, { target: { value: '92' } })
-  fireEvent.change(slider, { target: { value: '92' } })
+  fireEvent.input(slider, { target: { value: '92' } }); fireEvent.pointerUp(slider)
   expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
   await waitFor(async () => expect((await getSettings(db)).desiredRetention).toBe(0.92))
   expect(screen.getByText(/Memoria obiettivo: 0,92/)).toBeTruthy()
@@ -338,4 +340,27 @@ test('una chiave scritta e non provata: la pagina dice che si salva con «Prova�
   mount()
   fireEvent.input(await screen.findByLabelText('Chiave API'), { target: { value: 'NEWKEY' } })
   expect(screen.getByText(/La chiave si salva quando tocchi «Prova»/)).toBeTruthy()
+})
+
+test('i numeri si salvano lasciando il campo, non a ogni tasto: correggere 16 in 20 salva 20', async () => {
+  await saveSettings(db, { newPerDay: 16 })
+  mount()
+  const field = (await screen.findByLabelText('Nuove al giorno')) as HTMLInputElement
+  await waitFor(() => expect(field.value).toBe('16'))
+  for (const v of ['1', '', '2', '20']) fireEvent.input(field, { target: { value: v } })
+  await new Promise((r) => setTimeout(r, 20))
+  expect((await getSettings(db)).newPerDay).toBe(16) // mentre si scrive non si salva nulla
+  fireEvent.focusOut(field)
+  await waitFor(async () => expect((await getSettings(db)).newPerDay).toBe(20))
+})
+
+test('il modello si salva lasciando il campo: cancellare e riscrivere non salva nomi a metà', async () => {
+  await saveSettings(db, { model: 'abc' })
+  mount()
+  const field = (await screen.findByLabelText('Modello')) as HTMLInputElement
+  for (const v of ['ab', 'a', '', 'x', 'xy', 'xyz']) fireEvent.input(field, { target: { value: v } })
+  await new Promise((r) => setTimeout(r, 20))
+  expect((await getSettings(db)).model).toBe('abc')
+  fireEvent.focusOut(field)
+  await waitFor(async () => expect((await getSettings(db)).model).toBe('xyz'))
 })

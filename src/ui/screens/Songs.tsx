@@ -33,6 +33,7 @@ const SOURCE_LABEL = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo',
 const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 
 export function Songs() {
+  const removing = useRef(false)
   const { db } = useDeps()
   const songs = useLive(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
   const open = useLive(() => activeSongCount(db), [db])
@@ -96,11 +97,14 @@ export function Songs() {
                     type="button"
                     class="btn outline danger"
                     onClick={async () => {
+                      if (removing.current) return // doppio tocco: una volta sola
+                      removing.current = true
                       try {
                         await deleteSong(db, s.id)
                       } catch (e) {
                         reportError(e)
                       }
+                      removing.current = false
                       setDeleting(null)
                     }}
                   >
@@ -154,10 +158,19 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
   useEffect(() => () => {
     if (closed.current) return
     const v = latest.current
-    const url = parseSpotifyTrackUrl(v.link)
+    // Un link non valido non si salva (resta quello di prima); titolo e artista sì.
+    const url = v.link.trim() === '' ? null : parseSpotifyTrackUrl(v.link) ?? song.spotifyUrl
     const changed = v.title.trim() !== song.title || v.artist.trim() !== song.artist || (url ?? null) !== (song.spotifyUrl ?? null)
-    if (!changed || v.title.trim() === '' || (v.link.trim() !== '' && !url)) return
-    db.songs.update(song.id, { title: v.title.trim(), artist: v.artist.trim(), spotifyUrl: url }).catch(reportError)
+    if (!changed || v.title.trim() === '') return
+    const untitled = v.title.trim() === 'Senza titolo'
+    db.songs.update(song.id, { title: v.title.trim(), artist: v.artist.trim(), spotifyUrl: url })
+      .then(async () => {
+        // Link nuovo su una canzone senza titolo vero: il titolo di Spotify arriva anche dopo l'uscita, se intanto non è stato scelto.
+        if (!untitled || !url || url === song.spotifyUrl) return
+        const found = await fetchTrackTitle(url, fetch)
+        if (found) await db.songs.where('id').equals(song.id).filter((x) => x.title === 'Senza titolo').modify({ title: found })
+      })
+      .catch(reportError)
   }, [])
   const save = async () => {
     if (!canSave) return

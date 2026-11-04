@@ -236,8 +236,9 @@ export function Settings() {
               autocapitalize="off"
               ref={noAutocorrect}
               onInput={(e) => setTypedModel((e.currentTarget as HTMLInputElement).value)}
-              onChange={(e) => {
-                // Si salva da solo come le altre impostazioni; vuoto non vale, torna quello salvato.
+              // onBlur, non onChange: con preact/compat (caricato da dexie-react-hooks) onChange scatta a ogni tasto.
+              onBlur={(e) => {
+                // Si salva lasciando il campo, come le altre impostazioni; vuoto non vale, torna quello salvato.
                 const input = e.currentTarget as HTMLInputElement
                 const v = input.value.trim()
                 setTypedModel(null)
@@ -286,7 +287,7 @@ export function Settings() {
             min={1}
             max={40}
             value={settings.newPerDay}
-            onChange={(e) => numeric(e, settings.newPerDay, 1, 40, (n) => store({ newPerDay: n }))}
+            onBlur={(e) => numeric(e, settings.newPerDay, 1, 40, (n) => store({ newPerDay: n }))}
           />
         </label>
         <label class="field">
@@ -298,9 +299,10 @@ export function Settings() {
             step={1}
             value={dragRetention ?? Math.round(settings.desiredRetention * 100)}
             onInput={(e) => setDragRetention(Number((e.currentTarget as HTMLInputElement).value))}
-            onChange={(e) =>
-              numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))
-            }
+            // Si salva al rilascio (dito, tasto o uscita dal cursore), non a ogni passo.
+            onPointerUp={(e) => numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))}
+            onKeyUp={(e) => numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))}
+            onBlur={(e) => numeric(e, Math.round(settings.desiredRetention * 100), 85, 95, (n) => store({ desiredRetention: n / 100 }))}
           />
         </label>
       </section>
@@ -315,7 +317,7 @@ export function Settings() {
               inputMode="numeric"
               min={1}
               value={settings.timerMinutes.study}
-              onChange={(e) =>
+              onBlur={(e) =>
                 numeric(e, settings.timerMinutes.study, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, study: n } }))
               }
             />
@@ -327,7 +329,7 @@ export function Settings() {
               inputMode="numeric"
               min={1}
               value={settings.timerMinutes.review}
-              onChange={(e) =>
+              onBlur={(e) =>
                 numeric(e, settings.timerMinutes.review, 1, 180, (n) => store({ timerMinutes: { ...settings.timerMinutes, review: n } }))
               }
             />
