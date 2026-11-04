@@ -296,7 +296,7 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
   await db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
     for (const table of [db.chunks, db.words] as const) {
       const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
-      for (const item of items.filter((i) => i.songId === songId || i.contexts.some((x) => x.songId === songId))) {
+      for (const item of items.filter((i) => i.origin !== 'expand' && (i.songId === songId || i.contexts.some((x) => x.songId === songId)))) {
         const rest = item.contexts.filter((x) => x.songId !== songId)
         if (rest.length === 0) {
           await db.cards.where('itemId').equals(item.id).delete()
@@ -309,6 +309,19 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
           Object.assign(patch, { songId: first.songId, lineIndex: first.lineIndex, surfaceForm: first.surfaceForm ?? item.surfaceForm })
         }
         await (table as typeof db.chunks).update(item.id, patch)
+      }
+    }
+    // Le voci di Espandi non hanno verso: restano finché esiste la parola da cui sono nate, e ne seguono la canzone.
+    for (const table of [db.chunks, db.words] as const) {
+      const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
+      for (const item of items.filter((i) => i.origin === 'expand' && i.songId === songId)) {
+        const parent = item.fromItemId ? await db.words.get(item.fromItemId) : undefined
+        if (parent && parent.songId !== songId) {
+          await (table as typeof db.chunks).update(item.id, { songId: parent.songId, lineIndex: parent.lineIndex })
+        } else {
+          await db.cards.where('itemId').equals(item.id).delete()
+          await table.delete(item.id)
+        }
       }
     }
     await db.songs.delete(songId)

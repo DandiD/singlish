@@ -57,6 +57,8 @@ export interface Chunk {
   suspended: boolean
   /** Aggiunta da Espandi: senza verso, con l'esempio di Gemini; in coda dopo le voci delle canzoni. */
   origin?: 'expand'
+  /** Per le voci di Espandi: la parola da cui sono nate (restano finché esiste lei). */
+  fromItemId?: string
 }
 
 export interface Word {
@@ -78,6 +80,7 @@ export interface Word {
   userEdited: boolean
   suspended: boolean
   origin?: 'expand'
+  fromItemId?: string
   /** Risultato di Espandi (una chiamata, poi salvato). */
   expansion?: import('../domain/expand').Expansion
   /** Card Sfumature: scelta fra parole vicine in una situazione. */

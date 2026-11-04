@@ -37,7 +37,7 @@ describe('espandi una parola', () => {
   test('le voci scelte entrano nel ripasso; la sfumatura crea la card S sulla parola', async () => {
     await requestExpansion(db, 'w1', { fetch: reply() as unknown as typeof fetch, sleep: async () => {} })
     const n = await addExpansion(db, 'w1', { family: ['emptiness'], collocations: ['empty promises'], opposites: [], nuance: true }, now)
-    expect(n).toBe(3)
+    expect(n).toBe(5) // 2 card per la parola, 2 per la collocazione, 1 Sfumature
     const added = (await db.words.toArray()).find((w) => w.lemma === 'emptiness')!
     expect(added).toMatchObject({ triage: 'learn', origin: 'expand', extraExampleEn: 'A feeling of emptiness.', contexts: [] })
     const coll = (await db.chunks.toArray())[0]

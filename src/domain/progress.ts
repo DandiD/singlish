@@ -1,5 +1,6 @@
 import { State } from 'ts-fsrs'
 import type { CardRow, Chunk, Level, Review, Settings, Song, Word } from '../db/types'
+import { dueItemsWithin } from './readiness'
 
 const NEXT: Record<Level, Level | null> = { B1: 'B2', B2: 'C1', C1: null }
 /** Per proporre il livello successivo: voci attive del livello attuale e comprensione al primo ascolto. */
@@ -38,8 +39,8 @@ export function progressStats(
   const recent = d.reviews.filter((r) => !r.wasNew && r.reviewedAt.getTime() > now.getTime() - 30 * DAY && r.reviewedAt <= now)
   const retention = recent.length ? recent.filter((r) => r.rating !== 1).length / recent.length : null
 
-  const horizon = now.getTime() + 7 * DAY
-  const due7 = d.cards.filter((c) => c.unlocked === 1 && c.fsrs.state !== State.New && live(c) && c.due.getTime() < horizon).length
+  const liveIds = new Set([...items.values()].filter((i) => !i.suspended).map((i) => i.id))
+  const due7 = dueItemsWithin(d.cards, liveIds, now, 7)
   const loadMinutesPerDay = (due7 * d.avgSeconds) / 60 / 7
 
   const nextLevel = NEXT[d.settings.level]

@@ -169,7 +169,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         <div class="ask-start">
           <div class="row-actions">
             <button type="button" class="btn outline" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
-            {chorusLines(song.lines).length > 0 && (
+            {song.kind !== 'text' && chorusLines(song.lines).length > 0 && (
               <a class="btn outline" href={href({ name: 'chorus', songId })}>Ritornello a voce</a>
             )}
           </div>

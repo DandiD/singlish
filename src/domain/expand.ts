@@ -58,49 +58,73 @@ export async function requestExpansion(db: SinglishDB, wordId: string, deps: { f
   return expansion
 }
 
-/** Aggiunge al ripasso le voci scelte (e la card Sfumature sulla parola); restituisce quante card-voce sono nate. */
-export async function addExpansion(
-  db: SinglishDB,
-  wordId: string,
-  pick: { family: string[]; collocations: string[]; opposites: string[]; nuance: boolean },
-  now: Date,
-): Promise<number> {
+export type ExpansionPick = { family: string[]; collocations: string[]; opposites: string[]; nuance: boolean }
+
+/**
+ * Cosa farà davvero l'aggiunta: parole nuove (2 card), parole già presenti ma non in studio (passano in studio,
+ * 2 card se non ne hanno), collocazioni nuove (2 card), la card Sfumature (1). L'annuncio e l'aggiunta usano questo.
+ */
+export function expansionPlan(words: Word[], chunks: Chunk[], word: Word, pick: ExpansionPick, cards: { itemId: string; kind: string }[] = []) {
+  const e = word.expansion
+  if (!e) return { newWords: [], toLearn: [], newChunks: [], nuance: false, cards: 0 }
+  const byLemma = new Map(words.map((w) => [w.lemma, w]))
+  const keys = new Set(chunks.map((c) => c.key))
+  const related = [...e.family.filter((r) => pick.family.includes(r.lemma)), ...e.opposites.filter((r) => pick.opposites.includes(r.lemma))]
+  const seen = new Set<string>()
+  const newWords: typeof related = []
+  const toLearn: Word[] = []
+  for (const r of related) {
+    const lemma = r.lemma.trim().toLowerCase()
+    if (seen.has(lemma)) continue
+    seen.add(lemma)
+    const found = byLemma.get(lemma)
+    if (!found) newWords.push(r)
+    else if (found.triage !== 'learn') toLearn.push(found)
+  }
+  const newChunks = e.collocations.filter((c) => pick.collocations.includes(c.base_form) && !keys.has(normalizeKey(c.base_form)))
+  const hasS = cards.some((c) => c.itemId === word.id && c.kind === 'S')
+  const nuance = pick.nuance && !!e.nuance && !hasS
+  const withoutCards = toLearn.filter((w) => !cards.some((c) => c.itemId === w.id)).length
+  return { newWords, toLearn, newChunks, nuance, cards: newWords.length * 2 + withoutCards * 2 + newChunks.length * 2 + (nuance ? 1 : 0) }
+}
+
+/** Aggiunge al ripasso le voci scelte (e la card Sfumature sulla parola); restituisce quante card sono nate. */
+export async function addExpansion(db: SinglishDB, wordId: string, pick: ExpansionPick, now: Date): Promise<number> {
   return db.transaction('rw', db.words, db.chunks, db.cards, async () => {
     const word = await db.words.get(wordId)
     if (!word?.expansion) throw new Error('Expansion missing')
-    const e = word.expansion
-    let added = 0
-    const addWord = async (r: z.infer<typeof Related>) => {
-      const lemma = r.lemma.trim().toLowerCase()
-      if (await db.words.where('lemma').equals(lemma).first()) return
+    const plan = expansionPlan(await db.words.toArray(), await db.chunks.toArray(), word, pick, await db.cards.toArray())
+    let cards = 0
+    for (const r of plan.newWords) {
       const w: Word = {
-        id: newId(), lemma, surfaceForm: r.lemma.trim(), pos: r.pos, freqRank: 0, songId: word.songId, lineIndex: word.lineIndex, contexts: [],
-        cefr: word.cefr, register: 'usable', topic: word.topic, meaningIt: r.meaning_it, explanationIt: '', extraExampleEn: r.example_en,
-        triage: 'learn', userEdited: false, suspended: false, origin: 'expand',
+        id: newId(), lemma: r.lemma.trim().toLowerCase(), surfaceForm: r.lemma.trim(), pos: r.pos, freqRank: 0, songId: word.songId, lineIndex: word.lineIndex,
+        contexts: [], cefr: word.cefr, register: 'usable', topic: word.topic, meaningIt: r.meaning_it, explanationIt: '', extraExampleEn: r.example_en,
+        triage: 'learn', userEdited: false, suspended: false, origin: 'expand', fromItemId: word.id,
       }
       await db.words.add(w)
       await db.cards.bulkAdd(newCardPair('word', w.id, now))
-      added++
+      cards += 2
     }
-    for (const r of e.family.filter((x) => pick.family.includes(x.lemma))) await addWord(r)
-    for (const r of e.opposites.filter((x) => pick.opposites.includes(x.lemma))) await addWord(r)
-    for (const c of e.collocations.filter((x) => pick.collocations.includes(x.base_form))) {
-      const key = normalizeKey(c.base_form)
-      if (await db.chunks.where('key').equals(key).first()) continue
+    // Una parola già nota o da smistare, scelta qui, passa in studio (come in «Chiedi a Gemini»).
+    for (const w of plan.toLearn) {
+      await db.words.update(w.id, { triage: 'learn' })
+      if ((await db.cards.where('itemId').equals(w.id).count()) === 0) { await db.cards.bulkAdd(newCardPair('word', w.id, now)); cards += 2 }
+    }
+    for (const c of plan.newChunks) {
       const chunk: Chunk = {
-        id: newId(), songId: word.songId, key, baseForm: c.base_form, surfaceForm: c.base_form, lineIndex: word.lineIndex, contexts: [],
+        id: newId(), songId: word.songId, key: normalizeKey(c.base_form), baseForm: c.base_form, surfaceForm: c.base_form, lineIndex: word.lineIndex, contexts: [],
         type: 'collocation', cefr: word.cefr, register: 'usable', topic: word.topic, meaningIt: c.meaning_it, explanationIt: '',
-        extraExampleEn: c.example_en, productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false, origin: 'expand',
+        extraExampleEn: c.example_en, productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false, origin: 'expand', fromItemId: word.id,
       }
       await db.chunks.add(chunk)
       await db.cards.bulkAdd(newCardPair('chunk', chunk.id, now))
-      added++
+      cards += 2
     }
-    if (pick.nuance && e.nuance && (await db.cards.where('itemId').equals(wordId).filter((c) => c.kind === 'S').count()) === 0) {
-      await db.words.update(wordId, { nuance: e.nuance })
+    if (plan.nuance && word.expansion.nuance) {
+      await db.words.update(wordId, { nuance: word.expansion.nuance })
       await db.cards.add({ id: newId(), itemType: 'word', itemId: wordId, kind: 'S', unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
-      added++
+      cards += 1
     }
-    return added
+    return cards
   })
 }

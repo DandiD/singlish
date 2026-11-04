@@ -48,3 +48,13 @@ test('Progressi mostra il guadagno medio dopo i riascolti', async () => {
   const tile = (await screen.findByText('Guadagno medio')).parentElement!
   expect(tile.textContent).toContain('+18')
 })
+
+test('il riepilogo conta chunk e parole della canzone, come Oggi', async () => {
+  await db.chunks.add({ id: 'c1', songId: 's1', key: 'k', baseForm: 'let it slide', surfaceForm: 'x', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom', cefr: 'B1',
+    register: 'usable', topic: 'other', meaningIt: '', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false })
+  await db.words.add({ id: 'w1', lemma: 'x', surfaceForm: 'x', pos: 'noun', freqRank: 1, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }], cefr: 'B1',
+    register: 'usable', topic: 'other', meaningIt: '', explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: false })
+  mount(<FinalListen songId="s1" />)
+  fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
+  expect(screen.getByText(/I suoi 2 chunk e parole restano nel ripasso/)).toBeTruthy()
+})

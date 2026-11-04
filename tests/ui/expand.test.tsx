@@ -50,8 +50,9 @@ test('una chiamata a richiesta, gruppi con caselle, Aggiungi al ripasso', async 
   expect(await screen.findByText('FAMIGLIA')).toBeTruthy()
   expect(screen.getByText('SFUMATURE')).toBeTruthy()
   fireEvent.click(screen.getByRole('checkbox', { name: /full/ }))
-  expect(screen.getByText('4 card nuove · entrano dopo i chunk delle canzoni')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 4 al ripasso' }))
+  // emptiness e full: 2 card ciascuna; empty promises: 2; sfumature: 1
+  expect(screen.getByText('7 card nuove · entrano dopo i chunk delle canzoni')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 7 card al ripasso' }))
   await waitFor(async () => expect((await db.words.toArray()).map((w) => w.lemma).sort()).toEqual(['emptiness', 'empty', 'full']))
   expect(f).toHaveBeenCalledTimes(1)
 })

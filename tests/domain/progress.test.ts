@@ -51,8 +51,8 @@ describe('progressi', () => {
     expect(progressStats(base, now).retention).toBeCloseTo(3 / 4)
   })
   test('carico: minuti al giorno in media sui prossimi 7 giorni, con le card in scadenza', () => {
-    // in 7 giorni: a(R oggi), c(domani), a(C fra 2) = 3 card × 60 s = 3 min / 7 giorni
-    expect(progressStats(base, now).loadMinutesPerDay).toBeCloseTo(3 / 7)
+    // in 7 giorni: le voci «a» (R oggi, C fra 2 giorni) e «c» (domani) = 2 voci × 60 s su 7 giorni (una card per voce, come la sessione)
+    expect(progressStats(base, now).loadMinutesPerDay).toBeCloseTo(2 / 7)
   })
   test('verso il livello successivo: 150 voci attive del livello e 70% al primo ascolto', () => {
     const p = progressStats(base, now)

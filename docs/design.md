@@ -246,7 +246,12 @@ Nasce insieme alla Produci, solo per i chunk con nota di pronuncia o parlato con
 Il ritornello sono le righe ripetute del testo (`chorusLines`, al massimo sei); il pulsante compare nello Studio solo se esiste. Si canta con Spotify, si tocca una riga per coprirla; «Ancora» conta un tentativo, «Ce l'ho, senza testo» salva `chorusDoneAt` e torna allo Studio.
 
 ## Espandi e Sfumature
-Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a richiesta, famiglia, collocazioni, contrari e sfumature (`src/domain/expand.ts`); il risultato resta in `words.expansion`. Le voci scelte diventano parole o collocazioni (`origin: 'expand'`, senza verso: frase = esempio di Gemini) e in coda vengono dopo chunk e parole delle canzoni. Le sfumature creano sulla parola la card S: situazione, frase con il buco, opzioni, spiegazione, voto proposto (Bene se giusta, Di nuovo se no).
+Dalla scheda di una parola «Espandi» chiede a Gemini, con una sola chiamata a richiesta, famiglia, collocazioni, contrari e sfumature (`src/domain/expand.ts`); il risultato resta in `words.expansion`. Le voci scelte diventano parole o collocazioni (`origin: 'expand'`, `fromItemId`, senza verso: frase = esempio di Gemini, niente card Ascolta) e in coda vengono dopo chunk e parole delle canzoni; i testi liberi vengono per ultimi. Restano finché esiste la parola da cui sono nate (eliminando una canzone ne seguono la canzone). L'annuncio «N card nuove» viene da `expansionPlan`, lo stesso calcolo dell'aggiunta; una parola già nota o da smistare scelta qui passa in studio. Le sfumature creano sulla parola la card S: situazione, frase con il buco, opzioni, spiegazione, voto proposto (Bene se giusta, Di nuovo se no).
+
+## Conteggi condivisi delle funzioni nuove
+- Sblocco, Oggi, Studio, riascolto finale: le voci di una canzone sono quelle con un verso lì (`contexts`), mai le voci di Espandi.
+- Carico dei prossimi 7 giorni (Progressi e sblocco): voci in scadenza, una per voce come nella sessione (`dueItemsWithin`).
+- Frasi da correggere (Oggi e «Le tue frasi»): solo quelle con la card ancora presente e il chunk non sospeso.
 
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.

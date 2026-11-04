@@ -4,6 +4,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goReplace, href, onBack, onBackTo } from '../../router'
 import { saveFinalListen } from '../../domain/finalListen'
+import { itemsInSong } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 
@@ -12,7 +13,14 @@ export function FinalListen({ songId }: { songId: string }) {
   const { db, now } = useDeps()
   const data = useLive(async () => {
     const song = (await db.songs.get(songId)) ?? null
-    const items = song ? (await db.chunks.toArray()).filter((c) => !c.suspended && c.contexts.some((x) => x.songId === songId)).length : 0
+    // Le stesse voci che Oggi conta per la canzone: quelle dello Studio meno le parole ancora da smistare.
+    let items = 0
+    if (song) {
+      const [chunks, words] = await Promise.all([db.chunks.toArray(), db.words.toArray()])
+      const placed = itemsInSong(song, chunks, words)
+      const pending = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
+      items = placed.chunks.size + [...placed.words].filter((id) => !pending.has(id)).length
+    }
     return { song, items }
   }, [db, songId])
   const [after, setAfter] = useState<number | null>(null)
@@ -82,7 +90,7 @@ export function FinalListen({ songId }: { songId: string }) {
           {gain !== null && (
             <div class="result-gain"><span class="gain-num">{gain > 0 ? `+${gain}` : String(gain)}</span><span class="note">punti</span></div>
           )}
-          <p class="note result-note">{`${items > 0 ? `I suoi ${plural(items, 'chunk resta', 'chunk restano')} nel ripasso. ` : ''}La canzone passa tra le completate.`}</p>
+          <p class="note result-note">{`${items > 0 ? `I suoi ${plural(items, 'chunk o parola resta', 'chunk e parole restano')} nel ripasso. ` : ''}La canzone passa tra le completate.`}</p>
         </section>
       )}
 

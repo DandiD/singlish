@@ -54,6 +54,7 @@ export async function buildSessionQueue(
   const chunkById = new Map(chunks.map((c) => [c.id, c]))
   const wordById = new Map(words.map((w) => [w.id, w]))
   const songAdded = new Map(songs.map((s) => [s.id, s.addedAt.getTime()]))
+  const songKind = new Map(songs.map((s) => [s.id, s.kind]))
 
   const itemOf = (c: CardRow) => (c.itemType === 'chunk' ? chunkById.get(c.itemId) : wordById.get(c.itemId))
   const active = (c: CardRow) => {
@@ -108,8 +109,8 @@ export async function buildSessionQueue(
     const sortKey = (c: CardRow) => {
       const item = itemOf(c)!
       return {
-        // Priorità (spec §2): chunk delle canzoni, poi parole da imparare, poi espansioni e sfumature.
-        group: item.origin === 'expand' || c.kind === 'S' ? 2 : c.itemType === 'chunk' ? 0 : 1,
+        // Priorità (spec §2): chunk delle canzoni, parole da imparare, espansioni e sfumature, poi testi liberi.
+        group: songKind.get(item.songId) === 'text' ? 3 : item.origin === 'expand' || c.kind === 'S' ? 2 : c.itemType === 'chunk' ? 0 : 1,
         added: songAdded.get(item.songId) ?? 0,
         line: item.lineIndex,
         kind: c.kind === 'R' ? 0 : 1,

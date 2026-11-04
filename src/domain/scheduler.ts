@@ -59,7 +59,7 @@ export async function recordReview(
         db.cards.add({ id: newId(), itemType: 'chunk', itemId: card.itemId, kind, unlocked: 1, due: now, fsrs: newFsrsCard(now), goodRCount: 0 })
       if (chunk && !kinds.has('P') && chunk.productionPromptIt.trim()) await add('P')
       // La card Ascolta solo dove l'ascolto aggiunge qualcosa: nota di pronuncia o parlato connesso nel verso.
-      if (chunk && !kinds.has('A')) {
+      if (chunk && !kinds.has('A') && chunk.origin !== 'expand') {
         const song = await db.songs.get(chunk.songId)
         const sung = song?.connectedSpeech.some((cs) => cs.lineIndex === chunk.lineIndex) ?? false
         if (chunk.pronunciationNoteIt.trim() || sung) await add('A')

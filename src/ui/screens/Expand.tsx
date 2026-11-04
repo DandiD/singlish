@@ -4,7 +4,7 @@ import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { geminiProblem } from '../errors'
 import { goBack, href, onBack } from '../../router'
-import { addExpansion, requestExpansion, type Expansion } from '../../domain/expand'
+import { addExpansion, expansionPlan, requestExpansion, type Expansion } from '../../domain/expand'
 import { getSettings } from '../../domain/settings'
 import { useOnline } from '../components/OfflineBadge'
 import { Icon } from '../components/Icon'
@@ -18,7 +18,8 @@ export function Expand({ wordId }: { wordId: string }) {
   const data = useLive(async () => {
     const word = (await db.words.get(wordId)) ?? null
     const song = word ? (await db.songs.get(word.songId)) ?? null : null
-    return { word, song }
+    const [words, chunks, cards] = await Promise.all([db.words.toArray(), db.chunks.toArray(), db.cards.toArray()])
+    return { word, song, words, chunks, cards }
   }, [db, wordId])
   const online = useOnline()
   const [busy, setBusy] = useState(false)
@@ -26,7 +27,7 @@ export function Expand({ wordId }: { wordId: string }) {
   const [picked, setPicked] = useState<Set<string> | null>(null)
 
   if (!data) return <main class="screen expand" aria-busy="true" />
-  const { word, song } = data
+  const { word, song, words, chunks, cards } = data
   if (!word) return <main class="screen"><h1>Parola non trovata</h1></main>
   const e = word.expansion
   // Di partenza sono scelte la famiglia, le collocazioni e le sfumature; i contrari si aggiungono a mano.
@@ -46,12 +47,7 @@ export function Expand({ wordId }: { wordId: string }) {
     if (!e) return
     setBusy(true)
     try {
-      await addExpansion(db, wordId, {
-        family: e.family.filter((r) => sel.has(`f:${r.lemma}`)).map((r) => r.lemma),
-        collocations: e.collocations.filter((c) => sel.has(`c:${c.base_form}`)).map((c) => c.base_form),
-        opposites: e.opposites.filter((r) => sel.has(`o:${r.lemma}`)).map((r) => r.lemma),
-        nuance: sel.has('n'),
-      }, now())
+      await addExpansion(db, wordId, pickOf(e), now())
       goBack({ name: 'lexicon' })
     } catch (err) {
       reportError(err)
@@ -64,7 +60,14 @@ export function Expand({ wordId }: { wordId: string }) {
       <span><span class="ex-title" lang="en">{title}</span><span class="note">{sub}</span></span>
     </label>
   )
-  const count = sel.size
+  // Il numero annunciato è quello che l'aggiunta farà davvero (voci già presenti escluse).
+  const pickOf = (x: Expansion) => ({
+    family: x.family.filter((r) => sel.has(`f:${r.lemma}`)).map((r) => r.lemma),
+    collocations: x.collocations.filter((c) => sel.has(`c:${c.base_form}`)).map((c) => c.base_form),
+    opposites: x.opposites.filter((r) => sel.has(`o:${r.lemma}`)).map((r) => r.lemma),
+    nuance: sel.has('n'),
+  })
+  const count = e ? expansionPlan(words, chunks, word, pickOf(e), cards).cards : 0
 
   return (
     <main class="screen expand">
@@ -90,7 +93,7 @@ export function Expand({ wordId }: { wordId: string }) {
           {e.nuance && <section class="ex-group"><h2 class="section-label">SFUMATURE</h2>{row('n', e.nuance.options.join(' · '), e.nuance.summary_it)}</section>}
           <footer class="ex-foot">
             <p class="note center">{`${plural(count, 'card nuova', 'card nuove')} · entrano dopo i chunk delle canzoni`}</p>
-            <button type="button" class="btn primary cta" disabled={count === 0 || busy} onClick={() => void add()}>{`Aggiungi ${count} al ripasso`}</button>
+            <button type="button" class="btn primary cta" disabled={count === 0 || busy} onClick={() => void add()}>{count === 0 ? 'Niente di nuovo da aggiungere' : `Aggiungi ${count} card al ripasso`}</button>
           </footer>
         </>
       )}

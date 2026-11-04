@@ -20,9 +20,11 @@ export async function saveProduction(db: SinglishDB, sessionId: string, p: Produ
 export async function pendingProductions(db: SinglishDB): Promise<Pending[]> {
   const sessions = await db.sessions.toArray()
   const all = sessions.flatMap((s) => (s.productions ?? []).map((p) => ({ sessionId: s.id, ...p })))
-  // Una frase la cui card non c'è più (canzone eliminata, chunk escluso) non si può correggere: non conta.
+  // Una frase la cui card non c'è più (canzone eliminata, chunk escluso) non si può correggere: non conta…
   const alive = new Set((await db.cards.bulkGet(all.map((p) => p.cardId))).flatMap((c) => (c ? [c.id] : [])))
-  return all.filter((p) => alive.has(p.cardId))
+  // …e nemmeno quella di un chunk sospeso: è fuori dal ripasso finché non lo si riattiva.
+  const suspended = new Set((await db.chunks.bulkGet(all.map((p) => p.itemId))).flatMap((c) => (c?.suspended ? [c.id] : [])))
+  return all.filter((p) => alive.has(p.cardId) && !suspended.has(p.itemId))
 }
 
 export const CORRECT_SYSTEM_PROMPT = `Sei un insegnante di inglese madrelingua che lavora con studenti italiani.
