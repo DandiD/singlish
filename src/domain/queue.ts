@@ -2,6 +2,7 @@ import { State } from 'ts-fsrs'
 import type { SinglishDB } from '../db/db'
 import type { CardRow, SessionRow } from '../db/types'
 import { getSettings } from './settings'
+import { effectiveNewPerDay } from './readiness'
 
 export const DEFAULT_SECONDS_PER_REVIEW = 12
 const AVG_WINDOW = 200
@@ -97,7 +98,7 @@ export async function buildSessionQueue(
     .between(startOfLocalDay(now), now, true, true)
     .filter((r) => r.wasNew)
     .count()
-  let budget = Math.max(0, settings.newPerDay - doneToday)
+  let budget = Math.max(0, effectiveNewPerDay(settings, now) - doneToday)
   const newBlockedByLoad = (dueCount * avgSeconds) / 60 > settings.timerMinutes.review
   if (newBlockedByLoad) budget = 0
 

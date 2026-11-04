@@ -235,3 +235,12 @@ describe('canzoni rimandate', () => {
     expect(q.items.some((i) => i.card.itemId === 'c2-0')).toBe(true)
   })
 })
+
+describe('modalità intensiva', () => {
+  test('finché dura, le nuove al giorno sono 25 invece del valore scelto', async () => {
+    const { saveSettings } = await import('../../src/domain/settings')
+    await saveSettings(db, { intensiveUntil: new Date(now.getTime() + 3 * 86400000) })
+    const q = await buildSessionQueue(db, now)
+    expect(q.newCount).toBe(19) // 11 chunk + 8 parole da imparare: tutte, sotto il tetto di 25
+  })
+})

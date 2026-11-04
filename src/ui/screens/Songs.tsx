@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { reportError } from '../report'
+import { useAddGate } from '../components/UnlockSheet'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { LINK_ERROR } from './AddSong'
 import { useDeps } from '../deps'
@@ -37,6 +38,7 @@ export function Songs() {
   const open = useLive(() => activeSongCount(db), [db])
   const [editing, setEditing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const gate = useAddGate()
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
   const full = open >= MAX_OPEN_SONGS
@@ -49,9 +51,7 @@ export function Songs() {
           type="button"
           class="btn primary pill"
           disabled={full}
-          onClick={() => {
-            window.location.hash = href({ name: 'addSong' })
-          }}
+          onClick={gate.request}
         >
           <Icon name="plus" size={18} />Aggiungi
         </button>
@@ -113,6 +113,7 @@ export function Songs() {
           </li>
         ))}
       </ul>
+      {gate.sheet}
     </main>
   )
 }

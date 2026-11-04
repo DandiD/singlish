@@ -223,6 +223,9 @@ Un testo (serie, podcast, articolo, altro) è una `Song` con `kind: 'text'` e `s
 ## Chiedere a Gemini dal testo
 Nello Studio «Chiedi a Gemini» apre la selezione: ogni parola del testo diventa un pulsante; parole vicine sulla stessa riga sono un'unica espressione (`groupSelection` in `src/domain/ask.ts`). L'invito chiede di leggere tutto e segnare tutto prima di inviare: parte una sola chiamata (`askGemini`), con lo stesso formato di chunk e parole dell'analisi. Le voci entrano subito nel ripasso (scelte dallo studente, niente Smista né fascia); quelle già presenti ricevono il verso e, se erano parole note o da smistare, passano in studio. Le traduzioni dei versi mancanti si aggiungono. Offline il pulsante si spegne e lo dice; un errore di Gemini lascia la selezione per riprovare.
 
+## Sblocco della canzone successiva
+«Aggiungi» (Canzoni, Oggi) controlla `readiness` in `src/domain/readiness.ts`: voci delle canzoni in corso ancora fuori dal ripasso, carico dei prossimi 7 giorni sotto i minuti del timer, posti liberi. Se non è pronta si apre il foglio (canvas: Unlock) con i tre controlli, «Sblocca lo stesso», «Aspetto, va bene così» e la modalità intensiva (`intensiveUntil`: 25 nuove al giorno per 7 giorni, segnalata in Oggi).
+
 ## Salvataggi
 Niente di ciò che l'utente inserisce si perde in silenzio.
 - Aggiungi canzone: il modulo è una bozza in `localStorage` (si esce dall'app per ascoltare e copiare il testo, e iOS può chiuderla); si svuota a canzone salvata. Senza titolo scritto, l'invio aspetta il titolo di Spotify (al massimo 4 s); correggendo il link, il titolo preso da Spotify si aggiorna; uno scritto a mano vince. La comprensione non indicata si salva vuota («—»), non 50%. Se l'utente va altrove mentre si aspetta, la canzone non si crea.

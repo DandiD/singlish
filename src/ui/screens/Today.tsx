@@ -7,15 +7,19 @@ import { getSettings } from '../../domain/settings'
 import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
 import { finalListenDue } from '../../domain/finalListen'
+import { INTENSIVE } from '../../domain/readiness'
+import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 
 
+const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 export function Today() {
   const { db, now } = useDeps()
+  const gate = useAddGate()
   const data = useLive(async () => {
     const [queue, settings, songs, chunks, words] = await Promise.all([
       buildSessionQueue(db, now()),
@@ -66,6 +70,9 @@ export function Today() {
           <div class="stat"><span class="stat-num mono">{`~${queue.estMinutes}′`}</span><span class="note">stimati</span></div>
         </div>
         <p class="note">{`su ${plural(minutes, 'minuto', 'minuti')}`}</p>
+        {settings.intensiveUntil && settings.intensiveUntil > now() && (
+          <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${INTENSIVE.newPerDay} nuove al giorno.`}</p>
+        )}
         {queue.newBlockedByLoad && <p class="note">{`Oggi niente card nuove: ripasso oltre ${minutes === 1 ? 'il minuto' : `i ${minutes} minuti`}`}</p>}
         {queue.items.length > 0 ? (
           <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />Inizia sessione</a>
@@ -86,7 +93,7 @@ export function Today() {
 
       <div class="today-songs-head">
         <h2>Canzoni aperte <span class="note">{`${progress.length} di ${MAX_OPEN_SONGS}`}</span></h2>
-        {!full && <a class="link-add" href={href({ name: 'addSong' })}><Icon name="plus" size={18} />Aggiungi</a>}
+        {!full && <a class="link-add" href={href({ name: 'addSong' })} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />Aggiungi</a>}
       </div>
       {full && <p class="note">{LIMIT_NOTE}</p>}
       <ul class="song-list">
@@ -109,6 +116,7 @@ export function Today() {
           ),
         )}
       </ul>
+      {gate.sheet}
     </main>
   )
 }

@@ -127,4 +127,6 @@ export interface Settings {
   newPerDay: number
   timerMinutes: { study: number; review: number }
   persistAsked: boolean
+  /** Modalità intensiva: fino a questa data le card nuove al giorno salgono a 25. */
+  intensiveUntil?: Date | null
 }

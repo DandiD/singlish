@@ -346,3 +346,18 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .ask-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-direction: column; gap: 8px; margin: 0 -20px; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: var(--surface-2); border-top: 1px solid var(--line); }
 .ask-row { display: flex; align-items: center; gap: 10px; }
 .ask-row .note { flex: 1; }
+
+/* Sblocco della canzone successiva */
+.sheet.unlock { display: flex; flex-direction: column; gap: 16px; }
+.sheet.unlock h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+.checks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.checks li { position: relative; padding-left: 28px; }
+.checks li::before { content: ''; position: absolute; left: 2px; top: 3px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--accent); }
+.checks li.ok::before { border: 0; width: 16px; height: 8px; border-left: 2px solid var(--green); border-bottom: 2px solid var(--green); border-radius: 0; transform: rotate(-45deg); top: 5px; }
+.unlock-warn { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 14px; background: var(--accent-tint); color: var(--on-tint-text); }
+.unlock-warn strong { color: var(--accent-text-2); }
+.intensive { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-radius: 14px; background: var(--surface-2); cursor: pointer; }
+.intensive > span { display: flex; flex-direction: column; gap: 2px; }
+.intensive input { width: 24px; height: 24px; min-width: 24px; accent-color: var(--accent); }
+.grid-stack { display: flex; flex-direction: column; gap: 8px; }
+.btn.ghost-link { min-height: 48px; background: transparent; border: 0; color: var(--accent-text); font: inherit; cursor: pointer; }

@@ -14,7 +14,7 @@ Obiettivo: un'app completa da usare ogni giorno, non più un MVP. Si lavora su `
 ## Fase 3 — Ciclo completo di una canzone (canvas: FinalListen, AddText, Unlock)
 6. **Riascolto finale** dopo ≥ 7 giorni di studio: Oggi lo propone, si segna la % capita dopo; il guadagno entra in Progressi.
 7. **Testi liberi:** Aggiungi testo (non canzone), stessa analisi senza parlato connesso.
-8. **Sblocco della card Completa:** schermata breve quando una voce passa alla card C.
+8. **Sblocco della canzone successiva** (canvas Unlock): prima di aggiungere, se le canzoni in corso hanno voci fuori dal ripasso o il carico supera il tetto, un foglio lo spiega; «Sblocca lo stesso», «Aspetto», modalità intensiva (25 nuove al giorno per 7 giorni).
 
 ## Fase 4 — Chiedere a Gemini dal testo (richiesta dell'utente)
 9. **Selezione multipla nel testo:** nello Studio si toccano più parole o espressioni non estratte; un contatore mostra quante; «Chiedi a Gemini» le invia tutte in una sola chiamata (traduzione, significato, spiegazione, esempio, tipo, livello). L'app invita a leggere prima tutto il testo e a segnare tutto, così si spende una chiamata sola. Le voci tornano come chunk o parole normali, con le loro card.
