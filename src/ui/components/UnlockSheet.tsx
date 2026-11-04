@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { JSX } from 'preact'
 import { useDeps } from '../deps'
+import { useLive } from '../useLive'
 import { reportError } from '../report'
 import { href, stillHere } from '../../router'
 import { readiness, INTENSIVE, type Readiness } from '../../domain/readiness'
@@ -45,8 +46,16 @@ export function useAddGate(): { request(target?: 'addSong' | 'addText'): void; s
   return { request, sheet }
 }
 
-function UnlockSheet({ r, settings, target, onClose }: { r: Readiness; settings: Settings; target: 'addSong' | 'addText'; onClose(): void }) {
+function UnlockSheet({ r: first, settings, target, onClose }: { r: Readiness; settings: Settings; target: 'addSong' | 'addText'; onClose(): void }) {
   const { db, now } = useDeps()
+  // Il foglio segue i dati mentre è aperto (un'analisi che finisce, una voce che entra nel ripasso).
+  const live = useLive(async () => {
+    const [s, songs, chunks, words, cards, avgSeconds] = await Promise.all([
+      getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), estimateAvgSeconds(db),
+    ])
+    return readiness({ settings: s, songs, chunks, words, cards, avgSeconds }, now())
+  }, [db])
+  const r = live ?? first
   const ref = useRef<HTMLElement>(null)
   const [intensive, setIntensive] = useState(!!settings.intensiveUntil && settings.intensiveUntil > now())
   useLayoutEffect(() => {

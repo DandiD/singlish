@@ -178,3 +178,11 @@ test('scheda in modifica chiusa con Indietro (la scheda sparisce dall\'indirizzo
   rerender(<AppDepsProvider value={deps()}><Study songId="s1" /></AppDepsProvider>)
   await waitFor(async () => expect((await db.chunks.get('c1'))!.meaningIt).toBe('non farci caso'))
 })
+
+test('Smista aperto: una parola smistata altrove intanto sparisce dalla lista e dai conteggi', async () => {
+  render(<AppDepsProvider value={deps()}><Triage songId="s1" /></AppDepsProvider>)
+  await screen.findByText('harbour')
+  await db.words.update('w1', { triage: 'known' })
+  await waitFor(() => expect(screen.queryByText('harbour')).toBeNull())
+  expect(screen.getByText('weary')).toBeTruthy()
+})

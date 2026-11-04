@@ -67,3 +67,15 @@ test('anche Aggiungi testo passa dal controllo di sblocco', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Sblocca lo stesso' }))
   await waitFor(() => expect(window.location.hash).toBe('#/songs/new-text'))
 })
+
+test('foglio aperto: se intanto una voce entra nel ripasso, l\'elenco si aggiorna', async () => {
+  await db.chunks.bulkAdd([chunk('a'), chunk('b')])
+  await db.cards.bulkAdd([...newCardPair('chunk', 'a', now), ...newCardPair('chunk', 'b', now)])
+  mount()
+  fireEvent.click(await screen.findByRole('button', { name: 'Aggiungi' }))
+  const sheet = await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })
+  expect(sheet.textContent).toContain('2 chunk non ancora nel ripasso')
+  const r = (await db.cards.where('itemId').equals('a').toArray()).find((c) => c.kind === 'R')!
+  await db.cards.update(r.id, { fsrs: { ...r.fsrs, state: 2 } })
+  await waitFor(() => expect(sheet.textContent).toContain('1 chunk non ancora nel ripasso'))
+})

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useDeps } from '../deps'
+import { useLive } from '../useLive'
 import { reportError } from '../report'
 import { useFailure } from '../useFailure'
 import { href, goBackTo, onBack, stillHere } from '../../router'
@@ -12,8 +13,12 @@ export function Triage({ songId }: { songId: string }) {
   const { db, now } = useDeps()
   const fail = useFailure()
   const [song, setSong] = useState<Song | null>(null)
-  const [words, setWords] = useState<Word[] | null>(null)
-  const [choice, setChoice] = useState<Record<string, 'known' | 'learn'>>({})
+  const [first, setWords] = useState<Word[] | null>(null)
+  const [picked, setChoice] = useState<Record<string, 'known' | 'learn'>>({})
+  // La lista segue i dati: una parola smistata altrove intanto sparisce (lista e conteggi restano veri).
+  const live = useLive(() => pendingWords(db, songId), [db, songId])
+  const words: Word[] | null = live ?? first
+  const choice: Record<string, 'known' | 'learn'> = Object.fromEntries((words ?? []).map((w) => [w.id, picked[w.id] ?? 'learn']))
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
