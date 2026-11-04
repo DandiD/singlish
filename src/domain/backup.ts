@@ -1,6 +1,7 @@
 import type { SinglishDB } from '../db/db'
 import type { CardRow, Chunk, Review, SessionRow, Settings, Song, Word } from '../db/types'
 import { DEFAULT_SETTINGS, getSettings } from './settings'
+import { repairHomes } from './ingest'
 
 export type BackupFile = {
   app: 'singlish'
@@ -107,6 +108,8 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
       await db.settings.add(settingsRow)
     },
   )
+  // Un backup di prima può avere voci fuori dai loro versi: si sistemano subito.
+  await repairHomes(db)
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')

@@ -332,7 +332,10 @@ export async function deleteSong(db: SinglishDB, songId: string): Promise<void> 
         const patch: Partial<Chunk & Word> = { contexts: rest }
         if (item.songId === songId) {
           const [first] = rest
-          Object.assign(patch, { songId: first.songId, lineIndex: first.lineIndex, surfaceForm: first.surfaceForm ?? item.surfaceForm })
+          const newSurface = first.surfaceForm ?? item.surfaceForm
+          // Gli altri versi senza una forma propria valevano per quella vecchia: la ricevono, così restano evidenziati.
+          const contexts = rest.map((x) => (x === first || x.surfaceForm || item.surfaceForm === newSurface ? x : { ...x, surfaceForm: item.surfaceForm }))
+          Object.assign(patch, { contexts, songId: first.songId, lineIndex: first.lineIndex, surfaceForm: newSurface })
         }
         await (table as typeof db.chunks).update(item.id, patch)
       }
@@ -403,6 +406,17 @@ export async function repairHomes(db: SinglishDB): Promise<number> {
         const first = item.contexts[0]
         if (!first || item.contexts.some((x) => x.songId === item.songId)) continue
         await (table as typeof db.chunks).update(item.id, { songId: first.songId, lineIndex: first.lineIndex })
+        fixed++
+      }
+    }
+    // Le voci di Espandi seguono la loro parola (anche quelle appena spostate).
+    const words = new Map((await db.words.toArray()).map((w) => [w.id, w]))
+    for (const table of [db.chunks, db.words] as const) {
+      const items: (Chunk | Word)[] = await (table as typeof db.chunks).toArray()
+      for (const item of items) {
+        const parent = item.origin === 'expand' && item.fromItemId ? words.get(item.fromItemId) : undefined
+        if (!parent || item.contexts.length > 0 || (item.songId === parent.songId && item.lineIndex === parent.lineIndex)) continue
+        await (table as typeof db.chunks).update(item.id, { songId: parent.songId, lineIndex: parent.lineIndex })
         fixed++
       }
     }

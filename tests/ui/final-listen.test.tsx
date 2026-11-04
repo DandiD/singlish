@@ -56,5 +56,18 @@ test('il riepilogo conta chunk e parole della canzone, come Oggi', async () => {
     register: 'usable', topic: 'other', meaningIt: '', explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: false })
   mount(<FinalListen songId="s1" />)
   fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
-  expect(screen.getByText(/I suoi 2 chunk e parole restano nel ripasso/)).toBeTruthy()
+  expect(screen.getByText(/0 di 2 chunk e parole nel ripasso/)).toBeTruthy()
+})
+
+test('il riepilogo dice gli stessi numeri di Oggi: quante voci sono già nel ripasso', async () => {
+  const { State } = await import('ts-fsrs')
+  const { newCardPair } = await import('../../src/domain/scheduler')
+  await db.chunks.bulkAdd(['a', 'b'].map((id) => ({ id, songId: 's1', key: id, baseForm: id, surfaceForm: 'x', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }], type: 'idiom' as const, cefr: 'B1',
+    register: 'usable' as const, topic: 'other', meaningIt: '', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false })))
+  const [r] = newCardPair('chunk', 'a', now)
+  await db.cards.add({ ...r, fsrs: { ...r.fsrs, state: State.Review } })
+  await db.cards.add(newCardPair('chunk', 'b', now)[0])
+  mount(<FinalListen songId="s1" />)
+  fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
+  expect(screen.getByText(/1 di 2 chunk e parole nel ripasso/)).toBeTruthy()
 })

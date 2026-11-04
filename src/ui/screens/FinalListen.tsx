@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks'
+import { State } from 'ts-fsrs'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
@@ -6,7 +7,6 @@ import { goReplace, href, onBack, onBackTo } from '../../router'
 import { saveFinalListen } from '../../domain/finalListen'
 import { itemsInSong } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
-import { plural } from '../plural'
 
 /** Riascolto finale: dopo lo studio si riascolta senza testo e si segna di nuovo quanto si capisce. */
 export function FinalListen({ songId }: { songId: string }) {
@@ -15,19 +15,24 @@ export function FinalListen({ songId }: { songId: string }) {
     const song = (await db.songs.get(songId)) ?? null
     // Le stesse voci che Oggi conta per la canzone: quelle dello Studio meno le parole ancora da smistare.
     let items = 0
+    let inReview = 0
     if (song) {
       const [chunks, words] = await Promise.all([db.chunks.toArray(), db.words.toArray()])
       const placed = itemsInSong(song, chunks, words)
       const pending = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
-      items = placed.chunks.size + [...placed.words].filter((id) => !pending.has(id)).length
+      const ids = [...placed.chunks, ...[...placed.words].filter((id) => !pending.has(id))]
+      items = ids.length
+      // «Nel ripasso» come in Oggi: la card Riconosci è già stata vista.
+      const rState = new Map((await db.cards.where('kind').equals('R').toArray()).map((c) => [c.itemId, c.fsrs.state]))
+      inReview = ids.filter((id) => { const st = rState.get(id); return st !== undefined && st !== State.New }).length
     }
-    return { song, items }
+    return { song, items, inReview }
   }, [db, songId])
   const [after, setAfter] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
 
   if (!data) return <main class="screen final-listen" aria-busy="true" />
-  const { song, items } = data
+  const { song, items, inReview } = data
   if (!song) {
     return (
       <main class="screen">
@@ -90,7 +95,7 @@ export function FinalListen({ songId }: { songId: string }) {
           {gain !== null && (
             <div class="result-gain"><span class="gain-num">{gain > 0 ? `+${gain}` : String(gain)}</span><span class="note">punti</span></div>
           )}
-          <p class="note result-note">{`${items > 0 ? `I suoi ${plural(items, 'chunk o parola resta', 'chunk e parole restano')} nel ripasso. ` : ''}La canzone passa tra le completate.`}</p>
+          <p class="note result-note">{`${items > 0 ? `${inReview} di ${items} chunk e parole nel ripasso: restano lì, e le altre entrano con le prossime sessioni. ` : ''}La canzone passa tra le completate.`}</p>
         </section>
       )}
 
