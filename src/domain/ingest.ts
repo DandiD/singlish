@@ -274,7 +274,7 @@ export async function analyzeSong(
 export const MAX_OPEN_SONGS = 4
 
 /** Quando si è al limite di canzoni aperte: cosa succede e cosa fare. */
-export const LIMIT_NOTE = `Hai già ${MAX_OPEN_SONGS} canzoni aperte. Segnane una come completata per aggiungerne un'altra.`
+export const LIMIT_NOTE = `Hai già ${MAX_OPEN_SONGS} canzoni o testi aperti. Per aggiungerne un altro segnane uno come completato dallo Studio, o elimina quello che non ti serve.`
 
 /** Le canzoni aperte: tutte quelle non completate (bozza, in coda, analizzate, in studio). Contano per il limite. */
 export function activeSongs(db: SinglishDB): Promise<Song[]> {

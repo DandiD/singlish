@@ -171,7 +171,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       )}
 
       <ul class="legend" aria-label="Legenda">
-        {LEGEND.map(([cls, text]) => (
+        {LEGEND.filter(([cls]) => cls !== 'cs' || song.kind !== 'text').map(([cls, text]) => (
           <li key={cls}><span class={`swatch hl ${cls}`} aria-hidden="true" />{text}</li>
         ))}
       </ul>

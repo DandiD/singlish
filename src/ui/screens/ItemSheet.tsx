@@ -121,7 +121,7 @@ export function ItemSheet({ song, itemId }: { song: Song; itemId: string }) {
         <div class="examples">
           {line && (
             <div>
-              <div class="section-label">{`NELLA CANZONE · RIGA ${lineIdx + 1}`}</div>
+              <div class="section-label">{`${song.kind === 'text' ? 'NEL TESTO' : 'NELLA CANZONE'} · RIGA ${lineIdx + 1}`}</div>
               <p><Highlighted line={line} spans={[{ text: surface, id: item.id, className: kind === 'chunk' ? CHUNK_CLASS[item.type] : 'w' }]} /></p>
             </div>
           )}

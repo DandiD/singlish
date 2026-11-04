@@ -51,7 +51,7 @@ test('una chiamata a richiesta, gruppi con caselle, Aggiungi al ripasso', async 
   expect(screen.getByText('SFUMATURE')).toBeTruthy()
   fireEvent.click(screen.getByRole('checkbox', { name: /full/ }))
   // emptiness e full: 2 card ciascuna; empty promises: 2; sfumature: 1
-  expect(screen.getByText('7 card nuove · entrano dopo i chunk delle canzoni')).toBeTruthy()
+  expect(screen.getByText('7 card nuove · entrano dopo chunk e parole delle canzoni')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Aggiungi 7 card al ripasso' }))
   await waitFor(async () => expect((await db.words.toArray()).map((w) => w.lemma).sort()).toEqual(['emptiness', 'empty', 'full']))
   expect(f).toHaveBeenCalledTimes(1)
@@ -139,4 +139,15 @@ test('lo Studio di una canzone già completata non offre di nuovo «Segna come c
   mount(<Study songId="s1" />)
   await screen.findByText('running on empty', { exact: false })
   expect(screen.queryByRole('button', { name: 'Segna come completata' })).toBeNull()
+})
+
+test('nella scheda di un testo libero il verso si chiama «nel testo»', async () => {
+  await db.songs.add({ ...song, id: 't1', kind: 'text', source: 'serie', title: 'Episodio', lines: ['running on empty again'] })
+  await db.words.update('w1', { contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 't1', lineIndex: 0 }] })
+  window.location.hash = '#/songs/t1?item=w1'
+  mount(<Study songId="t1" itemId="w1" />)
+  await screen.findByRole('dialog')
+  expect(screen.getByText('NEL TESTO · RIGA 1')).toBeTruthy()
+  expect(screen.queryByText(/NELLA CANZONE/)).toBeNull()
+  expect(screen.queryByText('pronuncia')).toBeNull()
 })

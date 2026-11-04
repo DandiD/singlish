@@ -26,7 +26,7 @@ export function statusLabel(status: Song['status']): string {
 }
 
 /** Cosa succede alle voci di una canzone eliminata. */
-export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni restano, e le parole che sai restano nel tuo profilo.'
+export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni restano, e le parole che sai, o che hai già ripassato, restano nel tuo profilo come note.'
 
 const SOURCE_LABEL = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo', altro: 'Testo' } as const
 

@@ -117,7 +117,7 @@ describe('AddSong', () => {
       await db.songs.update(s.id, { status })
     }
     mount(<AddSong />)
-    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
+    await screen.findByText('Hai già 4 canzoni o testi aperti. Per aggiungerne un altro segnane uno come completato dallo Studio, o elimina quello che non ti serve.')
     fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'hello there' } })
     expect((screen.getByRole('button', { name: 'Analizza con Gemini' }) as HTMLButtonElement).disabled).toBe(true)
   })
@@ -143,7 +143,7 @@ describe('Songs', () => {
       await db.songs.update(s.id, { status: 'studying' })
     }
     mount(<Songs />)
-    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
+    await screen.findByText('Hai già 4 canzoni o testi aperti. Per aggiungerne un altro segnane uno come completato dallo Studio, o elimina quello che non ti serve.')
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
@@ -153,7 +153,7 @@ describe('Songs', () => {
       await db.songs.update(s.id, { status })
     }
     mount(<Songs />)
-    await screen.findByText('Hai già 4 canzoni aperte. Segnane una come completata per aggiungerne un\'altra.')
+    await screen.findByText('Hai già 4 canzoni o testi aperti. Per aggiungerne un altro segnane uno come completato dallo Studio, o elimina quello che non ti serve.')
     expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(true)
   })
 

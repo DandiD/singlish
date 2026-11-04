@@ -262,7 +262,7 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
         </section>
 
         {isText && (
-          <p class="note info-box">Stessa analisi delle canzoni, senza note di pronuncia del canto. Nessun riascolto finale: il testo si chiude quando chunk e parole sono nel ripasso.</p>
+          <p class="note info-box">Stessa analisi delle canzoni, senza note di pronuncia del canto. Nessun riascolto finale: quando chunk e parole sono nel ripasso, lo segni come completato dallo Studio e liberi il posto.</p>
         )}
         {full && <p class="note danger" role="status">{LIMIT_NOTE}</p>}
         {error && <p class="note danger" role="alert">{error}</p>}

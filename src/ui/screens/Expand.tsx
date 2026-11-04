@@ -97,7 +97,7 @@ export function Expand({ wordId }: { wordId: string }) {
           {e.opposites.length > 0 && <section class="ex-group"><h2 class="section-label">CONTRARIO</h2>{e.opposites.map((r) => row(`o:${r.lemma}`, r.lemma, r.meaning_it))}</section>}
           {e.nuance && <section class="ex-group"><h2 class="section-label">SFUMATURE</h2>{row('n', e.nuance.options.join(' · '), e.nuance.summary_it)}</section>}
           <footer class="ex-foot">
-            <p class="note center">{`${plural(count, 'card nuova', 'card nuove')} · entrano dopo i chunk delle canzoni`}</p>
+            <p class="note center">{`${plural(count, 'card nuova', 'card nuove')} · entrano dopo chunk e parole delle canzoni`}</p>
             <button type="button" class="btn primary cta" disabled={count === 0 || busy} onClick={() => void add()}>{count === 0 ? 'Niente di nuovo da aggiungere' : `Aggiungi ${count} card al ripasso`}</button>
           </footer>
         </>
