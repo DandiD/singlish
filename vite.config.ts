@@ -11,7 +11,11 @@ const commit = (() => {
   }
 })()
 
+// Su GitHub Pages l'app vive in /singlish/: la build di pubblicazione passa BASE_PATH.
+const base = process.env.BASE_PATH ?? '/'
+
 export default defineConfig({
+  base,
   define: {
     __APP_VERSION__: JSON.stringify(`${new Date().toISOString().slice(0, 10)} · ${commit}`),
   },
@@ -22,7 +26,7 @@ export default defineConfig({
       registerType: 'prompt',
       includeAssets: ['icons/apple-touch-icon.png'],
       manifest: {
-        id: '/',
+        id: './',
         name: 'Singlish',
         short_name: 'Singlish',
         description: 'Impara l’inglese dalle canzoni: espressioni, parole e ripasso quotidiano.',
@@ -31,8 +35,8 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['standalone', 'minimal-ui'],
         orientation: 'portrait',
-        start_url: '/?source=pwa',
-        scope: '/',
+        start_url: './?source=pwa',
+        scope: './',
         theme_color: '#111317',
         background_color: '#111317',
         categories: ['education', 'music'],
@@ -43,8 +47,8 @@ export default defineConfig({
           { src: 'icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
         shortcuts: [
-          { name: 'Ripasso', short_name: 'Ripasso', url: '/?source=shortcut#/session', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
-          { name: 'Aggiungi canzone', short_name: 'Aggiungi', url: '/?source=shortcut#/songs/new', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Ripasso', short_name: 'Ripasso', url: './?source=shortcut#/session', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Aggiungi canzone', short_name: 'Aggiungi', url: './?source=shortcut#/songs/new', icons: [{ src: 'icons/icon-192.png', sizes: '192x192' }] },
         ],
         screenshots: [
           { src: 'screenshots/today.png', sizes: '780x1688', type: 'image/png', form_factor: 'narrow', label: 'Il ripasso di oggi' },
@@ -55,7 +59,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,png,svg,json,woff2}'],
         globIgnores: ['screenshots/**'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         cleanupOutdatedCaches: true,
       },
     }),
