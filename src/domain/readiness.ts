@@ -28,14 +28,16 @@ export function readiness(
   const rState = new Map(d.cards.filter((c) => c.kind === 'R').map((c) => [c.itemId, c.fsrs.state]))
   const waiting = (i: Chunk | Word) => !i.suspended && rState.get(i.id) === State.New
   const notInReview = d.songs
-    .filter((s) => s.status === 'studying' || s.status === 'analyzed')
+    // Le completate contano solo per le parole mai smistate (Oggi le nomina): le loro voci non bloccano più.
+    .filter((s) => s.status === 'studying' || s.status === 'analyzed' || s.status === 'done')
     .map((s) => {
+      const open = s.status !== 'done'
       // Le stesse voci che lo Studio e Oggi mostrano per la canzone: con un verso lì, non quelle di Espandi.
       const inSong = (i: Chunk | Word) => i.origin !== 'expand' && i.contexts.some((x) => x.songId === s.id)
       return {
         title: s.title,
-        chunks: d.chunks.filter((c) => inSong(c) && waiting(c)).length,
-        words: d.words.filter((w) => inSong(w) && w.triage === 'learn' && waiting(w)).length,
+        chunks: open ? d.chunks.filter((c) => inSong(c) && waiting(c)).length : 0,
+        words: open ? d.words.filter((w) => inSong(w) && w.triage === 'learn' && waiting(w)).length : 0,
         // Parole mai smistate: Oggi e lo Studio le nominano, quindi anche lo sblocco le conta.
         toTriage: d.words.filter((w) => inSong(w) && w.triage === 'pending' && !w.suspended).length,
       }

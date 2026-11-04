@@ -168,3 +168,12 @@ test('Oggi: una canzone completata con parole ancora da smistare compare, con il
   const link = await screen.findByRole('link', { name: /Glass Harbour.*Completata.*1 parola da smistare/ })
   expect(link.getAttribute('href')).toBe('#/songs/s1')
 })
+
+test('Oggi: le canzoni completate con parole da smistare stanno sotto un loro titolo, non fra le aperte', async () => {
+  await db.songs.update('s1', { status: 'done', comprehensionAfter: 80 })
+  await db.words.add({ id: 'we', lemma: 'e', surfaceForm: 'e', pos: 'noun', freqRank: 4000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: 'e', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false })
+  const { container } = mount(<Today />)
+  await screen.findByRole('heading', { name: 'Da smistare nelle canzoni completate' })
+  expect(container.querySelector('ul.song-list:not(.done-left) .left-to-triage')).toBeNull()
+})

@@ -167,3 +167,14 @@ test('Smista: se durante il salvataggio si va altrove, la conferma non riporta a
   await new Promise((r) => setTimeout(r, 50))
   expect(window.location.hash).toBe('#/lexicon')
 })
+
+test('scheda in modifica chiusa con Indietro (la scheda sparisce dall\'indirizzo): la modifica si salva', async () => {
+  window.location.hash = '#/songs/s1?item=c1'
+  const { rerender } = render(<AppDepsProvider value={deps()}><Study songId="s1" itemId="c1" /></AppDepsProvider>)
+  await screen.findByRole('dialog', { name: 'Scheda del chunk' })
+  fireEvent.click(screen.getByRole('button', { name: 'Modifica' }))
+  fireEvent.input(screen.getByLabelText('Significato'), { target: { value: 'non farci caso' } })
+  window.location.hash = '#/songs/s1' // tasto Indietro del telefono
+  rerender(<AppDepsProvider value={deps()}><Study songId="s1" /></AppDepsProvider>)
+  await waitFor(async () => expect((await db.chunks.get('c1'))!.meaningIt).toBe('non farci caso'))
+})

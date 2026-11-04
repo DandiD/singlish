@@ -201,6 +201,10 @@ export function useSheet(songId: string, itemId: string, loaded: boolean, before
     setClosing(true)
     setTimeout(() => { if (window.location.hash === at) go() }, 200)
   }
+  // Chiusa senza passare da close() (tasto Indietro, gesto del telefono): una modifica in corso si salva lo stesso.
+  useEffect(() => () => {
+    if (!done.current) void Promise.resolve(before.current?.()).catch(reportError)
+  }, [])
   // Alla chiusura il fuoco torna a chi ha aperto il foglio. Safari non dà il fuoco ai link toccati:
   // in quel caso si torna al link dell'elemento nel testo.
   useEffect(() => {

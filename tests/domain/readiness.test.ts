@@ -51,3 +51,11 @@ test('non pronta: una canzone in studio ha parole mai smistate (come Oggi e lo S
   expect(r.ready).toBe(false)
   expect(r.notInReview).toEqual([{ title: 'a', chunks: 0, words: 0, toTriage: 1 }])
 })
+
+test('non pronta: anche una canzone completata con parole mai smistate (come Oggi)', () => {
+  const pending: Word = { id: 'w1', lemma: 'w', surfaceForm: 'w', pos: 'noun', freqRank: 4000, songId: 'a', lineIndex: 0, contexts: [{ songId: 'a', lineIndex: 0 }],
+    cefr: 'B2', register: 'usable', topic: '', meaningIt: '', explanationIt: '', extraExampleEn: '', triage: 'pending', userEdited: false, suspended: false }
+  const r = readiness({ settings: DEFAULT_SETTINGS, songs: [song('a', 'done')], chunks: [], words: [pending], cards: [], avgSeconds: 12 }, now)
+  expect(r.ready).toBe(false)
+  expect(r.notInReview).toEqual([{ title: 'a', chunks: 0, words: 0, toTriage: 1 }])
+})

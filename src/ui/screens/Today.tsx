@@ -139,15 +139,23 @@ export function Today() {
             </li>
           ),
         )}
-        {doneLeft.map(({ song, toTriage }) => (
-          <li key={song.id}>
-            <a class="song-card left-to-triage" href={href({ name: 'study', songId: song.id })}>
-              <h3>{song.title}</h3>
-              <p class="note">{`${song.kind === 'text' ? 'Completato' : 'Completata'} · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare`}</p>
-            </a>
-          </li>
-        ))}
       </ul>
+      {/* Completate con parole mai smistate: fuori dalle aperte, sotto un loro titolo. */}
+      {doneLeft.length > 0 && (
+        <>
+          <div class="today-songs-head"><h2>Da smistare nelle canzoni completate</h2></div>
+          <ul class="song-list done-left">
+            {doneLeft.map(({ song, toTriage }) => (
+              <li key={song.id}>
+                <a class="song-card left-to-triage" href={href({ name: 'study', songId: song.id })}>
+                  <h3>{song.title}</h3>
+                  <p class="note">{`${song.kind === 'text' ? 'Completato' : 'Completata'} · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare`}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {gate.sheet}
     </main>
   )
