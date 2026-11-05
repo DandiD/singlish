@@ -113,7 +113,7 @@ describe('studio di una canzone', () => {
     mount(<Study songId="s1" />)
     await screen.findByRole('heading', { name: 'Lantern Road' })
     // c1 · w1 (da imparare), w2 (da smistare), w4 (da s2); c2 sospeso e w3 nota fuori
-    expect(screen.getByText('Studio · 1 chunk · 3 parole')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 3 parole/)).toBeTruthy()
     expect(highlighted().size).toBe(4)
   })
   test('nella seconda canzone il chunk condiviso è evidenziato nella forma in cui compare', async () => {
@@ -121,7 +121,7 @@ describe('studio di una canzone', () => {
     await screen.findByRole('heading', { name: 'Harbour Lights' })
     const link = [...document.querySelectorAll<HTMLAnchorElement>('.lyrics a')].find((a) => a.getAttribute('href')!.endsWith('item=c1'))
     expect(link?.textContent).toBe('letting it slide')
-    expect(screen.getByText('Studio · 1 chunk · 1 parola')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 1 parola/)).toBeTruthy()
   })
   test('la scheda evidenzia la forma del verso di questa canzone', async () => {
     window.location.hash = '#/songs/s2?item=c1'
@@ -164,6 +164,11 @@ describe('versi sbloccati: stessa frase in Oggi, Riascolto finale e Canzoni', ()
     mount(<Songs />)
     const fromSongs = phrase((await screen.findByRole('heading', { name: 'Lantern Road' })).closest('li')!)
     expect([fromToday, fromFinal, fromSongs]).toEqual(['1 di 2 versi sbloccati', '1 di 2 versi sbloccati', '1 di 2 versi sbloccati'])
+    cleanup()
+    mount(<Study songId="s1" />)
+    await screen.findByRole('heading', { name: 'Lantern Road' })
+    const fromStudy = await waitFor(() => phrase(document.querySelector('.study-head .note')!))
+    expect(fromStudy).toBe(fromToday)
   })
 })
 
@@ -250,7 +255,7 @@ describe('dati salvati prima della forma per verso', () => {
     await screen.findByRole('heading', { name: 'Harbour Lights' })
     const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
     expect(ids.has('c1')).toBe(true)
-    expect(screen.getByText('Studio · 1 chunk · 1 parola')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 1 parola/)).toBeTruthy()
     expect(ids.size).toBe(2)
   })
 })

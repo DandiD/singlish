@@ -18,6 +18,8 @@ import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
 import { ItemSheet, SpeechSheet } from './ItemSheet'
+import { rCardStates, unlockedLines } from '../../domain/unlocked'
+import { unlockedText } from '../todayText'
 
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
@@ -84,8 +86,24 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     const chunks = (await db.chunks.toArray()).filter((c) => c.contexts.some((x) => x.songId === songId))
     const words = (await db.words.toArray()).filter((w) => w.contexts.some((x) => x.songId === songId) || w.songId === songId)
     const pending = (await pendingWords(db, songId)).length
-    return { song, chunks, words, pending }
+    const rState = await rCardStates(db)
+    return { song, chunks, words, pending, rState }
   }, [db, songId])
+
+  // Versi sbloccati (stessa funzione di Oggi). Quelli accesi in questa vista restano accesi anche dopo la scrittura di `unlockedSeen`.
+  const unlock = data?.song ? unlockedLines(data.song, data.chunks, data.words, data.rState) : null
+  const unlockedNow = unlock ? unlock.lines.filter((l) => l.unlocked).map((l) => l.lineIndex) : null
+  const litRef = useRef<{ songId: string; lines: number[] } | null>(null)
+  if (data?.song && unlockedNow && litRef.current?.songId !== songId) {
+    const before = new Set(data.song.unlockedSeen ?? [])
+    litRef.current = { songId, lines: unlockedNow.filter((i) => !before.has(i)) }
+  }
+  const seenKey = data?.song && unlockedNow && data.song.status !== 'draft' && data.song.status !== 'queued' ? unlockedNow.join(',') : null
+  const storedKey = (data?.song?.unlockedSeen ?? []).join(',')
+  useEffect(() => {
+    if (seenKey === null || seenKey === storedKey) return
+    db.songs.update(songId, { unlockedSeen: seenKey ? seenKey.split(',').map(Number) : [] }).catch(reportError)
+  }, [db, songId, seenKey, storedKey])
 
   if (!data) return <main class="screen" aria-busy="true" />
   const { song, chunks, words, pending } = data
@@ -145,6 +163,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     }
   }
 
+  const lineStates = new Map((unlock?.lines ?? []).map((l) => [l.lineIndex, l]))
   const chunkCount = placed.chunks.size
   const wordCount = placed.words.size
   const gp = song.grammarPoint
@@ -156,7 +175,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         <Cover song={song} size="lg" />
         <div class="grow">
           <h1>{song.title}</h1>
-          <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}`}</p>
+          <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}${unlock && unlock.total > 0 ? ` · ${unlockedText(unlock.unlocked, unlock.total)}` : ''}`}</p>
         </div>
         {sessionId && (
           <TimerPill
@@ -204,15 +223,20 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       )}
 
       <div class={asking ? 'lyrics picking' : 'lyrics'} lang="en">
-        {song.lines.map((l, i) => (
-          <p key={i}>
+        {song.lines.map((l, i) => {
+          const u = asking ? undefined : lineStates.get(i)
+          const k = u?.unlocked ? (litRef.current?.lines.indexOf(i) ?? -1) : -1
+          const cls = u ? (u.unlocked ? 'line-open' : 'line-studying') + (k >= 0 ? ' line-lit' : '') : undefined
+          return (
+          <p key={i} class={cls} style={k >= 0 ? { '--i': k } : undefined}>
             {asking ? (
               <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} disabled={askBusy} />
             ) : (
               <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
             )}
           </p>
-        ))}
+          )
+        })}
       </div>
 
       {asking && (

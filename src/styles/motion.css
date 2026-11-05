@@ -157,3 +157,8 @@ a.song-card:active { transform: scale(.985); }
 @media (prefers-reduced-motion: reduce) {
   .day-ring-arc, .day-ring--pulse .day-ring-figure { animation: none !important; }
 }
+
+/* ---------- Verso che si accende nello Studio ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .lyrics p.line-lit { animation: none !important; }
+}
