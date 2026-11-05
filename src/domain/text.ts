@@ -78,3 +78,28 @@ export function gradeDictation(given: string, expected: string): { rating: 1 | 2
   const wrongWords = Math.min(wordDistance(words(given), words(expected)), wordDistance(plain(given), plain(expected)))
   return { rating: wrongWords === 0 ? 3 : wrongWords === 1 ? 2 : 1, wrongWords }
 }
+
+/**
+ * La parte di `expected` che differisce da `given`, trovata con prefisso e suffisso comuni (senza maiuscole).
+ * Le parti sono fette di `expected` (before + diff + after === expected). `null` se uguali.
+ * Il suffisso non si sovrappone al prefisso, così con lettere ripetute la parte è la minima.
+ * `diff` non è mai vuoto: se `given` ha solo lettere in più (inserimento), si prende la lettera di `expected`
+ * subito prima del punto dell'inserimento (o la prima, se l'inserimento è in testa).
+ */
+export function typoSpan(given: string, expected: string): { before: string; diff: string; after: string } | null {
+  const g = given.toLowerCase()
+  const e = expected.toLowerCase()
+  if (g === e) return null
+  const max = Math.min(g.length, e.length)
+  let p = 0
+  while (p < max && g[p] === e[p]) p++
+  let s = 0
+  while (s < max - p && g[g.length - 1 - s] === e[e.length - 1 - s]) s++
+  let start = p
+  let end = e.length - s
+  if (start === end && e.length > 0) {
+    if (start > 0) start -= 1
+    else end = 1
+  }
+  return { before: expected.slice(0, start), diff: expected.slice(start, end), after: expected.slice(end) }
+}
