@@ -37,7 +37,7 @@ function title(route: Route): string {
     case 'session': return 'Ripasso'
     case 'settings': return 'Impostazioni'
     case 'lexicon': return 'Lessico'
-    case 'progress': return 'Progressi'
+    case 'progress': return 'Diario'
     case 'feedback': return 'Le tue frasi'
     case 'vocabTest': return 'Test di vocabolario'
     case 'expand': return 'Espandi'

@@ -214,7 +214,7 @@ Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--ac
 | 14 | Timer scaduto | foglio su `#/session` |
 | 18 | Impostazioni | `#/settings` |
 | — | Lessico (canvas: Lexicon) | `#/lexicon` |
-| — | Progressi (canvas: Progress), da Oggi | `#/progress` |
+| — | Diario (canvas: Progress), da Oggi; la rotta resta `#/progress` | `#/progress` |
 | — | Riascolto finale (canvas: FinalListen), da Oggi | `#/songs/:id/final` |
 | — | Aggiungi testo (canvas: AddText), da Canzoni | `#/songs/new-text` |
 | — | Card Produci (canvas: CardP) | `#/session` |
@@ -273,7 +273,14 @@ Ogni numero si calcola in un solo punto, così due schermate non possono contrad
 ## Lessico
 Tutte le voci (chunk e parole non note) da `lexicon()` in `src/domain/lexicon.ts`: prima i chunk, poi le parole, in ordine alfabetico. Ricerca in inglese e in italiano (senza maiuscole né accenti), filtri Tutti, B1, B2, C1, Attivi, Solo canzone, Parole e Tema; «Aree scoperte» dai temi con meno voci in studio (`coverage`). Stato: nuovo (card R mai vista), impara, attivo (card C in ripasso), sospeso, da smistare. Ogni riga apre la scheda della voce nella sua canzone; da lì una voce sospesa si riattiva.
 
-## Progressi
+## Ritmo e Diario
+Ritmo settimanale (`src/domain/rhythm.ts`): giorni locali `YYYY-MM-DD`, settimana da lunedì a domenica. Un giorno è «attivo» con almeno un ripasso registrato (`reviews.reviewedAt`) o se è in `settings.freeDays`; le frasi scritte e non ancora corrette non contano. Un giorno libero si segna con `markFreeDay` alla prima apertura di Oggi con coda vuota e nessun ripasso quel giorno (una giornata finita non diventa libera). Il ritmo in Oggi è un link al Diario; l'anello no. L'obiettivo raggiunto pulsa una volta per settimana e per avvio dell'app. Abbassando l'obiettivo a settimana in corso il testo diventa «Obiettivo della settimana raggiunto · N giorni», mai «4 giorni su 3». Nessuna colpa: settimana mancata senza messaggio, nessuna serie, nessuna notifica.
+Campi nuovi in `Settings` (nessuna migrazione, facoltativi): `rhythmGoal?: number` (intero fra 3 e 7, predefinito 5) e `freeDays?: string[]` (solo gli ultimi 84 giorni).
+
+Il Diario (`src/ui/screens/Progress.tsx`, rotta `#/progress`) ha questo ordine: calendario «Ultime 12 settimane» → comprensione al primo ascolto → «Versi sbloccati» (somma di `unlockedKeys`, uguale ai «N di M» di Oggi sommati) → lessico attivo, memoria reale, guadagno medio, carico → vocabolario stimato → verso il livello successivo.
+Calendario (`ActivityCalendar`): 12 colonne (settimane) per 7 righe, giorni futuri non disegnati, `role="img"` con tabella `visually-hidden`. Livelli: 0 ripassi → 0; 1–9 → 1; 10–24 → 2; 25–49 → 3; 50 o più → 4. Colore `color-mix(in srgb, var(--accent) P%, var(--surface-2))` con P = 0, 30, 55, 80, 100; un giorno libero senza ripassi è di livello 0 con bordo `--line-strong` e «giorno libero» nel testo equivalente.
+
+### Numeri del Diario
 Numeri da `progressStats` in `src/domain/progress.ts`: comprensione al primo ascolto per canzone (grafico a una serie, asse adattato ai valori, soglia del 70%, tabella per lo screen reader), lessico attivo (card Completa in ripasso; quelle del livello attuale contano per salire), memoria reale (ripassi non nuovi degli ultimi 30 giorni non dimenticati), carico medio dei prossimi 7 giorni, avanzamento verso il livello successivo (150 voci attive e 70%). Senza dati si mostra «—» e cosa fare, mai numeri inventati.
 
 ## Riascolto finale

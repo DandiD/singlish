@@ -156,7 +156,7 @@ export function Today() {
       <header class="today-head">
         <span class="wordmark">Singlish</span>
         <span class="head-actions">
-          <a class="icon-btn" href={href({ name: 'progress' })} aria-label="Progressi"><Icon name="chart" /></a>
+          <a class="icon-btn" href={href({ name: 'progress' })} aria-label="Diario"><Icon name="chart" /></a>
           <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
         </span>
       </header>
