@@ -204,11 +204,11 @@ export function Today() {
       )}
 
       {queue.items.length > 0 ? (
-        <a class="btn primary cta" href={href({ name: 'session' })}><Icon name="play" size={18} />{done === 0 ? 'Inizia il giro' : 'Continua il giro'}</a>
+        <a class="btn primary cta today-cta" href={href({ name: 'session' })}><Icon name="play" size={18} />{done === 0 ? 'Inizia il giro' : 'Continua il giro'}</a>
       ) : cta && action?.kind === 'add' ? (
-        <a class="btn primary cta" href={href(cta.route)} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />{cta.text}</a>
+        <a class="btn primary cta today-cta" href={href(cta.route)} onClick={(e) => { e.preventDefault(); gate.request() }}><Icon name="plus" size={18} />{cta.text}</a>
       ) : cta ? (
-        <a class="btn primary cta" href={href(cta.route)}>{cta.text}</a>
+        <a class="btn primary cta today-cta" href={href(cta.route)}>{cta.text}</a>
       ) : null}
       {gate.sheet}
     </main>
