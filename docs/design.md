@@ -4,7 +4,9 @@ Canvas: https://claude.ai/artifact/6wE9aRMt77EJmgR2gFwgZx (pagine: Schermate · 
 Look: "studio serale". Fondo scuro di default, un accento arancio, colori per tipo di espressione. Tema: Automatico (segue il sistema), Chiaro, Scuro.
 
 ## Tipografia
-- Titoli: Bricolage Grotesque 700 (opsz 12..96).
+- Titoli: Bricolage Grotesque 700 (opsz 12..96). Titoli di pagina e testata dello Studio 28 px.
+- `.display`: Bricolage Grotesque 700, `clamp(40px, 12vw, 56px)`, interlinea 1, `opsz` 96.
+- Testo del brano (`.lyrics`) 17 px; verso nella card di sessione 20 px, Inter Tight 500.
 - Testo: Inter Tight 400/500/600.
 - Timer e numeri tecnici: JetBrains Mono 500.
 Self-hosted in `public/fonts/` (woff2, sottoinsiemi latin e latin-ext, licenza OFL) con `display=swap`; il service worker le mette in precache, quindi funzionano offline dal primo avvio.
@@ -195,7 +197,7 @@ Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore
 | `--song-5` / `-tint` | `#D79BB8` / `#2A1922` | `#83395F` / `#F2E0EA` |
 | `--song-6` / `-tint` | `#9FB2C6` / `#1C2229` | `#435568` / `#E2E8EF` |
 
-Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--accent-text`; superfici `--surface`, bordi `--line` / `--line-strong`; raggi 12–16 px per card e pulsanti, 24 px per i fogli dal basso.
+Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--accent-text`; superfici `--surface`, bordi `--line` / `--line-strong`; raggio 20 px per card (`.card`, `.song-card`, `.session-card`, `.install-card`), 12 px per pulsanti e campi, 24 px per i fogli dal basso; un'unica ombra per `.session-card` e `.sheet`: `0 8px 24px` di `--scrim` al 40%.
 
 ## Schermate dell'MVP (numeri del canvas)
 | N. | Schermata | Route |
