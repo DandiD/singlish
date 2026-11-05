@@ -78,7 +78,7 @@ test('Oggi ricorda le frasi da correggere', async () => {
   await db.sessions.add({ id: 'r1', kind: 'review', songId: null, startedAt: now, endedAt: now, timer: { status: 'stopped', durationMs: 1, accumulatedMs: 1, resumedAt: null }, reviewsDone: 0, newDone: 0 })
   await saveProduction(db, 'r1', { cardId: 'p1', itemId: 'c1', sentence: 'x', elapsedMs: 1 })
   mount(<Today />)
-  expect((await screen.findByRole('link', { name: /1 frase da correggere/ })).getAttribute('href')).toBe('#/feedback')
+  expect((await screen.findByRole('link', { name: /Correggi la frase con Gemini/ })).getAttribute('href')).toBe('#/feedback')
 })
 
 test('fine sessione: il numero di frasi da correggere è quello di Oggi, anche riprendendo una sessione', async () => {

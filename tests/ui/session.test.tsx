@@ -135,14 +135,14 @@ test('Today with no cards and no songs: no session button, invites to add a song
   await db.songs.clear()
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('in scadenza')
-  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: /Inizia il giro/ })).toBeNull()
   expect(screen.getByRole('link', { name: /Aggiungi una canzone/ }).getAttribute('href')).toBe('#/songs/new')
 })
 
 test('Today with songs but nothing due: says so, no session button', async () => {
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('in scadenza')
-  expect(screen.queryByRole('link', { name: /Inizia sessione/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: /Inizia il giro/ })).toBeNull()
   expect(screen.getByText('Niente da ripassare oggi.')).toBeTruthy()
 })
 
@@ -201,7 +201,7 @@ test('Today: counts, start link, song progress', async () => {
   await db.cards.add({ ...reviewCard('k2', 'c2', 'R', '2026-10-30T10:00:00Z'), fsrs: newFsrsCard(now) })
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('in scadenza')
-  expect(screen.getByRole('link', { name: /Inizia sessione/ }).getAttribute('href')).toBe('#/session')
+  expect(screen.getByRole('link', { name: /Inizia il giro/ }).getAttribute('href')).toBe('#/session')
   expect(screen.getByText(/su 30/)).toBeTruthy()
   const link = await screen.findByRole('link', { name: /Night Song/ })
   expect(link.getAttribute('href')).toBe('#/songs/s1')
@@ -415,7 +415,7 @@ test('Oggi lasciata aperta di sera si aggiorna al mattino, quando l\'app torna i
   expect(await screen.findByText('Niente da ripassare oggi.')).toBeTruthy()
   t = new Date('2026-11-01T10:00:00')
   document.dispatchEvent(new Event('visibilitychange'))
-  expect(await screen.findByRole('link', { name: /Inizia sessione/ })).toBeTruthy()
+  expect(await screen.findByRole('link', { name: /Inizia il giro/ })).toBeTruthy()
 })
 
 test('«Niente da ripassare» lasciato aperto la sera: al mattino dice che ci sono card, come Oggi', async () => {
@@ -527,6 +527,6 @@ test('Today shows one cover per song', async () => {
   await db.songs.add({ ...song, id: 's2', title: 'Other Song' })
   const { container } = render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('Other Song')
-  expect(container.querySelectorAll('a.song-card').length).toBe(2)
-  expect(container.querySelectorAll('.song-card .cover')).toHaveLength(2)
+  expect(container.querySelectorAll('a.song-carousel-item[href^="#/songs/s"]').length).toBe(2)
+  expect(container.querySelectorAll('.song-carousel-item .cover')).toHaveLength(2)
 })
