@@ -25,6 +25,8 @@ describe('Cover', () => {
     const img = container.querySelector('img')!
     expect(img.getAttribute('src')).toBe(URL_A)
     expect(img.getAttribute('alt')).toBe('')
+    expect(img.getAttribute('crossorigin')).toBe('anonymous')
+    expect(img.getAttribute('referrerpolicy')).toBe('no-referrer')
     expect(container.textContent).toBe('')
   })
 
@@ -53,6 +55,15 @@ describe('Cover', () => {
     expect(container.textContent).toBe('PL')
     expect(root(container).classList.contains(`song-hue-${songLook('song-1').hue}`)).toBe(true)
   })
+
+  test.each(['https://evil.example/x.jpg', 'http://i.scdn.co/x.jpg', ''])(
+    'a coverUrl outside the Spotify CDNs (%s) is never loaded',
+    (coverUrl) => {
+      const { container } = render(<Cover song={song({ coverUrl })} size="md" />)
+      expect(container.querySelector('img')).toBeNull()
+      expect(container.textContent).toBe('PL')
+    },
+  )
 
   test('a text never shows an image, even with a coverUrl', () => {
     const { container } = render(<Cover song={song({ kind: 'text', coverUrl: URL_A })} size="md" />)

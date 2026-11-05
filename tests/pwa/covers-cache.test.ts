@@ -14,6 +14,7 @@ const samples: Array<[string, boolean]> = [
   ['https://i.scdn.co:8443/x', false],
   ['https://user:pw@i.scdn.co/x', false],
   ['https://xi.scdn.co/x', false],
+  ['https://i.scdn.co/image/x?size=640', true],
 ]
 
 describe('cover URL pattern and safeCoverUrl agree', () => {
@@ -30,7 +31,7 @@ describe('cover runtime caching entry', () => {
     expect(coverRuntimeCaching.options).toEqual({
       cacheName: 'covers',
       expiration: { maxEntries: 60, maxAgeSeconds: 7776000 },
-      cacheableResponse: { statuses: [0, 200] },
+      cacheableResponse: { statuses: [200] },
     })
   })
 })

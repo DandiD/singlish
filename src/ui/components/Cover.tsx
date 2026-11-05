@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks'
 import type { Song } from '../../db/types'
+import { safeCoverUrl } from '../../domain/spotify'
 import { coverInitials, songLook, type Motif } from '../cover'
 
 type CoverSong = Pick<Song, 'id' | 'title' | 'kind' | 'coverUrl'>
@@ -45,14 +46,23 @@ function MotifArt({ motif }: { motif: Motif }) {
 export function Cover({ song, size }: { song: CoverSong; size: 'sm' | 'md' | 'lg' }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   // L'errore vale solo per l'URL che l'ha dato: un URL nuovo merita un tentativo.
-  const url = song.kind === 'text' ? null : song.coverUrl
-  const showImage = typeof url === 'string' && url !== failedUrl
+  // Difesa in profondità: si carica solo ciò che safeCoverUrl accetta (CDN di Spotify, https).
+  const url = song.kind === 'text' ? null : safeCoverUrl(song.coverUrl)
+  const showImage = url !== null && url !== failedUrl
   const look = songLook(song.id)
 
   return (
     <span class={`cover cover-${size} song-hue-${look.hue}`} aria-hidden="true">
       {showImage ? (
-        <img src={url} alt="" loading="lazy" decoding="async" onError={() => setFailedUrl(url)} />
+        <img
+          src={url}
+          alt=""
+          crossorigin="anonymous"
+          referrerpolicy="no-referrer"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailedUrl(url)}
+        />
       ) : (
         <>
           <MotifArt motif={look.motif} />
