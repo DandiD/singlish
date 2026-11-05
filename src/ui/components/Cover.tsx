@@ -11,9 +11,6 @@ function MotifArt({ motif }: { motif: Motif }) {
       data-motif={motif}
       viewBox="0 0 100 100"
       preserveAspectRatio="xMidYMid slice"
-      fill="none"
-      stroke="var(--song)"
-      stroke-opacity="0.35"
       stroke-width="4"
       stroke-linecap="round"
       aria-hidden="true"

@@ -1,6 +1,5 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/preact'
-import { afterEach } from 'vitest'
 import { Cover } from '../../src/ui/components/Cover'
 import { songLook, type Motif } from '../../src/ui/cover'
 
@@ -67,6 +66,11 @@ describe('Cover', () => {
     const svg = container.querySelector('svg')!
     expect(svg.getAttribute('data-motif')).toBe(motif)
     expect(svg.getAttribute('aria-hidden')).toBe('true')
+    expect(svg.getAttribute('focusable')).toBe('false')
+    const counts = (tag: string) => svg.querySelectorAll(tag).length
+    if (motif === 'waves') expect([counts('path'), counts('circle')]).toEqual([3, 0])
+    if (motif === 'circles') expect([counts('path'), counts('circle')]).toEqual([0, 3])
+    if (motif === 'lines') expect([counts('path'), counts('circle')]).toEqual([4, 0])
     expect(root(container).classList.contains(`song-hue-${songLook(id).hue}`)).toBe(true)
   })
 
