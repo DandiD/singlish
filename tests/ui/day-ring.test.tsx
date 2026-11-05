@@ -11,11 +11,11 @@ function ring(done: number, left: number, blocked = false, extra: { why?: string
 const arc = (c: Element) => c.querySelector('.day-ring-arc') as SVGElement
 
 describe('DayRing', () => {
-  test('aria-label describes the four states', () => {
+  test('aria-label describes the four states, with the minutes while cards are left', () => {
     ring(0, 5)
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('0 di 5 card fatte oggi')
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('0 di 5 card fatte oggi, circa 12 minuti su 30')
     cleanup(); ring(3, 2)
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('3 di 5 card fatte oggi')
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('3 di 5 card fatte oggi, circa 12 minuti su 30')
     cleanup(); ring(4, 0)
     expect(screen.getByRole('img').getAttribute('aria-label')).toBe('4 di 4 card fatte oggi')
     cleanup(); ring(0, 0)
@@ -38,6 +38,18 @@ describe('DayRing', () => {
     const e = ring(0, 0)
     expect(e.container.querySelector('.display')!.textContent).toBe('—')
     expect(screen.queryByText(/′ di/)).toBeNull()
+  })
+
+  test('aria-label says when new cards are paused', () => {
+    ring(3, 2, true)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('3 di 5 card fatte oggi, circa 12 minuti su 30, card nuove in pausa')
+    cleanup(); ring(0, 5, true)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('0 di 5 card fatte oggi, circa 12 minuti su 30, card nuove in pausa')
+  })
+
+  test('one minute is singular in the aria-label', () => {
+    render(<DayRing ring={dayRing({ done: 0, left: 1, blocked: false })} estMinutes={1} timerMinutes={30} label="x" why={null} dayKey="2026-11-05" />)
+    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('0 di 1 card fatte oggi, circa 1 minuto su 30')
   })
 
   test('visible label sits outside the role=img region', () => {

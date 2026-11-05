@@ -202,7 +202,8 @@ test('Today: counts, start link, song progress', async () => {
   render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
   await screen.findByText('in scadenza')
   expect(screen.getByRole('link', { name: /Inizia il giro/ }).getAttribute('href')).toBe('#/session')
-  expect(screen.getByText(/su 30/)).toBeTruthy()
+  // I minuti del timer (30) li dice l'anello, nel suo testo accessibile.
+  expect(screen.getByRole('img', { name: /, circa \d+ minut[oi] su 30$/ })).toBeTruthy()
   const link = await screen.findByRole('link', { name: /Night Song/ })
   expect(link.getAttribute('href')).toBe('#/songs/s1')
   expect(link.textContent).toContain('1 di 2')

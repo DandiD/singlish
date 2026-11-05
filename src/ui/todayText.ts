@@ -28,6 +28,10 @@ export function songLabel({ song, total, done, toTriage }: SongRow, finalReady: 
 }
 
 export function ringLabel(ring: Ring, toCorrect: number): string {
+  return baseRingLabel(ring, toCorrect) + (ring.blocked ? ' · nuove in pausa' : '')
+}
+
+function baseRingLabel(ring: Ring, toCorrect: number): string {
   const left = ring.total - ring.done
   switch (ring.state) {
     case 'todo': return `${left} card da fare`

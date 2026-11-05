@@ -17,7 +17,6 @@ import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { DayRing } from '../components/DayRing'
 import { SongCarousel, type CarouselItem } from '../components/SongCarousel'
-import { plural } from '../plural'
 import { emptyCta, ringLabel, ringWhy, songDetail, songLabel } from '../todayText'
 import { useInstall } from '../../pwa/install'
 import { InstallBanner } from '../components/InstallBanner'
@@ -58,12 +57,14 @@ function InviteCard({ invite }: { invite: Invite }) {
     case 'triage':
       return (
         <a class="card final-due" href={href({ name: 'triage', songId: invite.song.id })}>
+          <span class="section-label">DA SMISTARE</span>
           <strong>{`${wordCount(invite.count)} da smistare in «${invite.song.title}»`}</strong>
         </a>
       )
     case 'study':
       return (
         <a class="card final-due" href={href({ name: 'study', songId: invite.song.id })}>
+          <span class="section-label">DA STUDIARE</span>
           <strong>{`“${invite.song.title}” è da studiare`}</strong>
         </a>
       )
@@ -177,7 +178,6 @@ export function Today() {
           <div class="stat"><span class="stat-num mono">{queue.newCount}</span><span class="note">nuove</span></div>
           <div class="stat"><span class="stat-num mono">{`~${queue.estMinutes}′`}</span><span class="note">stimati</span></div>
         </div>
-        <p class="note">{`su ${plural(minutes, 'minuto', 'minuti')}`}</p>
         {settings.intensiveUntil && settings.intensiveUntil > now() && (
           <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${Math.max(INTENSIVE.newPerDay, settings.newPerDay)} nuove al giorno.`}</p>
         )}

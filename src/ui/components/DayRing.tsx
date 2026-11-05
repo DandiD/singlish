@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'preact/hooks'
 import type { dayRing } from '../../domain/today'
+import { plural } from '../plural'
 
 const R = 52
 export const RING_CIRCUMFERENCE = 2 * Math.PI * R
@@ -27,8 +28,10 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey }: 
   const fraction = total === 0 ? 0 : done / total
   const offset = RING_CIRCUMFERENCE * (1 - fraction)
   const center = state === 'empty' ? '—' : state === 'done' ? done : total
-  const aria = total === 0 ? 'Nessuna card oggi' : `${done} di ${total} card fatte oggi`
   const showMinutes = state === 'todo' || state === 'partial'
+  const aria = (total === 0 ? 'Nessuna card oggi' : `${done} di ${total} card fatte oggi`)
+    + (showMinutes ? `, circa ${plural(estMinutes, 'minuto', 'minuti')} su ${timerMinutes}` : '')
+    + (blocked ? ', card nuove in pausa' : '')
   // Chi pulsa lo tiene per tutto il montaggio (un nuovo render non toglie la classe a metà animazione).
   const pulseDay = useRef<string | null>(null)
   if (state === 'done' && pulsedDay !== dayKey) {
