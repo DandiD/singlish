@@ -6,12 +6,15 @@ import { AppDepsProvider } from '../../src/ui/deps'
 import { AddSong } from '../../src/ui/screens/AddSong'
 import { Songs } from '../../src/ui/screens/Songs'
 import { createSong } from '../../src/domain/ingest'
+import { resetCoverAttempts } from '../../src/domain/cover'
+import { errors } from '../../src/ui/report'
 
 let db: SinglishDB
 const now = new Date('2026-10-31T10:00:00Z')
 const URL_OK = 'https://open.spotify.com/track/abc123'
 
 beforeEach(() => {
+  resetCoverAttempts()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = ''
   localStorage.clear()
@@ -528,4 +531,46 @@ test('Modifica: titolo svuotato e link valido, uscendo il link si salva e il tit
   unmount()
   await waitFor(async () => expect((await db.songs.get(s.id))!.spotifyUrl).toBeTruthy())
   expect((await db.songs.get(s.id))!.title).toBe('Vecchio')
+})
+
+describe('AddSong cover', () => {
+  beforeEach(() => errors.dismiss())
+  const THUMB = 'https://i.scdn.co/image/ab67616d00001e02bbbb'
+  const submitWith = (f: typeof fetch) => {
+    mount(<AddSong />, f)
+    fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: 'Harbor' } })
+    fireEvent.input(screen.getByLabelText('Link Spotify'), { target: { value: URL_OK } })
+    fireEvent.input(screen.getByLabelText('Testo'), { target: { value: 'one\ntwo' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Analizza con Gemini' }))
+  }
+
+  test('valid link: after submit the song gets its coverUrl', async () => {
+    const f = vi.fn(async () => new Response(JSON.stringify({ title: 'Harbor', thumbnail_url: THUMB }), { status: 200 })) as unknown as typeof fetch
+    submitWith(f)
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/songs\/.+\/analyzing$/))
+    await waitFor(async () => expect((await db.songs.toArray())[0]?.coverUrl).toBe(THUMB))
+  })
+
+  test('rejected fetch: the song is created as before, with no cover and no alert', async () => {
+    const f = vi.fn(async () => { throw new TypeError('Failed to fetch') }) as unknown as typeof fetch
+    submitWith(f)
+    await waitFor(() => expect(window.location.hash).toMatch(/^#\/songs\/.+\/analyzing$/))
+    // The title is typed and the link never blurs, so the only oEmbed call is ensureCover's: wait for it to run and settle.
+    await waitFor(() => expect(f).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 30))
+    const songs = await db.songs.toArray()
+    expect(songs).toHaveLength(1)
+    expect(songs[0].coverUrl).toBeUndefined()
+    expect(errors.get()).toBeNull()
+  })
+})
+
+describe('Songs covers', () => {
+  test('one cover per song card', async () => {
+    for (const t of ['A1', 'B2', 'C3']) await createSong(db, { title: t, artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: 40 }, now)
+    const { container } = mount(<Songs />)
+    await screen.findByText('C3')
+    expect(container.querySelectorAll('li.song-card')).toHaveLength(3)
+    expect(container.querySelectorAll('li.song-card .cover.cover-md')).toHaveLength(3)
+  })
 })

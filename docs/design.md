@@ -4,13 +4,16 @@ Canvas: https://claude.ai/artifact/6wE9aRMt77EJmgR2gFwgZx (pagine: Schermate · 
 Look: "studio serale". Fondo scuro di default, un accento arancio, colori per tipo di espressione. Tema: Automatico (segue il sistema), Chiaro, Scuro.
 
 ## Tipografia
-- Titoli: Bricolage Grotesque 700 (opsz 12..96).
+- Titoli: Bricolage Grotesque 700 (opsz 12..96). Titoli di pagina e testata dello Studio 28 px.
+- `.display`: Bricolage Grotesque 700, `clamp(40px, 12vw, 56px)`, interlinea 1, `opsz` 96.
+- Testo del brano (`.lyrics`) 17 px; verso nella card di sessione 20 px, Inter Tight 500.
 - Testo: Inter Tight 400/500/600.
 - Timer e numeri tecnici: JetBrains Mono 500.
 Self-hosted in `public/fonts/` (woff2, sottoinsiemi latin e latin-ext, licenza OFL) con `display=swap`; il service worker le mette in precache, quindi funzionano offline dal primo avvio.
 
 ## Colori dei tipi di espressione
 phrasal verb `--blue` · idioma `--accent` · collocazione `--green` · slang `--violet` · parola singola: sottolineatura `--text-2` · parlato connesso: sottolineatura puntinata `--muted`.
+Le tinte delle canzoni (`--song-1` … `--song-6`) identificano le canzoni e non si usano mai per i tipi di espressione.
 Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore 2 px del colore pieno.
 
 ## Token (copiare in `src/styles/tokens.css`)
@@ -47,6 +50,18 @@ Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore
   --danger-line: #5A3A3A;
   --overlay: rgba(11,12,15,.94);
   --diagram-line: #8C93A0;
+  --song-1: #FF8FB1;
+  --song-1-tint: #2E1A22;
+  --song-2: #E2B24A;
+  --song-2-tint: #2A2416;
+  --song-3: #5CC8E0;
+  --song-3-tint: #15262B;
+  --song-4: #A7C48A;
+  --song-4-tint: #1F2619;
+  --song-5: #D79BB8;
+  --song-5-tint: #2A1922;
+  --song-6: #9FB2C6;
+  --song-6-tint: #1C2229;
 }
 [data-theme="light"] {
   --bg: #F5F6F8;
@@ -80,6 +95,18 @@ Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore
   --danger-line: #E5B2AE;
   --overlay: rgba(245,246,248,.96);
   --diagram-line: #7A818C;
+  --song-1: #B43869;
+  --song-1-tint: #FBE3EC;
+  --song-2: #8A5F00;
+  --song-2-tint: #F6EBCF;
+  --song-3: #0B6F84;
+  --song-3-tint: #DDF1F6;
+  --song-4: #466E2F;
+  --song-4-tint: #E5EFDC;
+  --song-5: #83395F;
+  --song-5-tint: #F2E0EA;
+  --song-6: #435568;
+  --song-6-tint: #E2E8EF;
 }
 @media (prefers-color-scheme: light) {
   [data-theme="auto"] {
@@ -114,6 +141,18 @@ Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore
     --danger-line: #E5B2AE;
     --overlay: rgba(245,246,248,.96);
     --diagram-line: #7A818C;
+    --song-1: #B43869;
+    --song-1-tint: #FBE3EC;
+    --song-2: #8A5F00;
+    --song-2-tint: #F6EBCF;
+    --song-3: #0B6F84;
+    --song-3-tint: #DDF1F6;
+    --song-4: #466E2F;
+    --song-4-tint: #E5EFDC;
+    --song-5: #83395F;
+    --song-5-tint: #F2E0EA;
+    --song-6: #435568;
+    --song-6-tint: #E2E8EF;
   }
 }
 ```
@@ -151,8 +190,14 @@ Evidenziazione nel testo: sfondo del colore al 16% di opacità + bordo inferiore
 | `--danger-line` | `#5A3A3A` | `#E5B2AE` |
 | `--overlay` | `rgba(11,12,15,.94)` | `rgba(245,246,248,.96)` |
 | `--diagram-line` | `#8C93A0` | `#7A818C` |
+| `--song-1` / `-tint` | `#FF8FB1` / `#2E1A22` | `#B43869` / `#FBE3EC` |
+| `--song-2` / `-tint` | `#E2B24A` / `#2A2416` | `#8A5F00` / `#F6EBCF` |
+| `--song-3` / `-tint` | `#5CC8E0` / `#15262B` | `#0B6F84` / `#DDF1F6` |
+| `--song-4` / `-tint` | `#A7C48A` / `#1F2619` | `#466E2F` / `#E5EFDC` |
+| `--song-5` / `-tint` | `#D79BB8` / `#2A1922` | `#83395F` / `#F2E0EA` |
+| `--song-6` / `-tint` | `#9FB2C6` / `#1C2229` | `#435568` / `#E2E8EF` |
 
-Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--accent-text`; superfici `--surface`, bordi `--line` / `--line-strong`; raggi 12–16 px per card e pulsanti, 24 px per i fogli dal basso.
+Regole: testo su `--accent` sempre `--on-accent`; link e testo arancio con `--accent-text`; superfici `--surface`, bordi `--line` / `--line-strong`; raggio 20 px per card (`.card`, `.song-card`, `.session-card`, `.install-card`), 12 px per pulsanti e campi, 24 px per i fogli dal basso; un'unica ombra per `.session-card` e `.sheet`: `0 8px 24px` di `--scrim` al 40%.
 
 ## Schermate dell'MVP (numeri del canvas)
 | N. | Schermata | Route |
@@ -234,7 +279,7 @@ Nello Studio «Chiedi a Gemini» apre la selezione: ogni parola del testo divent
 «Aggiungi» (Canzoni, Oggi) controlla `readiness` in `src/domain/readiness.ts`: voci delle canzoni in corso ancora fuori dal ripasso, carico dei prossimi 7 giorni sotto i minuti del timer, posti liberi. Se non è pronta si apre il foglio (canvas: Unlock) con i tre controlli, «Sblocca lo stesso», «Aspetto, va bene così» e la modalità intensiva (`intensiveUntil`: 25 nuove al giorno per 7 giorni, segnalata in Oggi).
 
 ## Card Produci
-Quando la card Completa di un chunk con situazione (`productionPromptIt`) va in ripasso, nasce la card P (anche per i chunk di prima). Nella sessione: situazione in italiano, chunk da usare, frase in inglese (campo con le regole delle risposte); «Non so farla» vale Di nuovo subito, «Salva e avanti» mette la frase in `sessions.productions` senza voto. A fine sessione e in Oggi «Le tue frasi» le corregge tutte con una sola chiamata (verdetto, frase corretta, nota, voto proposto modificabile); «Conferma i voti» registra i ripassi. Finché una frase aspetta, la sua voce non torna in coda.
+Quando la card Completa di un chunk con situazione (`productionPromptIt`) va in ripasso, nasce la card P (anche per i chunk di prima). Nella sessione: situazione in italiano, chunk da usare, frase in inglese (campo con le regole delle risposte); «Non so farla» vale Di nuovo subito, «Salva e avanti» mette la frase in `sessions.productions` senza voto. A fine sessione e in Oggi «Le tue frasi» le corregge tutte con una sola chiamata (verdetto, frase corretta, nota, voto proposto modificabile); «Conferma i voti» registra i ripassi. Finché una frase aspetta, la sua voce non torna in coda. La situazione (`.produce .verse`) è a 22px di proposito: è testo italiano da leggere con calma, più grande del verso inglese delle altre card.
 
 ## Card Ascolta
 Nasce insieme alla Produci, solo per i chunk con nota di pronuncia o parlato connesso nel verso. Il verso si ascolta con la sintesi vocale del dispositivo (naturale o più lenta), si scrive il dettato; `gradeDictation` conta le parole sbagliate (contrazioni e apostrofi tollerati): 0 Bene, 1 Difficile, di più Di nuovo. Senza sintesi vocale la card lo dice e mostra il verso.

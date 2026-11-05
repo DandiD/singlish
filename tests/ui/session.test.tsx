@@ -6,6 +6,7 @@ import { AppDepsProvider } from '../../src/ui/deps'
 import { Session } from '../../src/ui/screens/Session'
 import { Today } from '../../src/ui/screens/Today'
 import { newFsrsCard } from '../../src/domain/scheduler'
+import { songLook } from '../../src/ui/cover'
 import { excludeItem } from '../../src/domain/ingest'
 import type { CardRow, Chunk, Song } from '../../src/db/types'
 
@@ -451,4 +452,81 @@ test('Sessione vuota: se intanto una canzone in coda viene analizzata, il motivo
   expect(await screen.findByText(/ancora da analizzare/)).toBeTruthy()
   await db.songs.update('s1', { status: 'analyzed' })
   expect(await screen.findByText(/Aprendo lo Studio di una canzone o di un testo «Da studiare»/)).toBeTruthy()
+})
+
+test('R card of a song item: cover with the song hue, text unchanged', async () => {
+  await db.chunks.add(chunk('c1', 'let it slide', 0))
+  await db.cards.add(reviewCard('k1', 'c1', 'R', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await screen.findByText('Night Song · riga 1')
+  const card = container.querySelector('section.session-card')!
+  expect(card.classList.contains('song-hue-' + songLook('s1').hue)).toBe(true)
+  expect(card.querySelectorAll('.cover.cover-sm')).toHaveLength(1)
+})
+
+test('C card of a song item also has the hue and one cover', async () => {
+  await seedCOnly()
+  const { container } = renderSession()
+  await screen.findByRole('textbox')
+  const card = container.querySelector('section.session-card')!
+  expect(card.classList.contains('song-hue-' + songLook('s1').hue)).toBe(true)
+  expect(card.querySelectorAll('.cover')).toHaveLength(1)
+})
+
+test('A card of a song item has the hue and one cover', async () => {
+  await db.chunks.add({ ...chunk('c3', 'let it slide', 0), productionPromptIt: 'x' })
+  await db.cards.add({ ...reviewCard('k3', 'c3', 'R', '2026-10-29T10:00:00Z'), kind: 'A' })
+  const { container } = renderSession()
+  await waitFor(() => expect(container.querySelector('section.session-card.listen')).toBeTruthy())
+  const card = container.querySelector('section.session-card')!
+  expect(card.classList.contains('song-hue-' + songLook('s1').hue)).toBe(true)
+  expect(card.querySelectorAll('.cover')).toHaveLength(1)
+})
+
+test('P card of a song item has the hue and one cover', async () => {
+  await db.chunks.add({ ...chunk('c4', 'let it slide', 0), productionPromptIt: 'Situazione' })
+  await db.cards.add({ ...reviewCard('k4', 'c4', 'R', '2026-10-29T10:00:00Z'), kind: 'P' })
+  const { container } = renderSession()
+  await waitFor(() => expect(container.querySelector('section.session-card.produce')).toBeTruthy())
+  const card = container.querySelector('section.session-card')!
+  expect(card.classList.contains('song-hue-' + songLook('s1').hue)).toBe(true)
+  expect(card.querySelectorAll('.cover')).toHaveLength(1)
+})
+
+test('card of an Expand item has no cover and no hue class', async () => {
+  await db.chunks.add({ ...chunk('c5', 'let it slide', 0), origin: 'expand', contexts: [], extraExampleEn: 'We let it slide today' })
+  await db.cards.add(reviewCard('k5', 'c5', 'R', '2026-10-29T10:00:00Z'))
+  const { container } = renderSession()
+  await screen.findByText('Esempio')
+  const card = container.querySelector('section.session-card')!
+  expect(card.className).not.toMatch(/song-hue-/)
+  expect(card.querySelector('.cover')).toBeNull()
+})
+
+test('P card of an Expand item has no cover and no hue class', async () => {
+  await db.chunks.add({ ...chunk('c6', 'let it slide', 0), origin: 'expand', contexts: [], productionPromptIt: 'Situazione', extraExampleEn: 'We let it slide today' })
+  await db.cards.add({ ...reviewCard('k6', 'c6', 'R', '2026-10-29T10:00:00Z'), kind: 'P' })
+  const { container } = renderSession()
+  await waitFor(() => expect(container.querySelector('section.session-card.produce')).toBeTruthy())
+  const card = container.querySelector('section.session-card')!
+  expect(card.className).not.toMatch(/song-hue-/)
+  expect(card.querySelector('.cover')).toBeNull()
+})
+
+test('A card of an Expand item has no cover and no hue class', async () => {
+  await db.chunks.add({ ...chunk('c7', 'let it slide', 0), origin: 'expand', contexts: [], productionPromptIt: 'x', extraExampleEn: 'We let it slide today' })
+  await db.cards.add({ ...reviewCard('k7', 'c7', 'R', '2026-10-29T10:00:00Z'), kind: 'A' })
+  const { container } = renderSession()
+  await waitFor(() => expect(container.querySelector('section.session-card.listen')).toBeTruthy())
+  const card = container.querySelector('section.session-card')!
+  expect(card.className).not.toMatch(/song-hue-/)
+  expect(card.querySelector('.cover')).toBeNull()
+})
+
+test('Today shows one cover per song', async () => {
+  await db.songs.add({ ...song, id: 's2', title: 'Other Song' })
+  const { container } = render(<AppDepsProvider value={deps()}><Today /></AppDepsProvider>)
+  await screen.findByText('Other Song')
+  expect(container.querySelectorAll('a.song-card').length).toBe(2)
+  expect(container.querySelectorAll('.song-card .cover')).toHaveLength(2)
 })

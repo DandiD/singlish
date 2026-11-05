@@ -9,6 +9,8 @@ import { href } from '../../router'
 import { activeSongCount, deleteSong, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
+import { Cover } from '../components/Cover'
+import { ensureCover } from '../../domain/cover'
 
 
 export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song'): string {
@@ -69,6 +71,7 @@ export function Songs() {
         ) : (
           <li class="song-card" key={s.id}>
             <div class="song-top">
+              <Cover song={s} size="md" />
               <h2>{s.title}</h2>
               <span class="badge">{statusLabel(s.status, s.kind)}</span>
             </div>
@@ -122,6 +125,11 @@ export function Songs() {
   )
 }
 
+/** Un link diverso rende vecchia la copertina salvata: si azzera, la nuova arriva con ensureCover. */
+function coverResetIfLinkChanged(next: string | null, prev: string | null | undefined): { coverUrl?: undefined } {
+  return (next ?? null) !== (prev ?? null) ? { coverUrl: undefined } : {}
+}
+
 /** Titolo e artista di una canzone, correggibili in qualunque stato (es. una salvata come «Senza titolo»). */
 function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
   const { db, fetch } = useDeps()
@@ -165,8 +173,9 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
     // Titolo svuotato: resta quello di prima, ma link e artista scritti si salvano lo stesso.
     const title = v.title.trim() || song.title
     const untitled = title === 'Senza titolo'
-    db.songs.update(song.id, { title, artist: v.artist.trim(), spotifyUrl: url })
+    db.songs.update(song.id, { title, artist: v.artist.trim(), spotifyUrl: url, ...coverResetIfLinkChanged(url, song.spotifyUrl) })
       .then(async () => {
+        if (url !== (song.spotifyUrl ?? null)) void ensureCover(db, song.id, fetch).catch(reportError)
         // Link nuovo su una canzone senza titolo vero: il titolo di Spotify arriva anche dopo l'uscita, se intanto non è stato scelto.
         if (!untitled || !url || url === song.spotifyUrl) return
         const found = await fetchTrackTitle(url, fetch)
@@ -189,7 +198,8 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
         const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000))
         finalTitle = ((await Promise.race([fetchTrackTitle(canonical, fetch), timeout])) ?? '').trim() || finalTitle
       }
-      await db.songs.update(song.id, { title: finalTitle, artist: artist.trim(), spotifyUrl: canonical })
+      await db.songs.update(song.id, { title: finalTitle, artist: artist.trim(), spotifyUrl: canonical, ...coverResetIfLinkChanged(canonical, song.spotifyUrl) })
+      if (canonical !== (song.spotifyUrl ?? null)) void ensureCover(db, song.id, fetch).catch(reportError)
       onDone()
     } catch (e) {
       reportError(e)

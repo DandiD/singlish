@@ -7,6 +7,8 @@ import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
 import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
+import { ensureCover } from '../../domain/cover'
+import { reportError } from '../report'
 import type { TextSource } from '../../db/types'
 
 
@@ -140,6 +142,8 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
         },
         now(),
       )
+      // La copertina si cerca in sottofondo: la navigazione non la aspetta.
+      void ensureCover(db, song.id, fetch).catch(reportError)
       saved.current = true
       writeDraft(key, null)
       // Uscito mentre salvava: la canzone resta fra le bozze in Canzoni, la navigazione dell'utente non si annulla.

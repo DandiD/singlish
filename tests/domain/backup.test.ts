@@ -73,6 +73,20 @@ test('revives nested dates', async () => {
   expect((await db2.sessions.get('x1'))!.endedAt).toBeNull()
 })
 
+test('coverUrl string, null and absent survive export and import', async () => {
+  const base = (await db.songs.get('s1'))!
+  await db.songs.bulkAdd([
+    { ...base, id: 'with', coverUrl: 'https://i.scdn.co/image/ab67616d00001e02dddd' },
+    { ...base, id: 'null', coverUrl: null },
+  ])
+  const file = await exportBackup(db, now)
+  const db2 = mk()
+  await importBackup(db2, JSON.parse(JSON.stringify(file)))
+  expect((await db2.songs.get('with'))!.coverUrl).toBe('https://i.scdn.co/image/ab67616d00001e02dddd')
+  expect((await db2.songs.get('null'))!.coverUrl).toBeNull()
+  expect('coverUrl' in (await db2.songs.get('s1'))!).toBe(false)
+})
+
 test('rejects foreign files', async () => {
   await expect(importBackup(db, { app: 'x' })).rejects.toThrow('Backup non valido')
 })

@@ -22,6 +22,9 @@ import { Icon } from '../components/Icon'
 import { noAutocorrect } from '../noAutocorrect'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
+import { Cover } from '../components/Cover'
+import { songLook } from '../cover'
+import type { ComponentChildren } from 'preact'
 
 const MAX_CARD_MS = 120_000
 const EXTRA_MS = 5 * 60_000
@@ -373,13 +376,14 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
   onRate(rating: Rating, auto: boolean, answer: string | null): void
   onProduce(sentence: string): void
 }) {
-  if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} isNew={isNew} onRate={onRate} onProduce={onProduce} />
+  if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} song={found.item.origin === 'expand' ? undefined : song} isNew={isNew} onRate={onRate} onProduce={onProduce} />
   if (card.kind === 'A' && found.kind === 'chunk') return <ListenCard chunk={found.item} song={song} isNew={isNew} onRate={onRate} />
   if (card.kind === 'S' && found.kind === 'word' && found.item.nuance) return <NuanceCard word={found.item} isNew={isNew} onRate={onRate} />
   const item = found.item
   const ctx = item.contexts[0] ?? { songId: item.songId, lineIndex: item.lineIndex }
   // Una voce aggiunta da Espandi non ha verso: la sua frase è l'esempio di Gemini.
   const fromExpand = item.origin === 'expand'
+  const cardSong = fromExpand ? undefined : song
   const verse = fromExpand ? item.extraExampleEn : song?.lines[ctx.lineIndex] ?? ''
   // La stessa forma che lo Studio evidenzia: salvata per il verso, originale, base o irregolare.
   const surface = formIn(verse, [ctx.surfaceForm, item.surfaceForm, found.kind === 'chunk' ? found.item.baseForm : found.item.lemma])
@@ -405,7 +409,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
   const idxGap = at ? at.start : -1
 
   return (
-    <section class="card session-card">
+    <section class={`card session-card${cardSong ? ` song-hue-${songLook(cardSong.id).hue}` : ''}`}>
       <span class="chip">{`${isC ? 'COMPLETA' : 'RICONOSCI'}${isNew ? ' · NUOVA' : ''}`}</span>
       {!(isC && idxGap < 0) && (
         <p class="verse" lang="en">
@@ -420,7 +424,9 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           )}
         </p>
       )}
-      <p class="note">{fromExpand ? 'Esempio' : `${song?.title ?? ''} · riga ${ctx.lineIndex + 1}`}</p>
+      <SongLine song={cardSong}>
+        <p class="note">{fromExpand ? 'Esempio' : `${song?.title ?? ''} · riga ${ctx.lineIndex + 1}`}</p>
+      </SongLine>
 
       {!isC && !revealed && (
         <button type="button" class="btn primary cta" onClick={() => setRevealed(true)}>Mostra significato</button>
@@ -480,8 +486,9 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
 }
 
 /** Card Produci: una situazione in italiano e il chunk da usare; la frase si corregge a fine sessione. */
-function ProduceCard({ chunk, isNew, onRate, onProduce }: {
+function ProduceCard({ chunk, song, isNew, onRate, onProduce }: {
   chunk: Chunk
+  song: Song | undefined
   isNew: boolean
   onRate(rating: Rating, auto: boolean, answer: string | null): void
   onProduce(sentence: string): void
@@ -489,8 +496,9 @@ function ProduceCard({ chunk, isNew, onRate, onProduce }: {
   const [sentence, setSentence] = useState('')
   const ok = sentence.trim().length > 0
   return (
-    <section class="card session-card produce">
+    <section class={`card session-card produce${song ? ` song-hue-${songLook(song.id).hue}` : ''}`}>
       <span class="chip">{`PRODUCI${isNew ? ' · NUOVA' : ''}`}</span>
+      <SongLine song={song} />
       <div class="situation">
         <span class="section-label">SITUAZIONE</span>
         <p class="verse">{chunk.productionPromptIt}</p>
@@ -524,6 +532,17 @@ const speak = (text: string, rate: number) => {
   synth.speak(u)
 }
 
+/** Copertina piccola e titolo della canzone della card; per le voci di Espandi (senza canzone) non c'è nulla. */
+function SongLine({ song, children }: { song: Song | undefined; children?: ComponentChildren }) {
+  if (!song) return <>{children}</>
+  return (
+    <div class="session-song">
+      <Cover song={song} size="sm" />
+      {children ?? <p class="note">{song.title}</p>}
+    </div>
+  )
+}
+
 /** Card Ascolta: l'app legge il verso (sintesi vocale del dispositivo), si scrive quello che si sente. */
 function ListenCard({ chunk, song, isNew, onRate }: {
   chunk: Chunk
@@ -532,6 +551,7 @@ function ListenCard({ chunk, song, isNew, onRate }: {
   onRate(rating: Rating, auto: boolean, answer: string | null): void
 }) {
   // Canzone e riga dallo stesso verso: quello della canzone mostrata.
+  const listenSong = chunk.origin === 'expand' ? undefined : song
   const line = chunk.contexts.find((c) => c.songId === song?.id)?.lineIndex ?? chunk.lineIndex
   const verse = song?.lines[line] ?? chunk.extraExampleEn
   // La nota di pronuncia è pensata per una canzone: su un testo libero non si mostra.
@@ -544,8 +564,9 @@ function ListenCard({ chunk, song, isNew, onRate }: {
   const check = () => { const g = gradeDictation(answer, verse); setResult(g); setSelected(g.rating) }
   const verdict = result === null ? '' : result.wrongWords === 0 ? 'Esatto' : result.wrongWords === 1 ? 'Quasi: una parola' : 'Non ancora'
   return (
-    <section class="card session-card listen">
+    <section class={`card session-card listen${listenSong ? ` song-hue-${songLook(listenSong.id).hue}` : ''}`}>
       <span class="chip">{`ASCOLTA${isNew ? ' · NUOVA' : ''}`}</span>
+      <SongLine song={listenSong} />
       <div class="listen-player">
         {canSpeak ? (
           <>

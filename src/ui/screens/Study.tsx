@@ -22,6 +22,9 @@ import { ItemSheet, SpeechSheet } from './ItemSheet'
 import { Icon } from '../components/Icon'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
+import { ensureCover } from '../../domain/cover'
+import { Cover } from '../components/Cover'
+import { songLook } from '../cover'
 
 const LEGEND: [string, string][] = [
   ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['fp', 'espressione fissa'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
@@ -64,6 +67,11 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   // Aprire lo Studio di una canzone tenuta per più avanti la mette in studio: da qui le sue card nuove entrano nel ripasso.
   useEffect(() => {
     startStudying(db, songId, now()).catch(reportError)
+  }, [db, songId])
+
+  // La copertina di Spotify si cerca all'apertura, senza attendere: offline o bloccata, resta quella generata.
+  useEffect(() => {
+    void ensureCover(db, songId, fetch).catch(reportError)
   }, [db, songId])
 
   const timer = useTimer(sessionId, { autoPauseOnHide: true, wakeLock: false }, db)
@@ -143,8 +151,9 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
 
   return (
     <main class="screen study">
-      <header class="settings-head">
+      <header class={`settings-head study-head song-hue-${songLook(song.id).hue}`}>
         <a class="icon-btn" href={href({ name: 'songs' })} onClick={onBack({ name: 'songs' })} aria-label="Indietro"><Icon name="back" /></a>
+        <Cover song={song} size="lg" />
         <div class="grow">
           <h1>{song.title}</h1>
           <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}`}</p>
