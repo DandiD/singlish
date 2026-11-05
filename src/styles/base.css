@@ -245,7 +245,9 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .link-add { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; color: var(--accent-text); text-decoration: none; }
 .today .song-card { text-decoration: none; color: var(--text); }
 .today .song-card h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
-.segs { display: flex; gap: 2px; margin-top: 6px; }
+/* Una riga tutta loro, larga quanto la testa: 2 px fra i segmenti finché c'è posto, poi il passo scende fino a 0
+   (a 390 px, 350 px di riga, restano almeno 2 px a segmento fino a 175 card). */
+.segs { display: flex; gap: max(0px, min(2px, calc((100% - var(--n) * 2px) / max(var(--n) - 1, 1)))); }
 .seg { flex: 1 1 0; min-width: 2px; height: 8px; border-radius: 2px; box-sizing: border-box; background: var(--surface-2); }
 /* Da fare: una linea sottile al centro; Di nuovo: solo il bordo. Tutti e due a 3:1 o più sul fondo, nei due temi. */
 .seg-todo { background: linear-gradient(var(--muted), var(--muted)) center / 100% 2px no-repeat; }
@@ -259,7 +261,8 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .bar-fill { width: 100%; height: 100%; background: var(--accent); transform-origin: left center; }
 
 .session { display: flex; flex-direction: column; gap: 14px; padding-bottom: 32px; min-height: 100dvh; overflow-x: clip; }
-.session-head { display: flex; align-items: center; gap: 12px; }
+.session-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.session-head > .segs { flex: 1 0 100%; }
 .session-card { display: flex; flex-direction: column; gap: 20px; padding: 24px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); box-shadow: 0 8px 24px color-mix(in srgb, var(--scrim) 40%, transparent); }
 .session-card .chip { align-self: flex-start; }
 /* La card occupa lo schermo: le azioni scendono nella metà bassa, sotto il pollice. */

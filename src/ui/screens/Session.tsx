@@ -347,7 +347,6 @@ export function Session() {
         <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
-          <RatingSegments segments={segments} current={position} glow={glow} label={segmentsLabel(outcomeList)} />
         </div>
         {timerReady && (
           <TimerPill
@@ -358,6 +357,7 @@ export function Session() {
             onResume={timer.resume}
           />
         )}
+        <RatingSegments segments={segments} current={position} glow={glow} label={segmentsLabel(outcomeList)} />
       </header>
 
       {found ? (

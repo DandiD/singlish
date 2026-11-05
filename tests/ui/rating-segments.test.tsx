@@ -17,6 +17,7 @@ test('one span per segment with kind class, current ring and glow', () => {
   )
   expect(segs.map((s) => s.classList.contains('seg-current'))).toEqual([false, false, false, false, false, true])
   expect(segs.map((s) => s.classList.contains('seg-glow'))).toEqual([false, true, false, false, false, false])
+  expect((group as HTMLElement).style.getPropertyValue('--n')).toBe('6')
 })
 
 const read = (f: string) => readFileSync(`src/styles/${f}`, 'utf8')
@@ -30,6 +31,8 @@ test('long sessions stay on one row: flexible width, at least 2px', () => {
   const body = rule(read('base.css'), '.seg')
   expect(body).toMatch(/flex:\s*1 1 0/)
   expect(body).toMatch(/min-width:\s*2px/)
+  // il passo fra i segmenti si stringe fino a 0 quando 2 px a testa non lasciano spazio
+  expect(rule(read('base.css'), '.segs')).toMatch(/gap:\s*max\(0px,\s*min\(2px,[^;]*var\(--n\)/)
 })
 
 test('reduced motion switches off segment and glow animations', () => {
