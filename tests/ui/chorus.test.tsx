@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/pr
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Chorus } from '../../src/ui/screens/Chorus'
+import { ReadAlong } from '../../src/ui/screens/ReadAlong'
 import { Study } from '../../src/ui/screens/Study'
 import { parseRoute, href } from '../../src/router'
 import type { Song } from '../../src/db/types'
@@ -16,21 +17,20 @@ beforeEach(async () => { db = createDb('t-' + crypto.randomUUID()); window.locat
 afterEach(() => { cleanup(); db.close() })
 const mount = (ui: preact.JSX.Element) => render(<AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>{ui}</AppDepsProvider>)
 
-test('rotta e ingresso dallo Studio, solo se c\'è un ritornello', async () => {
+test('rotta e ingresso dalla lettura, solo se c\'è un ritornello', async () => {
   expect(parseRoute('#/songs/s1/chorus')).toEqual({ name: 'chorus', songId: 's1' })
   expect(href({ name: 'chorus', songId: 's1' })).toBe('#/songs/s1/chorus')
-  mount(<Study songId="s1" />)
-  expect((await screen.findByRole('link', { name: /Ritornello a voce/ })).getAttribute('href')).toBe('#/songs/s1/chorus')
+  mount(<ReadAlong songId="s1" />)
+  expect((await screen.findByRole('link', { name: 'Solo il ritornello' })).getAttribute('href')).toBe('#/songs/s1/chorus')
   cleanup()
-  await db.songs.update('s1', { kind: 'text', source: 'podcast' })
   mount(<Study songId="s1" />)
   await screen.findByRole('heading', { name: 'Late Train Home' })
   expect(screen.queryByRole('link', { name: /Ritornello a voce/ })).toBeNull()
   cleanup()
-  await db.songs.update('s1', { kind: 'song', lines: ['a b', 'c d'] })
-  mount(<Study songId="s1" />)
-  await screen.findByRole('heading', { name: 'Late Train Home' })
-  expect(screen.queryByRole('link', { name: /Ritornello a voce/ })).toBeNull()
+  await db.songs.update('s1', { lines: ['a b', 'c d'] })
+  mount(<ReadAlong songId="s1" />)
+  await screen.findByRole('button', { name: 'Avanti' })
+  expect(screen.queryByRole('link', { name: 'Solo il ritornello' })).toBeNull()
 })
 
 test('si copre una riga toccandola, Ancora conta un tentativo, Ce l\'ho lo segna', async () => {

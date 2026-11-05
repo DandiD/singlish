@@ -17,6 +17,20 @@ const path = (song: Song, o: { toTriage?: number; unlocked?: number; lines?: num
 const stage = (s: ReturnType<typeof path>, id: string) => s.find((x) => x.id === id)!
 
 describe('songPath', () => {
+  it('study: read-along action once analyzed, date detail from readAlongAt', () => {
+    expect(stage(path(mk({ status: 'analyzed' })), 'study').action).toBe('readAlong')
+    expect(stage(path(mk({ status: 'done' })), 'study').action).toBe('readAlong')
+    expect(stage(path(mk()), 'study').detail).toBeNull()
+    const d = new Date(2026, 10, 5, 9)
+    expect(stage(path(mk({ readAlongAt: d })), 'study').detail).toBe('letta il 5 novembre')
+    expect(stage(path(mk({ kind: 'text', source: 'serie', readAlongAt: d })), 'study').detail).toBe('letto il 5 novembre')
+  })
+
+  it('study: no read-along action for draft or queued', () => {
+    expect(stage(path(mk({ status: 'draft' })), 'study').action).toBeNull()
+    expect(stage(path(mk({ status: 'queued' })), 'study').action).toBeNull()
+  })
+
   it('names and order for a song', () => {
     expect(path(mk()).map((s) => s.name)).toEqual(['Ascolto', 'Analisi', 'Studio', 'Smista', 'Ripasso', 'Riascolto'])
   })
@@ -98,11 +112,11 @@ describe('songPath', () => {
     const p = path(mk(), { finalReady: true, toTriage: 2, lines: 4, unlocked: 1 })
     expect(stage(p, 'triage')).toMatchObject({ state: 'partial', action: 'triage' })
     expect(stage(p, 'final')).toMatchObject({ state: 'current', action: 'finalListen' })
-    expect(p.filter((s) => s.action).map((s) => s.id)).toEqual(['triage', 'final'])
+    expect(p.filter((s) => s.action).map((s) => s.id)).toEqual(['study', 'triage', 'final'])
   })
 
-  it('no action when stage is not available', () => {
-    const p = path(mk({ status: 'analyzed' }))
-    expect(p.every((s) => s.action === null)).toBe(true)
+  it('draft: only analysis has an action', () => {
+    const p = path(mk({ status: 'draft' }))
+    expect(p.filter((s) => s.action).map((s) => s.id)).toEqual(['analyze'])
   })
 })

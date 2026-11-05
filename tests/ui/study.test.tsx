@@ -411,23 +411,33 @@ describe('percorso e testata', () => {
     const smista = await within(list).findByRole('link', { name: 'Smista, in corso, 2 da fare' })
     expect(smista.getAttribute('href')).toBe('#/songs/s1/triage')
     expect(within(list).getByRole('link', { name: 'Riascolto, ora, pronto' }).getAttribute('href')).toBe('#/songs/s1/final')
-    expect(within(list).getAllByRole('link')).toHaveLength(2)
+    expect(within(list).getAllByRole('link')).toHaveLength(3) // + Studio: Leggi a tempo
     expect(within(list).getAllByRole('listitem')[0].textContent).toBe('Ascolto, fatta, 40%')
   })
 
-  test('senza parole da smistare e riascolto lontano: nessuna tappa con un link', async () => {
+  test('senza parole da smistare e riascolto lontano: solo lo Studio ha un link (la lettura)', async () => {
     mount()
     const list = await path()
-    expect(within(list).queryAllByRole('link')).toHaveLength(0)
+    expect(within(list).getAllByRole('link').map((l) => l.getAttribute('href'))).toEqual(['#/songs/s1/read'])
     expect(within(list).getAllByRole('listitem')[5].textContent).toBe('Riascolto, da fare, tra 7 giorni')
   })
 
-  test('con un ritornello «Ritornello a voce» parte dalla tappa Studio', async () => {
-    const chorus = ['Late train home, no one waiting', 'verse', 'Late train home, no one waiting']
-    await db.songs.update('s1', { lines: chorus })
+  test('la tappa Studio porta a «Leggi a tempo»; con la data di lettura la mostra', async () => {
+    mount()
+    let list = await path()
+    expect((await within(list).findByRole('link', { name: 'Studio, fatta, Leggi a tempo' })).getAttribute('href')).toBe('#/songs/s1/read')
+    cleanup()
+    await db.songs.update('s1', { readAlongAt: new Date('2026-11-05T09:00:00') })
+    mount()
+    list = await path()
+    expect((await within(list).findByRole('link', { name: 'Studio, fatta, letta il 5 novembre, Leggi a tempo' })).getAttribute('href')).toBe('#/songs/s1/read')
+  })
+
+  test('un testo libero dice «Leggi riga per riga»', async () => {
+    await db.songs.update('s1', { kind: 'text', source: 'podcast' })
     mount()
     const list = await path()
-    expect((await within(list).findByRole('link', { name: 'Studio, fatta, Ritornello a voce' })).getAttribute('href')).toBe('#/songs/s1/chorus')
+    expect((await within(list).findByRole('link', { name: 'Studio, fatta, Leggi riga per riga' })).getAttribute('href')).toBe('#/songs/s1/read')
   })
 
   test('«Apri in Spotify ↗» sta nella testata', async () => {

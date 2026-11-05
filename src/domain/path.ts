@@ -8,7 +8,7 @@ export type Stage = {
   name: string
   state: StageState
   detail: string | null
-  action: 'analyzing' | 'triage' | 'finalListen' | null
+  action: 'analyzing' | 'triage' | 'finalListen' | 'readAlong' | null
 }
 
 const DAY = 86_400_000
@@ -42,8 +42,11 @@ export function songPath(input: { song: Song; toTriage: number; unlocked: number
     : { id: 'analyze', name: 'Analisi', state: 'current', detail: null, action: 'analyzing' }
 
   const studied = song.status === 'studying' || song.status === 'done'
+  const readDetail = song.readAlongAt
+    ? `${isText ? 'letto' : 'letta'} il ${new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' }).format(song.readAlongAt)}`
+    : null
   const study: Stage = {
-    id: 'study', name: 'Studio', detail: null, action: null,
+    id: 'study', name: 'Studio', detail: readDetail, action: analyzed ? 'readAlong' : null,
     state: studied ? 'done' : song.status === 'analyzed' ? 'current' : 'todo',
   }
 
