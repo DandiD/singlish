@@ -147,3 +147,13 @@ a.song-card:active { transform: scale(.985); }
   }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+
+/* ---------- Anello del giorno ---------- */
+/* L'arco si riempie da 0 al valore all'apertura; a giro finito, un solo impulso. */
+.day-ring-arc { animation: ring-fill var(--t-slow) var(--ease-out) both; }
+@keyframes ring-fill { from { stroke-dashoffset: var(--ring-c); } }
+.day-ring--done .day-ring-figure { animation: ring-pulse var(--t-med) var(--ease-out) 1; }
+@keyframes ring-pulse { 50% { transform: scale(1.05); } }
+@media (prefers-reduced-motion: reduce) {
+  .day-ring-arc, .day-ring--done .day-ring-figure { animation: none !important; }
+}

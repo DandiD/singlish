@@ -474,3 +474,17 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .study-head > .grow { grid-column: 1 / -1; grid-row: 3; }
 .study-head > :last-child:not(.grow):not(.cover) { grid-column: 3; grid-row: 1; }
 .study-head h1 { overflow-wrap: anywhere; line-height: 1.15; }
+
+/* ---------- Anello del giorno ---------- */
+.day-ring { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.day-ring-figure { position: relative; width: 168px; height: 168px; }
+.day-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.day-ring-track, .day-ring-arc { fill: none; stroke-width: 9; }
+.day-ring-track { stroke: var(--line); }
+.day-ring-arc { stroke: var(--accent); stroke-linecap: round; }
+.day-ring--blocked .day-ring-track { stroke-dasharray: 3 7; stroke: var(--line-strong); }
+.day-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+.day-ring-min { font-size: 13px; color: var(--muted); }
+.day-ring-label { margin: 0; color: var(--text-2); font-size: 14px; }
+.day-ring-why { min-height: 44px; min-width: 44px; padding: 0 16px; border: 0; background: transparent; color: var(--accent-text); font-weight: 600; font-size: 14px; cursor: pointer; }
+.day-ring-why-text { margin: 0; max-width: 36ch; color: var(--text-2); font-size: 14px; }
