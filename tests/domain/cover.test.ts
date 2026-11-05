@@ -140,6 +140,24 @@ describe('ensureCover', () => {
     expect((await db.songs.get(s.id))!.coverUrl).toBe(COVER)
   })
 
+  test('concurrent lookups for the same song make one request', async () => {
+    const s = await add()
+    let release!: () => void
+    const gate = new Promise<void>((r) => { release = r })
+    const f = vi.fn(async () => {
+      await gate
+      return new Response(JSON.stringify({ thumbnail_url: COVER }), { status: 200 })
+    }) as unknown as typeof fetch
+    const tried = new Set<string>()
+    const first = ensureCover(db, s.id, f, tried)
+    const second = ensureCover(db, s.id, f, tried)
+    await new Promise((r) => setTimeout(r, 30)) // both calls have passed the DB read while the request is pending
+    release()
+    await Promise.all([first, second])
+    expect(f).toHaveBeenCalledTimes(1)
+    expect((await db.songs.get(s.id))!.coverUrl).toBe(COVER)
+  })
+
   test('an IndexedDB failure rejects', async () => {
     const s = await add()
     const f = okFetch()

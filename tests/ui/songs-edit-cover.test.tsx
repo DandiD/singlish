@@ -83,3 +83,16 @@ test('uscendo con lo stesso link e un titolo nuovo: la copertina resta', async (
   await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Glass Harbor'))
   expect((await db.songs.get(s.id))!.coverUrl).toBe(X)
 })
+
+test('uscendo con un link non valido: link e copertina restano quelli di prima', async () => {
+  const s = await seed()
+  const { unmount } = mount()
+  const card = await openEdit()
+  fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: 'https://example.com/x' } })
+  fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Glass Harbor' } })
+  unmount()
+  await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Glass Harbor'))
+  const stored = (await db.songs.get(s.id))!
+  expect(stored.spotifyUrl).toBe(A)
+  expect(stored.coverUrl).toBe(X)
+})
