@@ -62,6 +62,11 @@ describe('songPath', () => {
     expect(stage(path(mk({ status: 'done', comprehensionAfter: 70 })), 'final')).toMatchObject({ state: 'done', detail: '70%' })
   })
 
+  it('final: negative or zero gain has no plus sign', () => {
+    expect(stage(path(mk({ status: 'done', comprehensionBefore: 70, comprehensionAfter: 65 })), 'final').detail).toBe('-5')
+    expect(stage(path(mk({ status: 'done', comprehensionBefore: 50, comprehensionAfter: 50 })), 'final').detail).toBe('0')
+  })
+
   it('final: ready is current with pronto and action', () => {
     expect(stage(path(mk(), { finalReady: true }), 'final')).toMatchObject({ state: 'current', detail: 'pronto', action: 'finalListen' })
   })

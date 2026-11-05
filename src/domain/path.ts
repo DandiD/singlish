@@ -53,7 +53,8 @@ export function songPath(input: { song: Song; toTriage: number; unlocked: number
 
   let final: Stage
   if (song.comprehensionAfter != null) {
-    const detail = song.comprehensionBefore != null ? `+${song.comprehensionAfter - song.comprehensionBefore}` : `${song.comprehensionAfter}%`
+    const gain = song.comprehensionBefore != null ? song.comprehensionAfter - song.comprehensionBefore : null
+    const detail = gain == null ? `${song.comprehensionAfter}%` : gain > 0 ? `+${gain}` : `${gain}`
     final = { id: 'final', name: 'Riascolto', state: 'done', detail, action: null }
   } else if (finalReady) {
     final = { id: 'final', name: 'Riascolto', state: 'current', detail: 'pronto', action: 'finalListen' }
