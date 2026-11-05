@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'vitest'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { newFsrsCard } from '../../src/domain/scheduler'
-import { dayRing, doneToday, emptyAction, featuredInvite } from '../../src/domain/today'
+import { dayRing, doneToday, emptyAction, featuredInvite, todaySong } from '../../src/domain/today'
 import type { CardRow, Chunk, Review, Song } from '../../src/db/types'
 
 const song = (id: string, title = id): Song => ({ id, title, artist: 'Nessuno', kind: 'song', spotifyUrl: null, lines: [], status: 'analyzed' } as unknown as Song)
@@ -84,5 +84,50 @@ describe('doneToday', () => {
   })
   test('dopo mezzanotte si riparte da zero', async () => {
     expect(await doneToday(db, new Date(2026, 10, 6, 0, 1))).toBe(0)
+  })
+})
+
+describe('todaySong', () => {
+  // Titoli inventati.
+  const day = (d: number) => new Date(2026, 10, d, 10, 0)
+  const s = (id: string, over: Partial<Song> = {}): Song =>
+    ({ ...song(id), status: 'studying', addedAt: day(1), analyzedAt: day(1), studyStartedAt: day(1), ...over } as Song)
+  const P = s('p', { addedAt: day(1) }), Q = s('q', { addedAt: day(2) }), R = s('r', { addedAt: day(3) })
+  const songs = [P, Q, R]
+  const invite = { kind: 'triage', song: R, count: 2 } as const
+
+  test('1. la canzone con più card nella coda di oggi', () => {
+    expect(todaySong({ queueSongIds: ['q', 'p', 'q', 'r'], invite, songs })).toBe(Q)
+  })
+
+  test('1. a pari card vince quella aggiunta prima', () => {
+    expect(todaySong({ queueSongIds: ['q', 'p', 'q', 'p'], invite: null, songs })).toBe(P)
+    expect(todaySong({ queueSongIds: ['r', 'q'], invite: null, songs: [R, Q] })).toBe(Q)
+  })
+
+  test('1. gli id che non sono fra le canzoni non contano', () => {
+    expect(todaySong({ queueSongIds: ['gone', 'gone', 'gone', '', 'r'], invite: null, songs })).toBe(R)
+  })
+
+  test('2. coda vuota (o senza canzoni note): la canzone dell\'invito', () => {
+    expect(todaySong({ queueSongIds: [], invite, songs })).toBe(R)
+    expect(todaySong({ queueSongIds: ['gone'], invite: { kind: 'study', song: Q }, songs })).toBe(Q)
+    expect(todaySong({ queueSongIds: [], invite: { kind: 'final', song: P }, songs })).toBe(P)
+  })
+
+  test('3. invito senza canzone o nessun invito: la canzone in studio aperta più di recente', () => {
+    const late = s('late', { studyStartedAt: null, analyzedAt: day(9) })
+    const added = s('added', { studyStartedAt: undefined, analyzedAt: null, addedAt: day(8) })
+    const draft = s('draft', { status: 'draft', addedAt: day(20), studyStartedAt: null, analyzedAt: null })
+    expect(todaySong({ queueSongIds: [], invite: { kind: 'correct', count: 1 }, songs: [P, Q, R, added, draft] })).toBe(added)
+    expect(todaySong({ queueSongIds: [], invite: null, songs: [P, late, added, draft] })).toBe(late)
+    expect(todaySong({ queueSongIds: [], invite: null, songs: [s('x', { studyStartedAt: day(4) }), s('y', { studyStartedAt: day(6) })] })!.id).toBe('y')
+  })
+
+  test('4. niente coda, niente invito con canzone, nessuna canzone in studio: null', () => {
+    const draft = s('draft', { status: 'draft' })
+    const analyzed = s('an', { status: 'analyzed' })
+    expect(todaySong({ queueSongIds: [], invite: null, songs: [draft, analyzed] })).toBeNull()
+    expect(todaySong({ queueSongIds: [], invite: null, songs: [] })).toBeNull()
   })
 })

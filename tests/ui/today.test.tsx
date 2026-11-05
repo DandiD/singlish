@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -9,6 +9,7 @@ import { getSettings, saveSettings } from '../../src/domain/settings'
 import { resetRhythmPulse } from '../../src/ui/components/WeekRhythm'
 import { resetRingPulse } from '../../src/ui/components/DayRing'
 import { LIMIT_NOTE } from '../../src/domain/ingest'
+import { songLook } from '../../src/ui/cover'
 import { resetMilestoneSheet } from '../../src/ui/screens/Today'
 import { MILESTONE_ORDER, unseenReached, type Milestone } from '../../src/domain/milestones'
 import type { CardRow, Chunk, Review, Song, Word } from '../../src/db/types'
@@ -89,6 +90,14 @@ const mount = (clock?: () => Date) => render(<AppDepsProvider value={deps(clock)
 const loaded = () => screen.findByRole('heading', { name: 'Ripasso di oggi' })
 const invites = (c: Element) => c.querySelectorAll('a.final-due')
 /** Oggi ha finito di decidere se mostrare un traguardo. */
+/** I tre numeri del giro stanno nel «Perché?» dell'anello: lo apre e ne restituisce il pannello. */
+const openWhy = () => {
+  const btn = screen.getByRole('button', { name: 'Perché?' })
+  if (btn.getAttribute('aria-expanded') !== 'true') fireEvent.click(btn)
+  return document.getElementById(btn.getAttribute('aria-controls')!)!
+}
+const statIn = (panel: HTMLElement, label: string) => within(panel).getByText(label, { selector: '.stat .note' }).parentElement!.querySelector('.stat-num')!.textContent
+const carousel = (c: Element) => within(c.querySelector<HTMLElement>('.song-carousel')!)
 const milestonesChecked = () => waitFor(() => expect(document.querySelector('main.today[data-milestones-checked]')).not.toBeNull())
 
 describe('anello del giorno e azione principale', () => {
@@ -98,9 +107,13 @@ describe('anello del giorno e azione principale', () => {
     mount()
     expect(await screen.findByRole('img', { name: '0 di 5 card fatte oggi, circa 1 minuto su 30' })).toBeTruthy()
     expect(screen.getByText('5 card da fare')).toBeTruthy()
-    // I minuti del timer stanno nell'anello: niente nota «su N minuti» sotto le statistiche, che restano.
+    // I minuti del timer stanno accanto all'anello: niente nota «su N minuti»; i tre numeri restano, dentro il «Perché?».
     expect(screen.queryByText(/^su \d+ minut/)).toBeNull()
-    for (const stat of ['in scadenza', 'nuove', 'stimati']) expect(screen.getByText(stat)).toBeTruthy()
+    const panel = openWhy()
+    expect(panel.hidden).toBe(false)
+    expect(statIn(panel, 'in scadenza')).toBe('5')
+    expect(statIn(panel, 'nuove')).toBe('0')
+    expect(statIn(panel, 'stimati')).toBe('~1′')
     expect(screen.getByRole('link', { name: 'Inizia il giro' }).getAttribute('href')).toBe('#/session')
     expect(screen.queryByRole('link', { name: 'Continua il giro' })).toBeNull()
   })
@@ -122,7 +135,8 @@ describe('anello del giorno e azione principale', () => {
     const { container } = mount()
     expect(await screen.findByRole('img', { name: '3 di 3 card fatte oggi' })).toBeTruthy()
     expect(screen.getByText('Fatto per oggi')).toBeTruthy()
-    for (const stat of ['in scadenza', 'nuove', 'stimati']) expect(screen.getByText(stat)).toBeTruthy()
+    const panel = openWhy()
+    for (const stat of ['in scadenza', 'nuove', 'stimati']) expect(within(panel).getByText(stat)).toBeTruthy()
     expect(container.querySelector('a[href="#/session"]')).toBeNull()
   })
 
@@ -310,7 +324,7 @@ describe('invito in evidenza', () => {
     expect(invite.getAttribute('href')).toBe('#/feedback')
     expect(invites(container)).toHaveLength(1)
     expect(screen.queryByText('RIASCOLTO FINALE')).toBeNull()
-    const item = screen.getByRole('link', { name: /Glass Tide/ })
+    const item = carousel(container).getByRole('link', { name: /Glass Tide/ })
     expect(item.getAttribute('href')).toBe('#/songs/s1/final')
     expect(item.textContent).toContain('Riascolto pronto')
   })
@@ -345,10 +359,10 @@ describe('carosello delle canzoni aperte', () => {
   const titles = ['Paper Sea', 'Borrowed Moon', 'Glass Tide', 'Copper Rain']
   test('4 canzoni aperte: 4 link con il titolo, niente «Aggiungi», la nota del limite', async () => {
     await db.songs.bulkAdd(titles.map((t, i) => song(`s${i + 1}`, t, 'studying', { addedAt: at(-10 + i) })))
-    mount()
+    const { container } = mount()
     expect(await screen.findByText('4 di 4')).toBeTruthy()
     for (const [i, t] of titles.entries()) {
-      expect(screen.getByRole('link', { name: new RegExp(t) }).getAttribute('href')).toBe(`#/songs/s${i + 1}`)
+      expect(carousel(container).getByRole('link', { name: new RegExp(t) }).getAttribute('href')).toBe(`#/songs/s${i + 1}`)
     }
     expect(screen.queryByRole('link', { name: 'Aggiungi' })).toBeNull()
     expect(screen.getByText(LIMIT_NOTE)).toBeTruthy()
@@ -646,5 +660,69 @@ describe('traguardi', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Aspetto, va bene così' }))
     expect(await screen.findByRole('dialog', { name: 'Venti punti in più' })).toBeTruthy()
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+})
+
+describe('la canzone del giorno in testa', () => {
+  const hero = () => document.querySelector<HTMLElement>('.today-hero')!
+
+  test('la canzone con più card in coda guida la testata: tinta, copertina, data, titolo e artista portano allo Studio', async () => {
+    await db.songs.bulkAdd([
+      song('s1', 'Paper Sea', 'studying', { addedAt: at(-9), artist: 'Nora Vale' }),
+      song('s2', 'Borrowed Moon', 'studying', { addedAt: at(-8), artist: 'Low Tide Club' }),
+    ])
+    await seedDue(1)
+    for (let i = 0; i < 2; i++) {
+      await db.chunks.add(chunk(`m${i}`, 's2'))
+      await db.cards.add(card(`mk${i}`, `m${i}`, at(-1)))
+    }
+    mount()
+    await loaded()
+    expect(screen.getByRole('heading', { level: 1, name: 'Ripasso di oggi' }).classList.contains('visually-hidden')).toBe(true)
+    expect(within(hero()).getByText('OGGI · giovedì 5')).toBeTruthy()
+    const link = within(hero()).getByRole('link', { name: 'Borrowed Moon Low Tide Club' })
+    expect(link.getAttribute('href')).toBe('#/songs/s2')
+    expect(hero().querySelector('.cover')).not.toBeNull()
+    // La tinta della canzone colora la cima della schermata.
+    const main = document.querySelector('main.today')!
+    expect(main.classList.contains('today--tinted')).toBe(true)
+    expect(main.classList.contains(`song-hue-${songLook('s2').hue}`)).toBe(true)
+    // L'anello compatto e il ritmo stanno nella testata.
+    expect(hero().querySelector('.day-ring--compact')).not.toBeNull()
+    expect(within(hero()).getByRole('link', { name: /Ritmo della settimana/ })).toBeTruthy()
+    // La data non si ripete fuori dalla testata.
+    expect(screen.queryByText('Giovedì 5 novembre')).toBeNull()
+  })
+
+  test('coda vuota: la canzone dell\'invito, anche quando l\'invito coincide con l\'azione principale', async () => {
+    await db.songs.bulkAdd([
+      song('s1', 'Paper Sea', 'studying', { addedAt: at(-9), studyStartedAt: at(-6) }),
+      song('s2', 'Borrowed Moon', 'studying', { addedAt: at(-8), studyStartedAt: at(-1) }),
+    ])
+    await db.words.add(pendingWord('gull'))
+    mount()
+    await screen.findByRole('link', { name: 'Smista le parole di «Paper Sea»' })
+    expect(within(hero()).getByRole('link', { name: /Paper Sea/ }).getAttribute('href')).toBe('#/songs/s1')
+  })
+
+  test('niente coda né invito: la canzone in studio aperta più di recente', async () => {
+    await db.songs.bulkAdd([
+      song('s1', 'Paper Sea', 'studying', { addedAt: at(-9), studyStartedAt: at(-1) }),
+      song('s2', 'Borrowed Moon', 'studying', { addedAt: at(-8), studyStartedAt: at(-6) }),
+    ])
+    mount()
+    await loaded()
+    expect(within(hero()).getByRole('link', { name: /Paper Sea/ }).getAttribute('href')).toBe('#/songs/s1')
+  })
+
+  test('nessuna canzone: testata senza copertina né tinta, anello e ritmo restano, l\'azione è aggiungere', async () => {
+    mount()
+    await loaded()
+    expect(hero().querySelector('.cover')).toBeNull()
+    expect([...hero().classList].some((c) => c.startsWith('song-hue-'))).toBe(false)
+    expect(document.querySelector('main.today')!.classList.contains('today--tinted')).toBe(false)
+    expect(within(hero()).getByRole('img', { name: 'Nessuna card oggi' })).toBeTruthy()
+    expect(within(hero()).getByRole('link', { name: /Ritmo della settimana/ })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Aggiungi una canzone' })).toBeTruthy()
   })
 })

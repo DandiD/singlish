@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact'
 import { useEffect, useId, useRef, useState } from 'preact/hooks'
 import type { dayRing } from '../../domain/today'
 import { plural } from '../plural'
@@ -26,9 +27,13 @@ type Props = {
   dayKey: string
   /** Vibrazione alla chiusura dell'anello; assente = attiva. */
   haptics?: boolean
+  /** Anello piccolo (testata di Oggi): solo il numero dentro, etichetta e minuti accanto. */
+  compact?: boolean
+  /** Altro contenuto del «Perché?» (i numeri del giro): con questo il pulsante c'è anche senza `why`. */
+  details?: ComponentChildren
 }
 
-export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, haptics }: Props) {
+export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, haptics, compact, details }: Props) {
   const [open, setOpen] = useState(false)
   const whyId = useId()
   const { done, total, state, blocked } = ring
@@ -51,8 +56,11 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, ha
     if (pulse) buzz({ haptics })
   }, [pulse])
 
+  const minutes = showMinutes && <span class="day-ring-min">{`~${estMinutes}′ di ${timerMinutes}′`}</span>
+  const hasWhy = why !== null || (details !== undefined && details !== null)
+
   return (
-    <div class={`day-ring day-ring--${state}${blocked ? ' day-ring--blocked' : ''}${pulse ? ' day-ring--pulse' : ''}`}>
+    <div class={`day-ring day-ring--${state}${compact ? ' day-ring--compact' : ''}${blocked ? ' day-ring--blocked' : ''}${pulse ? ' day-ring--pulse' : ''}`}>
       <div class="day-ring-figure" role="img" aria-label={aria}>
         <svg class="day-ring-svg" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
           <circle class="day-ring-track" cx="60" cy="60" r={R} />
@@ -68,16 +76,23 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, ha
         </svg>
         <div class="day-ring-center">
           <span class="display">{center}</span>
-          {showMinutes && <span class="day-ring-min">{`~${estMinutes}′ di ${timerMinutes}′`}</span>}
+          {!compact && minutes}
         </div>
       </div>
-      <p class="day-ring-label">{label}</p>
-      {why !== null && (
+      {compact ? (
+        <div class="day-ring-side">
+          <p class="day-ring-label">{label}</p>
+          {minutes}
+        </div>
+      ) : (
+        <p class="day-ring-label">{label}</p>
+      )}
+      {hasWhy && (
         <>
           <button type="button" class="day-ring-why" aria-expanded={open} aria-controls={whyId} onClick={() => setOpen(!open)}>
             Perché?
           </button>
-          <p id={whyId} class="day-ring-why-text" hidden={!open}>{why}</p>
+          <div id={whyId} class="day-ring-why-text" hidden={!open}>{why}{details}</div>
         </>
       )}
     </div>

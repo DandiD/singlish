@@ -34,6 +34,32 @@ export function featuredInvite(input: { toCorrect: number; finalDue: Song[]; toT
   return null
 }
 
+/**
+ * La canzone del giorno, in testa a Oggi: quella con più card nella coda di oggi (a pari card, l'aggiunta prima);
+ * se no quella dell'invito in evidenza; se no la canzone in studio aperta più di recente; se no nessuna.
+ * `queueSongIds` è la canzone di ogni card in coda (id fuori da `songs` non contano).
+ */
+export function todaySong(input: { queueSongIds: string[]; invite: Invite | null; songs: Song[] }): Song | null {
+  const { queueSongIds, invite, songs } = input
+  const counts = new Map<string, number>()
+  for (const id of queueSongIds) counts.set(id, (counts.get(id) ?? 0) + 1)
+  let best: Song | null = null
+  for (const song of songs) {
+    const n = counts.get(song.id) ?? 0
+    if (n === 0) continue
+    const b = best ? counts.get(best.id)! : 0
+    if (!best || n > b || (n === b && song.addedAt.getTime() < best.addedAt.getTime())) best = song
+  }
+  if (best) return best
+  if (invite && invite.kind !== 'correct') return invite.song
+  const studiedAt = (s: Song) => (s.studyStartedAt ?? s.analyzedAt ?? s.addedAt).getTime()
+  let recent: Song | null = null
+  for (const song of songs) {
+    if (song.status === 'studying' && (!recent || studiedAt(song) > studiedAt(recent))) recent = song
+  }
+  return recent
+}
+
 export type EmptyAction =
   | { kind: 'add' }
   | { kind: 'correct'; count: number }

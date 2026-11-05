@@ -144,3 +144,43 @@ describe('DayRing haptics', () => {
     expect(vibrate).not.toHaveBeenCalled()
   })
 })
+
+describe('DayRing compact', () => {
+  const compact = (done: number, left: number, extra: { why?: string | null; details?: preact.ComponentChildren } = {}) =>
+    render(<DayRing compact ring={dayRing({ done, left, blocked: false })} estMinutes={3} timerMinutes={30} label="12 card da fare" why={extra.why ?? null} dayKey="2026-11-05" details={extra.details} />)
+
+  test('only the number inside the ring; label and minutes on one side, outside the figure', () => {
+    const { container } = compact(0, 12)
+    const root = container.querySelector('.day-ring')!
+    expect(root.classList.contains('day-ring--compact')).toBe(true)
+    const figure = screen.getByRole('img')
+    expect(figure.querySelector('.display')!.textContent).toBe('12')
+    const minutes = screen.getByText('~3′ di 30′')
+    expect(figure.contains(minutes)).toBe(false)
+    expect(figure.contains(screen.getByText('12 card da fare'))).toBe(false)
+    expect(figure.getAttribute('aria-label')).toBe('0 di 12 card fatte oggi, circa 3 minuti su 30')
+  })
+
+  test('no minutes when nothing is left', () => {
+    compact(4, 0)
+    expect(screen.queryByText(/′ di/)).toBeNull()
+  })
+
+  test('details go inside the «Perché?» disclosure, which shows even without a why', () => {
+    compact(0, 12, { details: <p>Tre numeri</p> })
+    const btn = screen.getByRole('button', { name: 'Perché?' })
+    const panel = document.getElementById(btn.getAttribute('aria-controls')!)!
+    expect(panel.hidden).toBe(true)
+    expect(panel.textContent).toContain('Tre numeri')
+    fireEvent.click(btn)
+    expect(panel.hidden).toBe(false)
+  })
+
+  test('why and details share the same panel', () => {
+    compact(0, 12, { why: 'Le nuove sono trattenute.', details: <p>Tre numeri</p> })
+    const btn = screen.getByRole('button', { name: 'Perché?' })
+    const panel = document.getElementById(btn.getAttribute('aria-controls')!)!
+    expect(panel.textContent).toContain('Le nuove sono trattenute.')
+    expect(panel.textContent).toContain('Tre numeri')
+  })
+})
