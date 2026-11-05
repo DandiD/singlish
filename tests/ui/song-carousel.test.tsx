@@ -68,7 +68,7 @@ describe('SongCarousel', () => {
     const dots = [...container.querySelectorAll('.carousel-dot')]
     expect(dots).toHaveLength(6)
     expect(dots.map((d) => [...d.classList].find((c) => c.startsWith('dot-')))).toEqual(stages.map((s) => `dot-${s}`))
-    expect(dots.every((d) => d.getAttribute('aria-hidden') === 'true')).toBe(true)
+    expect(dots.every((d) => d.closest('[aria-hidden="true"]') !== null)).toBe(true)
     rerender(<SongCarousel items={[item()]} onAdd={null} addHref="#/add" />)
     expect(container.querySelector('.carousel-dot')).toBeNull()
   })

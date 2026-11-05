@@ -492,6 +492,6 @@ describe('ritmo della settimana in Oggi', () => {
     expect(dots[3].classList.contains('dot-partial')).toBe(true)
     expect(dots[2].classList.contains('dot-done')).toBe(true)
     const a = container.querySelector('.song-carousel a')!
-    expect(a.querySelector('.visually-hidden')!.textContent).toMatch(/^Oggi:/)
+    expect(a.querySelector('.visually-hidden')!.textContent).toBe('1 parola da smistare nello Studio')
   })
 })
