@@ -187,3 +187,10 @@ a.song-card:active { transform: scale(.985); }
 @media (prefers-reduced-motion: reduce) {
   .verse-it, .snap { animation: none !important; }
 }
+
+/* ---------- Lettura a tempo: la riga nuova entra con una breve dissolvenza ---------- */
+.ra-line { animation: ra-line-in var(--t-fast) var(--ease-out); }
+@keyframes ra-line-in { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .ra-line { animation: none !important; }
+}
