@@ -10,7 +10,7 @@ import { pendingWords } from '../../domain/triage'
 import { useLive } from '../useLive'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
-import { gradeAnswer, gradeDictation } from '../../domain/text'
+import { gradeAnswer, gradeDictation, typoSpan } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { useDayTick } from '../useDayTick'
 import { TimerPill } from '../components/TimerPill'
@@ -453,6 +453,8 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
     setSelected(g.rating)
   }
 
+  const translation = fromExpand ? undefined : song?.lineTranslations?.find((t) => t.lineIndex === ctx.lineIndex)?.textIt
+  const typo = proposed === 2 ? typoSpan(answer, surface) : null
   const at = findForm(verse, surface)
   const idxGap = at ? at.start : -1
 
@@ -464,7 +466,11 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           {isC ? (
             <>
               {verse.slice(0, idxGap)}
-              <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
+              {proposed === 3 ? (
+                <span class="gap snap" aria-label={`risposta: ${surface}`}>{surface}</span>
+              ) : (
+                <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
+              )}
               {verse.slice(at ? at.end : 0)}
             </>
           ) : (
@@ -485,6 +491,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           <div class="section-label">SIGNIFICATO</div>
           <p class="sheet-meaning">{item.meaningIt}</p>
           {!isC && item.explanationIt && <p class="sheet-expl">{item.explanationIt}</p>}
+          {!isC && translation && <p class="verse-it">{translation}</p>}
         </div>
       )}
 
@@ -521,7 +528,11 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
             <>
               <div class={`feedback f${proposed}`}>
                 <strong>{proposed === 3 ? 'Esatto' : proposed === 2 ? 'Quasi: un errore di battitura' : 'Non ancora'}</strong>
-                <p>{`Risposta attesa: ${surface} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
+                <p>
+                  {'Risposta attesa: '}
+                  {typo ? <>{typo.before}<u>{typo.diff}</u>{typo.after}</> : surface}
+                  {` · voto proposto: ${RATING_LABEL[proposed]}`}
+                </p>
               </div>
               <RatingBar selected={selected ?? proposed} onSelect={setSelected} />
               <button type="submit" class="btn primary cta">Conferma</button>

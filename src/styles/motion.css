@@ -179,3 +179,11 @@ a.song-card:active { transform: scale(.985); }
   .seg { transition: none !important; }
   .seg, .seg-glow { animation: none !important; }
 }
+
+/* ---------- Riga tradotta in dissolvenza; la risposta esatta si aggancia nel buco ---------- */
+.verse-it { animation: fade-in var(--t-med) var(--ease-out) both; }
+.snap { animation: snap-in var(--t-med) var(--ease-spring) both; }
+@keyframes snap-in { from { transform: scale(0.85); opacity: 0.4; } }
+@media (prefers-reduced-motion: reduce) {
+  .verse-it, .snap { animation: none !important; }
+}

@@ -545,3 +545,6 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .week-dot.future .week-dot-mark { border-color: var(--line); opacity: .5; }
 .week-dot-initial { font-size: 11px; color: var(--muted); }
 .week-rhythm-text { font-size: 14px; }
+.verse-it { margin: 0; font-size: 14px; font-style: italic; color: var(--text-2); }
+.gap.snap { border-bottom-style: solid; color: var(--accent); font-weight: 600; }
+.feedback u { text-decoration-thickness: 2px; text-underline-offset: 3px; }
