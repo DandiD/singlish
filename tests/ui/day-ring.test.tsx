@@ -72,10 +72,13 @@ describe('DayRing', () => {
 
   test('Perché? toggles the explanation; the text is always in the DOM', () => {
     ring(3, 2, true, { why: 'Le nuove sono trattenute.' })
-    expect(document.querySelector('.visually-hidden')!.textContent).toBe('Le nuove sono trattenute.')
+    expect(screen.getByText('Le nuove sono trattenute.')).toBeTruthy()
     const btn = screen.getByRole('button', { name: 'Perché?' })
     expect(btn.getAttribute('aria-expanded')).toBe('false')
-    const target = document.getElementById(btn.getAttribute('aria-controls')!)!
+    const target = screen.getByText('Le nuove sono trattenute.')
+    expect(btn.getAttribute('aria-controls')).toBe(target.id)
+    expect(target.id).not.toBe('')
+    expect(target.hasAttribute('aria-hidden')).toBe(false)
     expect(target.hasAttribute('hidden')).toBe(true)
     fireEvent.click(btn)
     expect(btn.getAttribute('aria-expanded')).toBe('true')

@@ -45,11 +45,10 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why }: Props) {
       <p class="day-ring-label">{label}</p>
       {why !== null && (
         <>
-          <span class="visually-hidden">{why}</span>
           <button type="button" class="day-ring-why" aria-expanded={open} aria-controls={whyId} onClick={() => setOpen(!open)}>
             Perché?
           </button>
-          <p id={whyId} class="day-ring-why-text" hidden={!open} aria-hidden="true">{why}</p>
+          <p id={whyId} class="day-ring-why-text" hidden={!open}>{why}</p>
         </>
       )}
     </div>
