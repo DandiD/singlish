@@ -343,7 +343,7 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .coverage-title { font-size: 14px; font-weight: 600; }
 .comp { display: flex; flex-direction: column; gap: 8px; }
 .comp-strip { display: flex; gap: 2px; }
-.comp-seg { flex-basis: 0; min-width: 12px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; }
+.comp-seg { flex-basis: 0; min-width: 24px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; }
 .comp-fill { display: block; width: 100%; height: 12px; border-radius: 3px; background: var(--text-2); }
 .comp-seg.pv .comp-fill { background: var(--blue); }
 .comp-seg.id .comp-fill { background: var(--accent); }
@@ -619,3 +619,8 @@ a.path-link .path-name { color: var(--accent-text); text-decoration: underline; 
 .verse-it { margin: 0; font-size: 14px; font-style: italic; color: var(--text-2); }
 .gap.snap { border-bottom-style: solid; color: var(--accent); font-weight: 600; }
 .feedback u { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+.view-switch { grid-template-columns: repeat(2, 1fr); margin: 12px 0; }
+.lex-group { margin-top: 16px; }
+.lex-group-head { display: flex; align-items: center; gap: 10px; margin: 0; font-size: var(--fs-body, 16px); font-family: var(--font-display, inherit); }
+.lex-group-title { min-width: 0; overflow-wrap: anywhere; }

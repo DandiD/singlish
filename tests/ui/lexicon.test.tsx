@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import { afterEach, beforeEach, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/preact'
 import { createDb, type SinglishDB } from '../../src/db/db'
@@ -135,4 +136,65 @@ test('tre tacche per voce, accese secondo lo stato', async () => {
   await db.chunks.update('hold on', { suspended: true })
   expect(await screen.findByText('B2 · sospeso')).toBeTruthy()
   expect(ticks(/hold on/)).toEqual([false, false, false])
+})
+
+// ---- Vista per canzone (D7) ----
+const song2: Song = { ...song, id: 's2', title: 'Paper Boats', addedAt: new Date('2026-11-03T10:00:00Z') }
+const songOld: Song = { ...song, id: 's0', title: 'Early Bird', addedAt: new Date('2026-10-01T10:00:00Z') }
+async function seedGroups() {
+  await db.songs.bulkAdd([song, song2, songOld])
+  await db.chunks.bulkAdd([
+    chunk('let it slide'),
+    chunk('hold on', { meaningIt: 'aspetta', songId: 's2', contexts: [{ songId: 's2', lineIndex: 0 }] }),
+    chunk('rise above', { songId: 's1', contexts: [], origin: 'expand' }),
+  ])
+}
+const view = (name: 'Tutte' | 'Per canzone') => screen.getByRole('radio', { name })
+
+test('per canzone: controllo a due voci, Tutte di default', async () => {
+  await seedGroups()
+  mount()
+  await screen.findByRole('list', { name: 'Voci del lessico' })
+  expect(view('Tutte').getAttribute('aria-checked')).toBe('true')
+  fireEvent.click(view('Per canzone'))
+  expect(view('Per canzone').getAttribute('aria-checked')).toBe('true')
+  expect(view('Tutte').getAttribute('aria-checked')).toBe('false')
+  expect(screen.getByRole('radiogroup', { name: 'Vista' })).toBeTruthy()
+})
+
+test('per canzone: un h2 per canzone in ordine di addedAt, voci sotto, Espandi in Altre voci', async () => {
+  await seedGroups()
+  mount()
+  await screen.findByRole('list', { name: 'Voci del lessico' })
+  fireEvent.click(view('Per canzone'))
+  const heads = screen.getAllByRole('heading', { level: 2 })
+  expect(heads.map((h) => h.querySelector('.lex-group-title')!.textContent)).toEqual(['Paper Boats', 'Lantern Road', 'Altre voci'])
+  expect(heads[0].querySelector('.cover')).toBeTruthy()
+  expect(heads[2].querySelector('.cover')).toBeNull()
+  const links = (h: HTMLElement) => within(h.parentElement!).getAllByRole('link').map((a) => a.textContent)
+  expect(links(heads[0])).toEqual([expect.stringContaining('hold on')])
+  expect(links(heads[1])).toEqual([expect.stringContaining('let it slide')])
+  expect(links(heads[2])).toEqual([expect.stringContaining('rise above')])
+})
+
+test('per canzone: i filtri valgono anche per i gruppi, il gruppo vuoto sparisce, tutto vuoto avvisa', async () => {
+  await seedGroups()
+  mount()
+  await screen.findByRole('list', { name: 'Voci del lessico' })
+  fireEvent.click(view('Per canzone'))
+  fireEvent.input(screen.getByLabelText('Cerca nel lessico'), { target: { value: 'aspetta' } })
+  expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.querySelector('.lex-group-title')!.textContent)).toEqual(['Paper Boats'])
+  fireEvent.click(screen.getByRole('button', { name: 'B1' }))
+  expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
+  expect(screen.getByText('Nessuna voce con questi filtri.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Tutti' }))
+  fireEvent.input(screen.getByLabelText('Cerca nel lessico'), { target: { value: '' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Idiomi: 3' }))
+  expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(3)
+})
+
+test('.comp-seg ha una larghezza minima di 24px (WCAG 2.5.8)', () => {
+  const css = readFileSync('src/styles/base.css', 'utf8')
+  const m = css.match(/\.comp-seg\s*\{([^}]*)\}/)!
+  expect(m[1]).toMatch(/min-width:\s*24px/)
 })
