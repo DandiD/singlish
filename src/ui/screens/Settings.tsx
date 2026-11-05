@@ -3,6 +3,7 @@ import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href, onBack } from '../../router'
 import { bandForLevel, getSettings, saveSettings, type SettingsPatch } from '../../domain/settings'
+import { rhythmGoalOf } from '../../domain/rhythm'
 import { formatNumber } from '../format'
 import { callGemini, GeminiError } from '../../domain/gemini/client'
 import { geminiProblem } from '../errors'
@@ -341,6 +342,16 @@ export function Settings() {
             settings.bandFromTest || bandForLevel(settings.level).join() !== `${settings.bandStart},${settings.bandEnd}` ? 'dal test di vocabolario' : `del livello ${settings.level}`
           }. Cambiare livello la riporta a quella del livello.`}
         </p>
+        <label class="field">
+          <span>Obiettivo settimanale</span>
+          <select
+            value={String(rhythmGoalOf(settings))}
+            onChange={(e) => store({ rhythmGoal: Number((e.currentTarget as HTMLSelectElement).value) })}
+          >
+            {[3, 4, 5, 6, 7].map((n) => <option key={n} value={String(n)}>{`${n} giorni su 7`}</option>)}
+          </select>
+        </label>
+        <p class="note">Un giorno conta se ripassi almeno una card, o se quel giorno non c'era niente da ripassare.</p>
         <label class="field">
           <span>Nuove al giorno</span>
           <input
