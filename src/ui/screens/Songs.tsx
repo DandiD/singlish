@@ -165,7 +165,7 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
     // Titolo svuotato: resta quello di prima, ma link e artista scritti si salvano lo stesso.
     const title = v.title.trim() || song.title
     const untitled = title === 'Senza titolo'
-    db.songs.update(song.id, { title, artist: v.artist.trim(), spotifyUrl: url })
+    db.songs.update(song.id, { title, artist: v.artist.trim(), spotifyUrl: url, ...((url ?? null) !== (song.spotifyUrl ?? null) ? { coverUrl: undefined } : {}) })
       .then(async () => {
         // Link nuovo su una canzone senza titolo vero: il titolo di Spotify arriva anche dopo l'uscita, se intanto non è stato scelto.
         if (!untitled || !url || url === song.spotifyUrl) return
@@ -189,7 +189,7 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
         const timeout = new Promise<null>((r) => setTimeout(() => r(null), 4000))
         finalTitle = ((await Promise.race([fetchTrackTitle(canonical, fetch), timeout])) ?? '').trim() || finalTitle
       }
-      await db.songs.update(song.id, { title: finalTitle, artist: artist.trim(), spotifyUrl: canonical })
+      await db.songs.update(song.id, { title: finalTitle, artist: artist.trim(), spotifyUrl: canonical, ...((canonical ?? null) !== (song.spotifyUrl ?? null) ? { coverUrl: undefined } : {}) })
       onDone()
     } catch (e) {
       reportError(e)

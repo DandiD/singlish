@@ -16,6 +16,8 @@ export interface Song {
   title: string
   artist: string
   spotifyUrl: string | null
+  /** Copertina dall'oEmbed di Spotify; assente = da cercare, null = nessuna. */
+  coverUrl?: string | null
   lines: string[]
   status: 'draft' | 'queued' | 'analyzed' | 'studying' | 'done'
   level: Level
