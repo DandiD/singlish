@@ -1,11 +1,11 @@
 import { useState } from 'preact/hooks'
-import { State } from 'ts-fsrs'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { goReplace, href, onBack, onBackTo, stillHere } from '../../router'
 import { saveFinalListen } from '../../domain/finalListen'
-import { itemsInSong } from '../../domain/songItems'
+import { rCardStates, unlockedLines } from '../../domain/unlocked'
+import { unlockedText } from '../todayText'
 import { Icon } from '../components/Icon'
 
 /** Riascolto finale: dopo lo studio si riascolta senza testo e si segna di nuovo quanto si capisce. */
@@ -13,26 +13,22 @@ export function FinalListen({ songId }: { songId: string }) {
   const { db, now } = useDeps()
   const data = useLive(async () => {
     const song = (await db.songs.get(songId)) ?? null
-    // Le stesse voci che Oggi conta per la canzone: quelle dello Studio meno le parole ancora da smistare.
-    let items = 0
-    let inReview = 0
+    // Gli stessi versi che Oggi e Canzoni contano: una sola fonte, `unlockedLines`.
+    let lines = 0
+    let unlocked = 0
     if (song) {
-      const [chunks, words] = await Promise.all([db.chunks.toArray(), db.words.toArray()])
-      const placed = itemsInSong(song, chunks, words)
-      const pending = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
-      const ids = [...placed.chunks, ...[...placed.words].filter((id) => !pending.has(id))]
-      items = ids.length
-      // «Nel ripasso» come in Oggi: la card Riconosci è già stata vista.
-      const rState = new Map((await db.cards.where('kind').equals('R').toArray()).map((c) => [c.itemId, c.fsrs.state]))
-      inReview = ids.filter((id) => { const st = rState.get(id); return st !== undefined && st !== State.New }).length
+      const [chunks, words, rState] = await Promise.all([db.chunks.toArray(), db.words.toArray(), rCardStates(db)])
+      const r = unlockedLines(song, chunks, words, rState)
+      lines = r.total
+      unlocked = r.unlocked
     }
-    return { song, items, inReview }
+    return { song, lines, unlocked }
   }, [db, songId])
   const [after, setAfter] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
 
   if (!data) return <main class="screen final-listen" aria-busy="true" />
-  const { song, items, inReview } = data
+  const { song, lines, unlocked } = data
   if (!song) {
     return (
       <main class="screen">
@@ -132,7 +128,7 @@ export function FinalListen({ songId }: { songId: string }) {
           {gain !== null && (
             <div class="result-gain"><span class="gain-num">{gain > 0 ? `+${gain}` : String(gain)}</span><span class="note">punti</span></div>
           )}
-          <p class="note result-note">{`${items > 0 ? `${inReview} di ${items} chunk e parole nel ripasso: restano lì${inReview < items ? ', e le altre entrano con le prossime sessioni' : ''}. ` : ''}La canzone passa tra le completate.`}</p>
+          <p class="note result-note">{lines === 0 ? 'La canzone passa tra le completate.' : unlocked < lines ? `${unlockedText(unlocked, lines)}: gli altri si sbloccano con le prossime sessioni. La canzone passa tra le completate.` : `${unlockedText(unlocked, lines)}. La canzone passa tra le completate.`}</p>
         </section>
       )}
 

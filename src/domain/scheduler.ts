@@ -50,6 +50,7 @@ export async function recordReview(
       elapsedMs: input.elapsedMs,
       reviewedAt: now,
       wasNew: card.fsrs.state === State.New,
+      stability: { before: card.fsrs.stability, after: result.card.stability },
     })
     // La Completa di un chunk in ripasso sblocca la Produci e l'Ascolta (create ora: i chunk di prima non le hanno).
     if (card.kind === 'C' && card.itemType === 'chunk' && input.rating !== 1 && result.card.state === State.Review) {

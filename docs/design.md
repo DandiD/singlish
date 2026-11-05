@@ -235,6 +235,12 @@ Regole in `src/styles/motion.css` (curve `--ease-out`, `--ease-spring`; durate `
 - La barra in basso resta ferma durante le transizioni; l'indicatore scivola fra le schede.
 - `prefers-reduced-motion: reduce`: restano gli stati finali, senza spostamenti.
 
+## Versi sbloccati
+- Regola (D1/D2): un verso è sbloccato quando tutte le sue voci hanno la card R in stato Review (un «Di nuovo» porta la card a Relearning, quindi il verso si riblocca). Le voci si leggono dai `contexts` (chunk non sospesi, parole `learn` non sospese); un verso senza voci non conta. Il numero viene solo da `unlockedLines` (`src/domain/unlocked.ts`) ed è lo stesso in Oggi, Riascolto finale, Canzoni e Studio («3 di 14 versi sbloccati»).
+- Testo vivo nello Studio: ogni `<p>` del testo ha `line-open` (sbloccato, `--text`) o `line-studying` (con voci non ancora sbloccate, `--text-2`); i versi senza voci restano senza classe; in modalità «Chiedi a Gemini» nessuna classe. Il dato è anche nella testa («Studio · … · 2 di 9 versi sbloccati»), non solo nel colore.
+- Movimento: i versi sbloccati che non erano in `songs.unlockedSeen` hanno anche `line-lit` e si accendono uno alla volta (`--i`, `--t-med` di durata e di sfasamento); poi `unlockedSeen` diventa l'elenco attuale. Un verso che si riblocca esce dall'elenco senza avvisi. Con `prefers-reduced-motion: reduce` resta lo stato finale, senza animazione.
+- Campi facoltativi nuovi, senza indici né migrazione: `sessions.unlockedAtStart` (versi sbloccati all'apertura di una sessione), `reviews.stability` (`{ before, after }`), `songs.unlockedSeen` (indici di riga).
+
 ## Navigazione
 Cronologia dell'app in `src/nav-history.ts`, usata dal router (`goBack`, `goBackTo`, `goReplace`, `onBack`, `onBackTo`).
 - «Indietro» e ✕ ripercorrono la cronologia (come il tasto Indietro del telefono); senza pagine precedenti nell'app sostituiscono la voce con la pagina di riserva. Il tasto Indietro non riapre mai una pagina appena chiusa.

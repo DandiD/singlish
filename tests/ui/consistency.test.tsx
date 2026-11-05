@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Today } from '../../src/ui/screens/Today'
 import { Songs } from '../../src/ui/screens/Songs'
+import { FinalListen } from '../../src/ui/screens/FinalListen'
 import { Study } from '../../src/ui/screens/Study'
 import { Session } from '../../src/ui/screens/Session'
 import { activeSongCount, LIMIT_NOTE } from '../../src/domain/ingest'
@@ -112,7 +113,7 @@ describe('studio di una canzone', () => {
     mount(<Study songId="s1" />)
     await screen.findByRole('heading', { name: 'Lantern Road' })
     // c1 · w1 (da imparare), w2 (da smistare), w4 (da s2); c2 sospeso e w3 nota fuori
-    expect(screen.getByText('Studio · 1 chunk · 3 parole')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 3 parole/)).toBeTruthy()
     expect(highlighted().size).toBe(4)
   })
   test('nella seconda canzone il chunk condiviso è evidenziato nella forma in cui compare', async () => {
@@ -120,7 +121,7 @@ describe('studio di una canzone', () => {
     await screen.findByRole('heading', { name: 'Harbour Lights' })
     const link = [...document.querySelectorAll<HTMLAnchorElement>('.lyrics a')].find((a) => a.getAttribute('href')!.endsWith('item=c1'))
     expect(link?.textContent).toBe('letting it slide')
-    expect(screen.getByText('Studio · 1 chunk · 1 parola')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 1 parola/)).toBeTruthy()
   })
   test('la scheda evidenzia la forma del verso di questa canzone', async () => {
     window.location.hash = '#/songs/s2?item=c1'
@@ -129,10 +130,45 @@ describe('studio di una canzone', () => {
     expect(dialog.querySelector('.examples .hl')?.textContent).toBe('letting it slide')
   })
   test('Oggi conta per la canzone le voci dello studio meno quelle ancora da smistare', async () => {
+    // «Da studiare» è la riga di Oggi che conta le voci; si legge prima di aprire lo Studio (che porta la canzone «in studio»).
+    await db.songs.update('s1', { status: 'analyzed' })
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
-    // 1 chunk + 3 parole, meno w2 da smistare
-    expect(card.textContent).toContain('0 di 3 chunk e parole nel ripasso')
+    const today = +card.textContent!.match(/Da studiare · (\d+) chunk e parole/)![1]
+    cleanup()
+    mount(<Study songId="s1" />)
+    await screen.findByRole('heading', { name: 'Lantern Road' })
+    // c1 · w1 · w2 (da smistare) · w4 = 1 chunk + 3 parole; Oggi toglie w2
+    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+    expect(today).toBe(+m[1] + +m[2] - 1)
+    expect(today).toBe(3)
+  })
+})
+
+describe('versi sbloccati: stessa frase in Oggi, Riascolto finale e Canzoni', () => {
+  test('1 di 2 versi sbloccati ovunque', async () => {
+    // riga 0: solo c1 (w3 è nota, c2 sospeso) -> sbloccata; riga 1: w1 in Review, w4 nuova -> no
+    await db.cards.bulkAdd([
+      card('u1', 'chunk', 'c1', State.Review, at(60)),
+      card('u2', 'word', 'w1', State.Review, at(60)),
+      card('u3', 'word', 'w4', State.New, at(60)),
+    ])
+    const phrase = (el: Element) => el.textContent!.match(/\d+ di \d+ vers[oi] sbloccat[oi]/)![0]
+    mount(<Today />)
+    const fromToday = phrase((await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!)
+    cleanup()
+    mount(<FinalListen songId="s1" />)
+    fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
+    const fromFinal = phrase(document.querySelector('.result-note')!)
+    cleanup()
+    mount(<Songs />)
+    const fromSongs = phrase((await screen.findByRole('heading', { name: 'Lantern Road' })).closest('li')!)
+    expect([fromToday, fromFinal, fromSongs]).toEqual(['1 di 2 versi sbloccati', '1 di 2 versi sbloccati', '1 di 2 versi sbloccati'])
+    cleanup()
+    mount(<Study songId="s1" />)
+    await screen.findByRole('heading', { name: 'Lantern Road' })
+    const fromStudy = await waitFor(() => phrase(document.querySelector('.study-head .note')!))
+    expect(fromStudy).toBe(fromToday)
   })
 })
 
@@ -219,7 +255,7 @@ describe('dati salvati prima della forma per verso', () => {
     await screen.findByRole('heading', { name: 'Harbour Lights' })
     const ids = new Set([...document.querySelectorAll('.lyrics a')].map((a) => a.getAttribute('href')!.split('item=')[1]))
     expect(ids.has('c1')).toBe(true)
-    expect(screen.getByText('Studio · 1 chunk · 1 parola')).toBeTruthy()
+    expect(screen.getByText(/^Studio · 1 chunk · 1 parola/)).toBeTruthy()
     expect(ids.size).toBe(2)
   })
 })
@@ -232,7 +268,7 @@ describe('Oggi e Studio sulla stessa canzone', () => {
   }
   const todayTotal = async (title: string) => {
     const card = (await screen.findByRole('heading', { name: title })).closest('a')!
-    return +card.textContent!.match(/di (\d+) chunk e parole/)![1]
+    return +card.textContent!.match(/Da studiare · (\d+) chunk e parole/)![1]
   }
   test('il totale di Oggi è sempre le voci dello Studio meno quelle da smistare, prima e dopo lo smistamento', async () => {
     const { applyTriage } = await import('../../src/domain/triage')
@@ -243,9 +279,12 @@ describe('Oggi e Studio sulla stessa canzone', () => {
       await waitFor(() => expect(screen.getByText(/^Studio · /)).toBeTruthy())
       const s = studyNumbers()
       cleanup()
+      // «Da studiare» è la riga di Oggi che conta le voci: si legge con la canzone non ancora in studio.
+      await db.songs.update('s1', { status: 'analyzed' })
       mount(<Today />)
       expect(await todayTotal('Lantern Road')).toBe(s.items - s.pending)
       if (step === 'dopo') expect(s.pending).toBe(0)
+      await db.songs.update('s1', { status: 'studying' })
       cleanup()
     }
   })
@@ -278,9 +317,10 @@ describe('voce salvata senza la forma del verso (dati vecchi)', () => {
     const reachable = shown().size + within(others).getAllByRole('link').length
     expect(counted()).toBe(reachable)
     cleanup()
+    await db.songs.update('s2', { status: 'analyzed' }) // aprire lo Studio la porta «in studio»
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Harbour Lights' })).closest('a')!
-    expect(card.textContent).toContain(`${reachable} chunk e parole`)
+    expect(card.textContent).toContain(`Da studiare · ${reachable} chunk e parole`)
   })
 })
 
@@ -297,7 +337,8 @@ test('una parola dentro un chunk dello stesso verso: elencata sotto il testo, co
   expect(+m[1] + +m[2]).toBe(reachable)
   const pending = 1 // w2
   cleanup()
+  await db.songs.update('s1', { status: 'analyzed' })
   mount(<Today />)
   const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
-  expect(card.textContent).toContain(`di ${reachable - pending} chunk e parole`)
+  expect(card.textContent).toContain(`Da studiare · ${reachable - pending} chunk e parole`)
 })

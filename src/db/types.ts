@@ -36,6 +36,8 @@ export interface Song {
   finalListenAt?: Date | null
   /** Ritornello a voce: quando l'ha cantato senza testo. */
   chorusDoneAt?: Date | null
+  /** Indici dei versi sbloccati già mostrati nello Studio: quelli nuovi si accendono all'apertura. */
+  unlockedSeen?: number[]
 }
 
 export interface Chunk {
@@ -112,6 +114,8 @@ export interface Review {
   elapsedMs: number
   reviewedAt: Date
   wasNew: boolean
+  /** Stabilità FSRS della card prima e dopo il ripasso (assente nei ripassi di prima). */
+  stability?: { before: number; after: number }
 }
 
 export interface TimerState {
@@ -132,6 +136,8 @@ export interface SessionRow {
   newDone: number
   /** Frasi scritte nelle card Produci, da correggere con Gemini a fine sessione (tutte in una chiamata). */
   productions?: Production[]
+  /** Versi sbloccati all'apertura della sessione (`songId:lineIndex`); assente nelle sessioni di prima. */
+  unlockedAtStart?: string[]
 }
 
 export interface Production {

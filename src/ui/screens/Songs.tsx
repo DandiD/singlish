@@ -11,6 +11,8 @@ import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { ensureCover } from '../../domain/cover'
+import { rCardStates, unlockedBySong } from '../../domain/unlocked'
+import { unlockedText } from '../todayText'
 
 
 export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song'): string {
@@ -39,6 +41,11 @@ export function Songs() {
   const { db } = useDeps()
   const songs = useLive(() => db.songs.orderBy('addedAt').reverse().toArray(), [db])
   const open = useLive(() => activeSongCount(db), [db])
+  // «X di Y versi sbloccati» dalla stessa fonte di Oggi: solo per le canzoni in studio e completate.
+  const unlocked = useLive(async () => {
+    const [all, chunks, words, rState] = await Promise.all([db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), rCardStates(db)])
+    return unlockedBySong(all.filter((x) => x.status === 'studying' || x.status === 'done'), chunks, words, rState)
+  }, [db])
   const [editing, setEditing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const gate = useAddGate()
@@ -78,6 +85,7 @@ export function Songs() {
             <p class="note">
               {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}{s.kind === 'text' ? 'aggiunto il' : 'aggiunta il'} {dateFmt.format(s.addedAt)}
             </p>
+            {(() => { const u = unlocked?.get(s.id); return u && u.total > 0 ? <p class="note">{unlockedText(u.unlocked, u.total)}</p> : null })()}
             {s.comprehensionBefore !== null && <p class="mono">{s.comprehensionBefore}% prima</p>}
             <div class="song-actions">
               {(s.status === 'queued' || s.status === 'draft') && (

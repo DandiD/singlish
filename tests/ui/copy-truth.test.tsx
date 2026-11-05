@@ -88,7 +88,7 @@ test('testi su testi liberi, sessione vuota, Escludi, riascolto e badge offline 
   const sheet = readFileSync('src/ui/screens/ItemSheet.tsx', 'utf8')
   expect(sheet).toContain('e rientra nella tua fascia')
   const fl = readFileSync('src/ui/screens/FinalListen.tsx', 'utf8')
-  expect(fl).toContain('inReview < items')
+  expect(fl).toContain('gli altri si sbloccano con le prossime sessioni')
   const badge = readFileSync('src/ui/components/OfflineBadge.tsx', 'utf8')
   expect(badge).not.toContain('il resto funziona')
 })
