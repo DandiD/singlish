@@ -105,8 +105,16 @@ describe('safeCoverUrl', () => {
   test('uppercase host is normalised and accepted', () => {
     expect(safeCoverUrl('https://I.SCDN.CO/x')).toBe('https://i.scdn.co/x')
   })
-  test('explicit port on an accepted host is allowed', () => {
-    expect(safeCoverUrl('https://i.scdn.co:8443/x')).toBe('https://i.scdn.co:8443/x')
+  test('rejects an explicit non-default port', () => {
+    expect(safeCoverUrl('https://i.scdn.co:8443/x')).toBeNull()
+  })
+  test('default https port is normalised away by URL, so it is accepted', () => {
+    // new URL('https://i.scdn.co:443/x').port === '' per the URL spec
+    expect(safeCoverUrl('https://i.scdn.co:443/x')).toBe('https://i.scdn.co/x')
+  })
+  test('rejects credentials in the URL', () => {
+    expect(safeCoverUrl('https://user:pw@i.scdn.co/x')).toBeNull()
+    expect(safeCoverUrl('https://user@i.scdn.co/x')).toBeNull()
   })
   test('rejects http', () => {
     expect(safeCoverUrl('http://i.scdn.co/x')).toBeNull()

@@ -17,7 +17,13 @@ export function safeCoverUrl(raw: unknown): string | null {
   if (typeof raw !== 'string') return null
   try {
     const u = new URL(raw)
-    return u.protocol === 'https:' && COVER_HOST.test(u.hostname) ? u.href : null
+    const ok =
+      u.protocol === 'https:' &&
+      COVER_HOST.test(u.hostname) &&
+      u.port === '' &&
+      u.username === '' &&
+      u.password === ''
+    return ok ? u.href : null
   } catch {
     return null
   }
