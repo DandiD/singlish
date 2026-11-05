@@ -7,6 +7,7 @@ import { AddSong } from '../../src/ui/screens/AddSong'
 import { Songs } from '../../src/ui/screens/Songs'
 import { createSong } from '../../src/domain/ingest'
 import { resetCoverAttempts } from '../../src/domain/cover'
+import { errors } from '../../src/ui/report'
 
 let db: SinglishDB
 const now = new Date('2026-10-31T10:00:00Z')
@@ -533,6 +534,7 @@ test('Modifica: titolo svuotato e link valido, uscendo il link si salva e il tit
 })
 
 describe('AddSong cover', () => {
+  beforeEach(() => errors.dismiss())
   const THUMB = 'https://i.scdn.co/image/ab67616d00001e02bbbb'
   const submitWith = (f: typeof fetch) => {
     mount(<AddSong />, f)
@@ -553,10 +555,13 @@ describe('AddSong cover', () => {
     const f = vi.fn(async () => { throw new TypeError('Failed to fetch') }) as unknown as typeof fetch
     submitWith(f)
     await waitFor(() => expect(window.location.hash).toMatch(/^#\/songs\/.+\/analyzing$/))
+    // The title is typed and the link never blurs, so the only oEmbed call is ensureCover's: wait for it to run and settle.
+    await waitFor(() => expect(f).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 30))
     const songs = await db.songs.toArray()
     expect(songs).toHaveLength(1)
     expect(songs[0].coverUrl).toBeUndefined()
-    expect(screen.queryByRole('alert')).toBeNull()
+    expect(errors.get()).toBeNull()
   })
 })
 

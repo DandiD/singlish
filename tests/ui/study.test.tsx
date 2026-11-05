@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -6,7 +6,7 @@ import { Study } from '../../src/ui/screens/Study'
 import { activeSongCount } from '../../src/domain/ingest'
 import { resetCoverAttempts } from '../../src/domain/cover'
 import { songLook } from '../../src/ui/cover'
-import { vi } from 'vitest'
+import { errors } from '../../src/ui/report'
 import type { Song } from '../../src/db/types'
 
 let db: SinglishDB
@@ -373,12 +373,13 @@ describe('cover in the Study header', () => {
 
   test('a rejected fetch leaves no alert, no saved cover, and the generated cover', async () => {
     await db.songs.update('s1', { spotifyUrl: TRACK })
+    errors.dismiss()
     const f = vi.fn(async () => { throw new TypeError('Failed to fetch') }) as unknown as typeof fetch
     const { container } = withFetch(f)
     await screen.findByRole('heading', { name: 'Night Song' })
     await waitFor(() => expect(f).toHaveBeenCalledTimes(1))
     await new Promise((r) => setTimeout(r, 30))
-    expect(screen.queryByRole('alert')).toBeNull()
+    expect(errors.get()).toBeNull()
     expect((await db.songs.get('s1'))!.coverUrl).toBeUndefined()
     expect(container.querySelector('.settings-head img')).toBeNull()
     expect(container.querySelector('.settings-head .cover')).toBeTruthy()
