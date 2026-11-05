@@ -65,11 +65,12 @@ describe('unlockedKeys / newlyUnlocked', () => {
   })
   test('only verses not in before; ordered by addedAt then line; spans without cs:', async () => {
     const db = await setup()
-    const r = await newlyUnlocked(db, ['s1:1'])
-    expect(r.map((v) => `${v.song.id}:${v.lineIndex}`)).toEqual(['s2:0', 's5:2'])
+    const r = await newlyUnlocked(db, [])
+    expect(r.map((v) => `${v.song.id}:${v.lineIndex}`)).toEqual(['s2:0', 's1:1', 's5:2'])
     expect(r[0].line).toBe('invented line 0')
     expect(r[0].translation).toBe('riga zero')
     expect(r[1].translation).toBeNull()
+    expect((await newlyUnlocked(db, ['s1:1'])).map((v) => v.song.id)).toEqual(['s2', 's5'])
     expect(r[0].spans.every((s) => !s.id.startsWith('cs:'))).toBe(true)
   })
   test('with a single new verse, returns line and spans', async () => {
