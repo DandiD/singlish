@@ -71,6 +71,8 @@ test('il ritmo conta il ripasso di oggi, il Diario lo mostra, l\'obiettivo si ca
 
   await page.getByRole('link', { name: 'Torna a Oggi' }).click()
   await expect(page.getByRole('heading', { name: 'Ripasso di oggi' })).toBeVisible()
+  // Il giro ha raggiunto un traguardo (obiettivo o canzone): il foglio si chiude con «Bene».
+  await page.getByRole('dialog').getByRole('button', { name: 'Bene' }).click()
   await expect(rhythm).toContainText(textFor(earlier + 1, goal))
 
   await rhythm.click()
