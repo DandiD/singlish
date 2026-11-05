@@ -29,11 +29,22 @@ test('weekStart: Wednesday, Sunday, year boundary', () => {
   expect(localDayKey(weekStart(new Date(2027, 0, 1, 10)))).toBe('2026-12-28')
 })
 
-test('week across DST end (late October 2026) has 7 distinct consecutive keys', () => {
-  const r = weekRhythm({ reviewDays: new Set(), freeDays: [], goal: 5, now: new Date(2026, 9, 28, 12) })
-  const keys = r.days.map((d) => d.key)
-  expect(keys).toEqual(['2026-10-26', '2026-10-27', '2026-10-28', '2026-10-29', '2026-10-30', '2026-10-31', '2026-11-01'])
-  expect(new Set(keys).size).toBe(7)
+// Si appoggia su TZ=Europe/Rome dello script npm (il cambio d'ora cade nella settimana provata).
+const inRome = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Europe/Rome'
+const dstTest = inRome ? test : test.skip
+
+dstTest('week containing the DST end (19-25 Oct 2026, Rome) has 7 consecutive keys', () => {
+  const now = new Date(2026, 9, 25, 23)
+  expect(localDayKey(weekStart(now))).toBe('2026-10-19')
+  const r = weekRhythm({ reviewDays: new Set(), freeDays: [], goal: 5, now })
+  expect(r.days.map((d) => d.key)).toEqual(['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25'])
+})
+
+dstTest('week containing the DST start (23-29 Mar 2026, Rome) has 7 consecutive keys', () => {
+  const now = new Date(2026, 2, 29, 23, 30)
+  expect(localDayKey(weekStart(now))).toBe('2026-03-23')
+  const r = weekRhythm({ reviewDays: new Set(), freeDays: [], goal: 5, now })
+  expect(r.days.map((d) => d.key)).toEqual(['2026-03-23', '2026-03-24', '2026-03-25', '2026-03-26', '2026-03-27', '2026-03-28', '2026-03-29'])
 })
 
 test('week across the year boundary', () => {
