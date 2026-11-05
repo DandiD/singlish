@@ -67,7 +67,7 @@ test('percorso completo: chiave, canzone, analisi, triage, studio, sessione, per
   const before = await newCount(page)
   expect(before).toBeGreaterThan(0)
 
-  await page.getByRole('link', { name: 'Inizia sessione' }).click()
+  await page.getByRole('link', { name: 'Inizia il giro' }).click()
   await page.getByRole('button', { name: 'Mostra significato' }).click()
   await page.getByRole('button', { name: 'Bene' }).click()
   // Come farebbe una persona: si lascia la sessione dopo che è passata alla card successiva (o è finita).
