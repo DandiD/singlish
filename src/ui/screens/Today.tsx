@@ -8,6 +8,7 @@ import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
 import { rCardStates, unlockedLines } from '../../domain/unlocked'
 import { finalListenDue } from '../../domain/finalListen'
+import { localDayKey } from '../../domain/rhythm'
 import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
 import { pendingWords } from '../../domain/triage'
@@ -26,8 +27,6 @@ const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' 
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const wordCount = (n: number) => (n === 1 ? '1 parola' : `${n} parole`)
-const pad = (n: number) => String(n).padStart(2, '0')
-const localDayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 /** L'invito coincide con l'azione principale (stesso obiettivo): si mostra solo l'azione. */
 function sameTarget(invite: Invite, action: EmptyAction): boolean {
