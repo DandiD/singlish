@@ -1,6 +1,7 @@
 import { State } from 'ts-fsrs'
 import type { SinglishDB } from '../db/db'
 import type { Chunk, Song, Word } from '../db/types'
+import { itemsInSong, type Span } from './songItems'
 
 export type LineUnlock = { lineIndex: number; itemIds: string[]; unlocked: boolean }
 
@@ -44,4 +45,76 @@ export function unlockedLines(
 export async function rCardStates(db: SinglishDB): Promise<Map<string, State>> {
   const cards = await db.cards.where('kind').equals('R').toArray()
   return new Map(cards.map((c) => [c.itemId, c.fsrs.state]))
+}
+
+const ACTIVE = new Set<Song['status']>(['studying', 'done'])
+
+async function currentUnlocked(db: SinglishDB): Promise<{ song: Song; lineIndex: number }[]> {
+  const [songs, chunks, words, rState] = await Promise.all([
+    db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), rCardStates(db),
+  ])
+  const out: { song: Song; lineIndex: number }[] = []
+  for (const song of songs.filter((s) => ACTIVE.has(s.status)).sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())) {
+    for (const l of unlockedLines(song, chunks, words, rState).lines) if (l.unlocked) out.push({ song, lineIndex: l.lineIndex })
+  }
+  return out
+}
+
+/** `lineKey` di tutti i versi sbloccati delle canzoni in studio o finite. */
+export async function unlockedKeys(db: SinglishDB): Promise<string[]> {
+  return (await currentUnlocked(db)).map((u) => lineKey(u.song.id, u.lineIndex))
+}
+
+export type UnlockedVerse = { song: Song; lineIndex: number; line: string; spans: Span[]; translation: string | null }
+
+/** I versi sbloccati ora che non erano in `before`, per canzone (addedAt) e poi per verso. */
+export async function newlyUnlocked(db: SinglishDB, before: string[]): Promise<UnlockedVerse[]> {
+  const seen = new Set(before)
+  const fresh = (await currentUnlocked(db)).filter((u) => !seen.has(lineKey(u.song.id, u.lineIndex)))
+  if (!fresh.length) return []
+  const [chunks, words] = await Promise.all([db.chunks.toArray(), db.words.toArray()])
+  const spansBySong = new Map<string, Span[][]>()
+  return fresh.map(({ song, lineIndex }) => {
+    let all = spansBySong.get(song.id)
+    if (!all) spansBySong.set(song.id, (all = itemsInSong(song, chunks, words).spansByLine))
+    return {
+      song,
+      lineIndex,
+      line: song.lines[lineIndex],
+      spans: (all[lineIndex] ?? []).filter((s) => !s.id.startsWith('cs:')),
+      translation: song.lineTranslations?.find((t) => t.lineIndex === lineIndex)?.textIt ?? null,
+    }
+  })
+}
+
+export type StrongItem = { itemId: string; text: string; meaningIt: string; song: Song | null; growth: number }
+
+/** Le voci con la crescita di stabilità maggiore dai ripassi (non «Di nuovo») fatti da `since` in poi. */
+export async function strongestSince(db: SinglishDB, since: Date, limit = 3): Promise<StrongItem[]> {
+  const reviews = await db.reviews.where('reviewedAt').aboveOrEqual(since).toArray()
+  const cardIds = [...new Set(reviews.map((r) => r.cardId))]
+  const cards = new Map((await db.cards.bulkGet(cardIds)).filter((c) => !!c).map((c) => [c!.id, c!]))
+  const growth = new Map<string, number>()
+  for (const r of reviews) {
+    if (r.rating === 1 || !r.stability) continue
+    const card = cards.get(r.cardId)
+    if (!card) continue
+    growth.set(card.itemId, (growth.get(card.itemId) ?? 0) + (r.stability.after - r.stability.before))
+  }
+  const out: StrongItem[] = []
+  for (const [itemId, g] of growth) {
+    if (!(g > 0)) continue
+    const chunk = await db.chunks.get(itemId)
+    const word = chunk ? undefined : await db.words.get(itemId)
+    const item = chunk ?? word
+    if (!item) continue
+    out.push({
+      itemId,
+      text: chunk ? chunk.baseForm : word!.lemma,
+      meaningIt: item.meaningIt,
+      song: (await db.songs.get(item.songId)) ?? null,
+      growth: g,
+    })
+  }
+  return out.sort((a, b) => b.growth - a.growth || a.text.localeCompare(b.text)).slice(0, limit)
 }
