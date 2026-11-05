@@ -52,7 +52,12 @@ export async function saveSettings(
     }
     next.desiredRetention = clamp(next.desiredRetention, 0.85, 0.95)
     next.newPerDay = clamp(Math.round(next.newPerDay), 1, 40)
-    if (next.rhythmGoal !== undefined) next.rhythmGoal = clamp(Math.round(next.rhythmGoal), 3, 7)
+    if (next.rhythmGoal !== undefined) {
+      // Un valore non finito non si salva: resta quello di prima (o assente).
+      if (!Number.isFinite(next.rhythmGoal)) next.rhythmGoal = current.rhythmGoal
+      if (next.rhythmGoal === undefined) delete next.rhythmGoal
+      else next.rhythmGoal = clamp(Math.round(next.rhythmGoal), 3, 7)
+    }
     await db.settings.put(next)
     return next
   })

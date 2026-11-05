@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDayTick } from '../useDayTick'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings, saveSettings } from '../../domain/settings'
@@ -80,7 +81,7 @@ export function Today() {
   const day = useDayTick(now)
   const data = useLive(async () => {
     const n = now()
-    const [queue, settings, songs, chunks, words, done, hasSongs, rhythm, reviewedToday] = await Promise.all([
+    const [queue, settings, songs, chunks, words, done, hasSongs, rhythm, reviewedToday, hasUnlocked] = await Promise.all([
       buildSessionQueue(db, n),
       getSettings(db),
       activeSongs(db),
@@ -90,6 +91,8 @@ export function Today() {
       db.songs.count().then((c) => c > 0),
       loadWeekRhythm(db, n),
       reviewDaysSince(db, new Date(n.getFullYear(), n.getMonth(), n.getDate())).then((d) => d.size > 0),
+      // Un giorno può essere libero solo se c'è materiale di studio sbloccato.
+      db.cards.filter((c) => c.unlocked === 1).first().then((c) => c !== undefined),
     ])
     const rState = await rCardStates(db)
     const pendingIds = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
@@ -110,15 +113,16 @@ export function Today() {
     const doneLeft = (await Promise.all((await db.songs.where('status').equals('done').toArray())
       .map(async (song) => ({ song, toTriage: await toTriageIn(song.id) }))))
       .filter((x) => x.toTriage > 0)
-    return { rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
+    return { asOf: n, hasUnlocked, rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
 
   // Prima apertura del giorno con coda vuota e nessun ripasso: giorno libero. Una volta per chiave di giorno.
-  const freeDue = data !== undefined && data !== null && data.queue.items.length === 0 && !data.reviewedToday
+  const freeDue = data !== undefined && data !== null && data.hasUnlocked && data.queue.items.length === 0 && !data.reviewedToday
   const freeKey = freeDue ? data.dayKey : null
   useEffect(() => {
-    if (freeKey === null) return
-    void markFreeDay(db, now()).catch(() => {})
+    if (freeKey === null || !data) return
+    // Il giorno è quello della query che ha prodotto la chiave, non quello dell'istante dell'effetto.
+    void markFreeDay(db, data.asOf).catch(reportError)
   }, [db, freeKey])
 
   if (!data) return <main class="screen" aria-busy="true" />

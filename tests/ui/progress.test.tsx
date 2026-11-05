@@ -67,8 +67,20 @@ test('calendario: 30 ripassi sono il livello 3; la tabella dice il giorno libero
   expect(cal.querySelector('[data-day="2026-11-02"]')!.getAttribute('data-level')).toBe('1')
   const table = screen.getByRole('table', { name: 'Ripassi per giorno' })
   const row = [...table.querySelectorAll('tr')].find((r) => r.textContent!.includes('giorno libero'))!
-  expect(row.textContent).toContain('30')
+  expect(row.querySelectorAll('td')[1].textContent).toBe('0, giorno libero')
   expect(cal.querySelector('[data-day="2026-10-30"]')!.getAttribute('data-free')).toBe('true')
+})
+
+test('calendario: un giorno libero con ripassi mostra solo il numero', async () => {
+  await db.reviews.bulkAdd(reviewsOn('2026-11-03', 12))
+  await saveSettings(db, { freeDays: ['2026-11-03'] })
+  mount(<Progress />)
+  const cal = await screen.findByRole('img', { name: /Ultime 12 settimane/ })
+  expect(cal.querySelector('[data-day="2026-11-03"]')!.getAttribute('data-free')).toBe('false')
+  const table = screen.getByRole('table', { name: 'Ripassi per giorno' })
+  const cells = [...table.querySelectorAll('tr')].map((r) => r.textContent!)
+  expect(cells.some((t) => t.endsWith('12'))).toBe(true)
+  expect(table.textContent).not.toContain('giorno libero')
 })
 
 const lineSong = (id: string, addedDay: number): Song => ({ ...song(id, addedDay, null), lines: ['a line', 'b line', 'c line'] })
@@ -90,8 +102,7 @@ test('Versi sbloccati: il totale è la somma dei «N di M» di Oggi', async () =
     rCard('cb0', 'b0', State.Review), rCard('cb1', 'b1', State.Review), rCard('cb2', 'b2', State.Review),
   ])
   mount(<Today />)
-  await screen.findByText(/Alfa/, { selector: '*' }).catch(() => {})
-  await waitFor(() => expect(document.querySelectorAll('.visually-hidden').length).toBeGreaterThan(0))
+  await waitFor(() => expect([...document.querySelectorAll('.visually-hidden')].filter((e) => /\d+ di \d+ versi/.test(e.textContent ?? ''))).toHaveLength(2))
   const nums = [...document.querySelectorAll('.visually-hidden')].map((e) => /(\d+) di \d+ versi/.exec(e.textContent ?? '')).filter((m) => !!m).map((m) => Number(m![1]))
   expect(nums).toHaveLength(2)
   const sum = nums.reduce((x, y) => x + y, 0)

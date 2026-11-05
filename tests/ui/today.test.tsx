@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
@@ -368,6 +368,8 @@ describe('carosello delle canzoni aperte', () => {
 describe('ritmo della settimana in Oggi', () => {
   const freeDays = async () => (await getSettings(db)).freeDays ?? []
   const dots = (c: Element) => [...c.querySelectorAll('.week-dot')]
+  /** Una card sbloccata che scade fra qualche giorno: materiale di studio, ma niente in coda oggi. */
+  const seedIdleCard = () => db.cards.add(card('idle', 'idle', at(3)))
 
   test('shows the rhythm under the ring with the days of the reviews', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
@@ -380,6 +382,7 @@ describe('ritmo della settimana in Oggi', () => {
 
   test('empty queue and no review today: today becomes a free day and its dot is active', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedIdleCard()
     const { container } = mount()
     await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
     await waitFor(() => expect(dots(container)[3].classList.contains('on')).toBe(true))
@@ -405,6 +408,7 @@ describe('ritmo della settimana in Oggi', () => {
 
   test('remounting Today does not rewrite the settings', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedIdleCard()
     mount()
     await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
     cleanup()
@@ -420,17 +424,43 @@ describe('ritmo della settimana in Oggi', () => {
 
   test('re-renders on the same day do not write again', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedIdleCard()
     mount()
     await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
-    const writes: unknown[] = []
-    db.settings.hook('updating', (m) => { writes.push(m) })
-    window.dispatchEvent(new Event('focus'))
+    const put = vi.spyOn(db.settings, 'put')
+    // Una scrittura su una tabella letta dalla query la rilancia, senza cambiare la coda né il giorno.
+    await db.chunks.add(chunk('late'))
+    await new Promise((r) => setTimeout(r, 100))
+    expect(put).not.toHaveBeenCalled()
+    put.mockRestore()
+  })
+
+  test('no cards at all (fresh install, or songs without cards): no free day', async () => {
+    mount()
+    await loaded()
     await new Promise((r) => setTimeout(r, 50))
-    expect(writes).toEqual([])
+    expect(await freeDays()).toEqual([])
+    cleanup()
+    await db.songs.add(song('s1', 'Paper Sea', 'analyzed'))
+    mount()
+    await loaded()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(await freeDays()).toEqual([])
+  })
+
+  test('a card due later today keeps the queue non-empty: no free day', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await db.chunks.add(chunk('c1'))
+    await db.cards.add(card('later', 'c1', at(0, 16)))
+    mount()
+    await loaded()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(await freeDays()).toEqual([])
   })
 
   test('after midnight the free day is the new day, not yesterday', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedIdleCard()
     let t = at(0, 23)
     const { container } = mount(() => t)
     await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))

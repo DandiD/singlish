@@ -15,14 +15,14 @@ export function ActivityCalendar({ weeks }: { weeks: ActivityDay[][] }) {
     <>
       <div class="cal" role="img" aria-label={`Ultime 12 settimane: ${active} ${active === 1 ? 'giorno' : 'giorni'} con ripassi`}>
         {days.map((d) => (
-          <span key={d.key} class="cal-cell" data-day={d.key} data-level={d.level} data-free={d.free ? 'true' : 'false'} />
+          <span key={d.key} class="cal-cell" data-day={d.key} data-level={d.level} data-free={d.free && d.reviews === 0 ? 'true' : 'false'} />
         ))}
       </div>
       <table class="visually-hidden" aria-label="Ripassi per giorno">
         <thead><tr><th>Giorno</th><th>Ripassi</th></tr></thead>
         <tbody>
           {rows.map((d) => (
-            <tr key={d.key}><td>{dayFmt.format(parseKey(d.key))}</td><td>{d.free ? `${d.reviews}, giorno libero` : d.reviews}</td></tr>
+            <tr key={d.key}><td>{dayFmt.format(parseKey(d.key))}</td><td>{d.free && d.reviews === 0 ? `${d.reviews}, giorno libero` : d.reviews}</td></tr>
           ))}
         </tbody>
       </table>

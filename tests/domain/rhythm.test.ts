@@ -91,6 +91,19 @@ test('rhythmGoalOf defaults to 5', () => {
   expect(rhythmGoalOf({ ...DEFAULT_SETTINGS, rhythmGoal: 3 })).toBe(3)
 })
 
+test('rhythmGoalOf falls back to 5 for stored values that are not an integer 3..7', () => {
+  for (const bad of [0, NaN, 'x', 9, 2, 4.5, null]) {
+    expect(rhythmGoalOf({ ...DEFAULT_SETTINGS, rhythmGoal: bad as unknown as number })).toBe(5)
+  }
+  expect(rhythmGoalOf({ ...DEFAULT_SETTINGS, rhythmGoal: 7 })).toBe(7)
+})
+
+test('saveSettings does not propagate NaN for rhythmGoal', async () => {
+  expect((await saveSettings(db, { rhythmGoal: NaN })).rhythmGoal).toBeUndefined()
+  await saveSettings(db, { rhythmGoal: 4 })
+  expect((await saveSettings(db, { rhythmGoal: NaN })).rhythmGoal).toBe(4)
+})
+
 test('saveSettings clamps rhythmGoal to 3..7 integer', async () => {
   expect((await saveSettings(db, { rhythmGoal: 9 })).rhythmGoal).toBe(7)
   expect((await saveSettings(db, { rhythmGoal: 2 })).rhythmGoal).toBe(3)

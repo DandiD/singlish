@@ -6,7 +6,10 @@ export const RHYTHM_GOAL_DEFAULT = 5
 /** I giorni liberi si tengono per 12 settimane. */
 const FREE_DAYS_KEPT = 84
 
-export const rhythmGoalOf = (s: Settings): number => s.rhythmGoal ?? RHYTHM_GOAL_DEFAULT
+export const rhythmGoalOf = (s: Settings): number => {
+  const g: unknown = s.rhythmGoal
+  return typeof g === 'number' && Number.isInteger(g) && g >= 3 && g <= 7 ? g : RHYTHM_GOAL_DEFAULT
+}
 
 const pad = (n: number) => String(n).padStart(2, '0')
 /** Giorno nel fuso locale, `YYYY-MM-DD`. */
