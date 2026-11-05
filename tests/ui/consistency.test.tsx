@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'vitest'
-import { cleanup, render, screen, waitFor, within } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Today } from '../../src/ui/screens/Today'
 import { Songs } from '../../src/ui/screens/Songs'
+import { FinalListen } from '../../src/ui/screens/FinalListen'
 import { Study } from '../../src/ui/screens/Study'
 import { Session } from '../../src/ui/screens/Session'
 import { activeSongCount, LIMIT_NOTE } from '../../src/domain/ingest'
@@ -129,10 +130,40 @@ describe('studio di una canzone', () => {
     expect(dialog.querySelector('.examples .hl')?.textContent).toBe('letting it slide')
   })
   test('Oggi conta per la canzone le voci dello studio meno quelle ancora da smistare', async () => {
+    // «Da studiare» è la riga di Oggi che conta le voci; si legge prima di aprire lo Studio (che porta la canzone «in studio»).
+    await db.songs.update('s1', { status: 'analyzed' })
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
-    // 1 chunk + 3 parole, meno w2 da smistare
-    expect(card.textContent).toContain('0 di 2 versi sbloccati')
+    const today = +card.textContent!.match(/Da studiare · (\d+) chunk e parole/)![1]
+    cleanup()
+    mount(<Study songId="s1" />)
+    await screen.findByRole('heading', { name: 'Lantern Road' })
+    // c1 · w1 · w2 (da smistare) · w4 = 1 chunk + 3 parole; Oggi toglie w2
+    const m = screen.getByText(/^Studio · /).textContent!.match(/(\d+) chunk · (\d+) parol/)!
+    expect(today).toBe(+m[1] + +m[2] - 1)
+    expect(today).toBe(3)
+  })
+})
+
+describe('versi sbloccati: stessa frase in Oggi, Riascolto finale e Canzoni', () => {
+  test('1 di 2 versi sbloccati ovunque', async () => {
+    // riga 0: solo c1 (w3 è nota, c2 sospeso) -> sbloccata; riga 1: w1 in Review, w4 nuova -> no
+    await db.cards.bulkAdd([
+      card('u1', 'chunk', 'c1', State.Review, at(60)),
+      card('u2', 'word', 'w1', State.Review, at(60)),
+      card('u3', 'word', 'w4', State.New, at(60)),
+    ])
+    const phrase = (el: Element) => el.textContent!.match(/\d+ di \d+ vers[oi] sbloccat[oi]/)![0]
+    mount(<Today />)
+    const fromToday = phrase((await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!)
+    cleanup()
+    mount(<FinalListen songId="s1" />)
+    fireEvent.input(await screen.findByLabelText('Quanto hai capito adesso?'), { target: { value: '70' } })
+    const fromFinal = phrase(document.querySelector('.result-note')!)
+    cleanup()
+    mount(<Songs />)
+    const fromSongs = phrase((await screen.findByRole('heading', { name: 'Lantern Road' })).closest('li')!)
+    expect([fromToday, fromFinal, fromSongs]).toEqual(['1 di 2 versi sbloccati', '1 di 2 versi sbloccati', '1 di 2 versi sbloccati'])
   })
 })
 
