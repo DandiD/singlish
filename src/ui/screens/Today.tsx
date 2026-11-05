@@ -1,4 +1,4 @@
-import { useEffect } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDayTick } from '../useDayTick'
 import { useDeps } from '../deps'
@@ -16,6 +16,8 @@ import { pendingProductions } from '../../domain/production'
 import { pendingWords } from '../../domain/triage'
 import { dayRing, doneToday, emptyAction, featuredInvite, type EmptyAction, type Invite } from '../../domain/today'
 import { useAddGate } from '../components/UnlockSheet'
+import { MilestoneSheet } from '../components/MilestoneSheet'
+import { markMilestoneSeen, reachedMilestones, seedMilestonesSeen, type Milestone } from '../../domain/milestones'
 import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { DayRing } from '../components/DayRing'
@@ -80,6 +82,24 @@ export function Today() {
   const install = useInstall()
   // Lasciata aperta la sera, Oggi si ricalcola al mattino (ritorno in primo piano o mezzanotte).
   const day = useDayTick(now)
+  // Un solo foglio di traguardo per apertura. Prima si semina (utenti esistenti: nessuna raffica), poi si decide.
+  const [milestone, setMilestone] = useState<Milestone | null>(null)
+  useEffect(() => {
+    let live = true
+    void (async () => {
+      const n = now()
+      if (await seedMilestonesSeen(db, n)) return
+      const [reached, settings] = await Promise.all([reachedMilestones(db, n), getSettings(db)])
+      const first = reached.find((m) => !settings.milestonesSeen?.[m.id])
+      if (live && first) setMilestone(first)
+    })().catch(reportError)
+    return () => { live = false }
+  }, [db])
+  const closeMilestone = () => {
+    if (!milestone) return
+    void markMilestoneSeen(db, milestone.id, now()).catch(reportError)
+    setMilestone(null)
+  }
   const data = useLive(async () => {
     const n = now()
     const [queue, settings, songs, chunks, words, done, hasSongs, rhythm, reviewedToday, hasUnlocked] = await Promise.all([
@@ -232,6 +252,7 @@ export function Today() {
         <a class="btn primary cta today-cta" href={href(cta.route)}>{cta.text}</a>
       ) : null}
       {gate.sheet}
+      {milestone && <MilestoneSheet milestone={milestone} onClose={closeMilestone} haptics={settings.haptics} />}
     </main>
   )
 }

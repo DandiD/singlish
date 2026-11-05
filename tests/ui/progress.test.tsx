@@ -119,3 +119,25 @@ test('Versi sbloccati senza dati: trattino e cosa fare', async () => {
   expect(tile.querySelector('.tile-num')!.textContent).toBe('—')
   expect(tile.textContent).toContain('Ripassa le card di una canzone: i versi capiti si contano qui.')
 })
+
+test('Diario: «Traguardi» elenca i visti con la data, anche se persi; senza visti la sezione non c\'è', async () => {
+  mount(<Progress />)
+  await screen.findByRole('heading', { name: 'Diario', level: 1 })
+  expect(screen.queryByRole('heading', { name: 'Traguardi' })).toBeNull()
+  cleanup()
+  // «Venti punti in più» è ancora raggiunto; «Una canzone tutta capita» è stato visto ma ora è perso.
+  await db.songs.bulkAdd([{ ...song('Alba', 5, 40), comprehensionAfter: 70 }])
+  await saveSettings(db, { milestonesSeen: { 'final-gain-20': new Date(2026, 10, 5, 9), 'song-all-unlocked': new Date(2026, 9, 20, 9) } })
+  mount(<Progress />)
+  const h = await screen.findByRole('heading', { name: 'Traguardi' })
+  const items = [...h.parentElement!.querySelectorAll('li')].map((li) => li.textContent)
+  expect(items).toEqual(['Una canzone tutta capitavisto il 20 ottobre', 'Venti punti in piùvisto il 5 novembre'])
+})
+
+test('Diario: un traguardo raggiunto ma non ancora visto non compare', async () => {
+  await db.songs.bulkAdd([{ ...song('Alba', 5, 40), comprehensionAfter: 70 }])
+  await saveSettings(db, { milestonesSeen: {} })
+  mount(<Progress />)
+  await screen.findByRole('heading', { name: 'Diario', level: 1 })
+  expect(screen.queryByRole('heading', { name: 'Traguardi' })).toBeNull()
+})

@@ -7,6 +7,7 @@ import { Today } from '../../src/ui/screens/Today'
 import { newCardPair, newFsrsCard } from '../../src/domain/scheduler'
 import { getSettings, saveSettings } from '../../src/domain/settings'
 import { resetRhythmPulse } from '../../src/ui/components/WeekRhythm'
+import { resetRingPulse } from '../../src/ui/components/DayRing'
 import { LIMIT_NOTE } from '../../src/domain/ingest'
 import type { CardRow, Chunk, Review, Song, Word } from '../../src/db/types'
 
@@ -63,6 +64,7 @@ async function seedPendingSentence(when: Date) {
 }
 
 beforeEach(() => {
+  resetRingPulse()
   resetRhythmPulse()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/'
@@ -493,5 +495,71 @@ describe('ritmo della settimana in Oggi', () => {
     expect(dots[2].classList.contains('dot-done')).toBe(true)
     const a = container.querySelector('.song-carousel a')!
     expect(a.querySelector('.visually-hidden')!.textContent).toBe('1 parola da smistare nello Studio')
+  })
+})
+
+describe('traguardi', () => {
+  // Due traguardi raggiunti: «Venti punti in più» (canzone con +30) e «Una settimana a ritmo» (3 giorni liberi, obiettivo 3).
+  async function seedTwoMilestones() {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying', { comprehensionBefore: 40, comprehensionAfter: 70 }))
+    await saveSettings(db, { rhythmGoal: 3, freeDays: ['2026-11-02', '2026-11-03', '2026-11-04'] })
+  }
+  const orig = Object.getOwnPropertyDescriptor(navigator, 'vibrate')
+  let vibrate: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    vibrate = vi.fn(() => true)
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true })
+  })
+  afterEach(() => {
+    if (orig) Object.defineProperty(navigator, 'vibrate', orig)
+    else delete (navigator as unknown as Record<string, unknown>).vibrate
+  })
+
+  test('prima apertura (milestonesSeen assente): nessun foglio, traguardi seminati con la data di oggi', async () => {
+    await seedTwoMilestones()
+    mount()
+    await loaded()
+    await waitFor(async () => expect(Object.keys((await getSettings(db)).milestonesSeen ?? {}).sort()).toEqual(['final-gain-20', 'week-goal']))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(vibrate).not.toHaveBeenCalled()
+  })
+
+  test('con milestonesSeen vuoto: un solo foglio, il primo; «Bene» salva la data e non ricompare', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: {} })
+    const first = mount()
+    const dialog = await screen.findByRole('dialog', { name: 'Venti punti in più' })
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Bene' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(dialog.isConnected).toBe(false)
+    await waitFor(async () => expect((await getSettings(db)).milestonesSeen?.['final-gain-20']).toEqual(now))
+    // Rimontando Oggi, il primo non torna: compare il secondo.
+    first.unmount()
+    mount()
+    expect(await screen.findByRole('dialog', { name: 'Una settimana a ritmo' })).toBeTruthy()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Bene' }))
+    await waitFor(async () => expect((await getSettings(db)).milestonesSeen?.['week-goal']).toEqual(now))
+  })
+
+  test('Esc chiude e salva come «Bene»', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: {} })
+    mount()
+    await screen.findByRole('dialog')
+    // L'ascolto di Esc parte in un effetto, dopo il disegno: si riprova finché il foglio non si chiude.
+    await waitFor(() => { fireEvent.keyDown(document, { key: 'Escape' }); expect(screen.queryByRole('dialog')).toBeNull() })
+    await waitFor(async () => expect((await getSettings(db)).milestonesSeen?.['final-gain-20']).toEqual(now))
+  })
+
+  test('traguardi già visti (backup con milestonesSeen): nessun foglio', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: { 'final-gain-20': at(-1), 'week-goal': at(-1) } })
+    mount()
+    await loaded()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

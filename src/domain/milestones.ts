@@ -13,6 +13,20 @@ export const MILESTONE_ORDER: MilestoneId[] = [
   'song-all-unlocked', 'final-gain-20', 'active-50', 'active-150', 'active-500', 'week-goal', 'week-goal-4', 'level-up',
 ]
 
+/** Titolo di un traguardo che non dipende dai dati: serve al Diario per quelli visti e poi persi. */
+export function milestoneTitle(id: MilestoneId): string {
+  switch (id) {
+    case 'song-all-unlocked': return 'Una canzone tutta capita'
+    case 'final-gain-20': return 'Venti punti in più'
+    case 'active-50': return '50 voci attive'
+    case 'active-150': return '150 voci attive'
+    case 'active-500': return '500 voci attive'
+    case 'week-goal': return 'Una settimana a ritmo'
+    case 'week-goal-4': return 'Quattro settimane di fila'
+    case 'level-up': return 'Pronto per il livello successivo'
+  }
+}
+
 const ACTIVE_TEXT = 'Le usi senza aiuto: le riconosci e le completi.'
 
 /** I traguardi raggiunti ora, ricalcolati dai dati (mai da eventi), nell'ordine di `MILESTONE_ORDER`. */

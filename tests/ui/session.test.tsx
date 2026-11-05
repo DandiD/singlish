@@ -5,6 +5,7 @@ import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Session } from '../../src/ui/screens/Session'
 import { Today } from '../../src/ui/screens/Today'
+import { resetRingPulse } from '../../src/ui/components/DayRing'
 import { newFsrsCard } from '../../src/domain/scheduler'
 import { songLook } from '../../src/ui/cover'
 import { excludeItem } from '../../src/domain/ingest'
@@ -32,6 +33,7 @@ const reviewCard = (id: string, itemId: string, kind: 'R' | 'C', due: string): C
 }
 
 beforeEach(async () => {
+  resetRingPulse()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/session'
   await db.songs.add(song)
@@ -537,6 +539,7 @@ describe('haptics', () => {
   const orig = Object.getOwnPropertyDescriptor(navigator, 'vibrate')
   let vibrate: ReturnType<typeof vi.fn>
   beforeEach(() => {
+    resetRingPulse()
     vibrate = vi.fn(() => true)
     Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true })
   })

@@ -194,3 +194,10 @@ a.song-card:active { transform: scale(.985); }
 @media (prefers-reduced-motion: reduce) {
   .ra-line { animation: none !important; }
 }
+
+/* ---------- Traguardo: un impulso unico quando il foglio si apre ---------- */
+.sheet.milestone { animation: sheet-up var(--t-slow) var(--ease-out) both, milestone-pulse var(--t-med) var(--ease-out) var(--t-slow) 1; }
+@keyframes milestone-pulse { 50% { transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) {
+  .sheet.milestone { animation: none !important; }
+}
