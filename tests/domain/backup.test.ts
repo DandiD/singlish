@@ -164,3 +164,25 @@ test('readAlongAt survives export and import as a Date', async () => {
   expect(got).toBeInstanceOf(Date)
   expect(got!.getTime()).toBe(when.getTime())
 })
+
+test('backup round-trip turns milestonesSeen dates back into Date', async () => {
+  await saveSettings(db, { milestonesSeen: { 'active-50': new Date('2026-10-01T08:00:00Z') } })
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  expect(typeof json.tables.settings[0].milestonesSeen['active-50']).toBe('string')
+  const db2 = mk()
+  await importBackup(db2, json)
+  const seen = (await getSettings(db2)).milestonesSeen!
+  expect(seen['active-50']).toBeInstanceOf(Date)
+  expect(seen['active-50'].toISOString()).toBe('2026-10-01T08:00:00.000Z')
+})
+
+test('backup without milestonesSeen imports it as absent; empty object stays empty', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  const db2 = mk()
+  await importBackup(db2, json)
+  expect((await getSettings(db2)).milestonesSeen).toBeUndefined()
+  await saveSettings(db, { milestonesSeen: {} })
+  const db3 = mk()
+  await importBackup(db3, JSON.parse(JSON.stringify(await exportBackup(db, now))))
+  expect((await getSettings(db3)).milestonesSeen).toEqual({})
+})

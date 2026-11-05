@@ -70,3 +70,31 @@ export async function loadWeekRhythm(db: SinglishDB, now: Date): Promise<WeekRhy
   const [settings, reviewDays] = await Promise.all([getSettings(db), reviewDaysSince(db, weekStart(now))])
   return weekRhythm({ reviewDays, freeDays: settings.freeDays ?? [], goal: rhythmGoalOf(settings), now })
 }
+
+const parseDayKey = (key: string): Date => {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** Settimane lun–dom (fino a quella di `now`) con almeno `goal` giorni attivi; `fourInARow` = quattro di fila. */
+export function weeksReached(dayKeys: Set<string>, goal: number, now: Date): { any: boolean; fourInARow: boolean } {
+  const keys = [...dayKeys].sort()
+  if (!keys.length) return { any: false, fourInARow: false }
+  const perWeek = new Map<string, number>()
+  for (const k of keys) {
+    const w = localDayKey(weekStart(parseDayKey(k)))
+    perWeek.set(w, (perWeek.get(w) ?? 0) + 1)
+  }
+  const last = weekStart(now)
+  let any = false
+  let run = 0
+  let fourInARow = false
+  // Calendario, non millisecondi: la settimana dopo è sempre lunedì + 7 giorni, anche col cambio d'ora.
+  for (let w = weekStart(parseDayKey(keys[0])); w <= last; w = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7)) {
+    if ((perWeek.get(localDayKey(w)) ?? 0) >= goal) {
+      any = true
+      if (++run >= 4) fourInARow = true
+    } else run = 0
+  }
+  return { any, fourInARow }
+}

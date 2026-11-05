@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import {
-  RHYTHM_GOAL_DEFAULT, localDayKey, loadWeekRhythm, markFreeDay, reviewDaysSince, rhythmGoalOf, rhythmText, weekRhythm, weekStart,
+  RHYTHM_GOAL_DEFAULT, localDayKey, loadWeekRhythm, markFreeDay, reviewDaysSince, rhythmGoalOf, rhythmText, weekRhythm, weekStart, weeksReached,
 } from '../../src/domain/rhythm'
 import { DEFAULT_SETTINGS, getSettings, saveSettings } from '../../src/domain/settings'
 import type { Review } from '../../src/db/types'
@@ -151,4 +151,36 @@ test('loadWeekRhythm composes reviews, free days and goal; old settings give goa
   const r = await loadWeekRhythm(db, new Date(2026, 10, 5, 10))
   expect(r.goal).toBe(5)
   expect(r.active).toBe(2)
+})
+
+describe('weeksReached', () => {
+  const keys = (...days: Date[]) => new Set(days.map(localDayKey))
+  const wk = (monday: Date, n: number) => Array.from({ length: n }, (_, i) => new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i))
+  const mon = (w: number) => new Date(2026, 9, 5 + 7 * w) // lun 5 ott 2026 + w settimane
+
+  test('empty set reaches nothing', () => {
+    expect(weeksReached(new Set(), 3, new Date(2026, 10, 4))).toEqual({ any: false, fourInARow: false })
+  })
+  test('goal 7 is not reached with 6 days, goal 6 is', () => {
+    const six = keys(...wk(mon(0), 6))
+    expect(weeksReached(six, 7, new Date(2026, 9, 11)).any).toBe(false)
+    expect(weeksReached(six, 6, new Date(2026, 9, 11)).any).toBe(true)
+  })
+  test('four consecutive weeks (the last one is the current)', () => {
+    const k = keys(...wk(mon(0), 3), ...wk(mon(1), 3), ...wk(mon(2), 3), ...wk(mon(3), 3))
+    expect(weeksReached(k, 3, new Date(2026, 9, 29))).toEqual({ any: true, fourInARow: true })
+  })
+  test('a gap breaks the run', () => {
+    const k = keys(...wk(mon(0), 3), ...wk(mon(1), 3), ...wk(mon(3), 3), ...wk(mon(4), 3))
+    expect(weeksReached(k, 3, new Date(2026, 10, 4))).toEqual({ any: true, fourInARow: false })
+  })
+  test('a week that straddles the new year counts as one week', () => {
+    const k = keys(new Date(2026, 11, 29), new Date(2026, 11, 31), new Date(2027, 0, 1))
+    expect(weeksReached(k, 3, new Date(2027, 0, 5)).any).toBe(true)
+  })
+  test('across the DST change four weeks are still four weeks', () => {
+    const start = new Date(2026, 9, 12) // lun, a cavallo del cambio d'ora europeo (25 ott)
+    const k = keys(...wk(start, 3), ...wk(new Date(2026, 9, 19), 3), ...wk(new Date(2026, 9, 26), 3), ...wk(new Date(2026, 10, 2), 3))
+    expect(weeksReached(k, 3, new Date(2026, 10, 4)).fourInARow).toBe(true)
+  })
 })

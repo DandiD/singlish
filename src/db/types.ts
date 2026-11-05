@@ -178,4 +178,6 @@ export interface Settings {
   rhythmGoal?: number
   /** Giorni `YYYY-MM-DD` aperti senza card in coda: contano come attivi. Ultimi 84. */
   freeDays?: string[]
+  /** Traguardi già mostrati: id → data. Assente = mai seminato (prima apertura); `{}` = seminato, nessuno visto. */
+  milestonesSeen?: Record<string, Date>
 }

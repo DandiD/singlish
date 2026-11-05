@@ -91,8 +91,17 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
     ...s, startedAt: d(s.startedAt), endedAt: d(s.endedAt),
     ...(s.productions ? { productions: s.productions.map((p) => ({ ...p, at: d(p.at ?? null) ?? undefined })) } : {}),
   }))
+  const seenDates = (m: unknown): { milestonesSeen?: Record<string, Date> } => {
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return {}
+    const out: Record<string, Date> = {}
+    for (const [k, v] of Object.entries(m)) {
+      const date = d(v as Date | string | null)
+      if (date && !Number.isNaN(date.getTime())) out[k] = date
+    }
+    return { milestonesSeen: out }
+  }
   const settingsRow: Settings = {
-    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...withoutFreeDays(t.settings[0]), intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })), ...cleanFreeDays(t.settings[0].freeDays) } : DEFAULT_SETTINGS),
+    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...withoutFreeDays(t.settings[0]), intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })), ...cleanFreeDays(t.settings[0].freeDays), ...seenDates(t.settings[0].milestonesSeen) } : DEFAULT_SETTINGS),
     id: 'settings',
     apiKey,
   }
