@@ -2,6 +2,7 @@ import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import preact from '@preact/preset-vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { coverRuntimeCaching } from './src/pwa/covers'
 
 const commit = (() => {
   try {
@@ -61,6 +62,7 @@ export default defineConfig({
         globIgnores: ['screenshots/**'],
         navigateFallback: `${base}index.html`,
         cleanupOutdatedCaches: true,
+        runtimeCaching: [coverRuntimeCaching],
       },
     }),
   ],
