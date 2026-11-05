@@ -44,6 +44,7 @@ describe('SongCarousel', () => {
     expect(ring.getAttribute('style')).toContain('0.5turn')
     rerender(<SongCarousel items={[item({ progress: null })]} onAdd={null} addHref="#/add" />)
     expect(container.querySelector('.song-carousel-ring')).toBeNull()
+    expect(container.querySelector('[style*="--p"]')).toBeNull()
   })
 
   test('Aggiungi calls onAdd once and does not navigate', () => {

@@ -24,13 +24,12 @@ export function SongCarousel({
       {items.map((it) => (
         <li key={it.song.id}>
           <a class="song-carousel-item" href={it.href}>
-            {it.progress === null ? (
+            <span
+              class={it.progress === null ? 'song-carousel-frame' : 'song-carousel-frame song-carousel-ring'}
+              style={it.progress === null ? undefined : { '--p': `${it.progress}turn` }}
+            >
               <Cover song={it.song} size="md" />
-            ) : (
-              <span class="song-carousel-ring" style={{ '--p': `${it.progress}turn` }}>
-                <Cover song={it.song} size="md" />
-              </span>
-            )}
+            </span>
             <h3 class="song-carousel-title">{it.song.title}</h3>
             <span class="song-carousel-label">{it.label}</span>
             <span class="visually-hidden">{it.detail}</span>
