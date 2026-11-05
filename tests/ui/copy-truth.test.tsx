@@ -46,10 +46,12 @@ test('Studio di un testo: completare ed eliminare parlano di un testo', async ()
     difficultyKnownPct: 70, comprehensionBefore: null, grammarPoint: null, connectedSpeech: [], addedAt: now, analyzedAt: now })
   window.location.hash = '#/songs/t1'
   render(<AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}><Study songId="t1" /></AppDepsProvider>)
-  fireEvent.click(await screen.findByRole('button', { name: 'Segna come completato' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Altre azioni' }))
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Segna come completato' }))
   expect(screen.getByText(/Segnare questo testo come completato\?/)).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'Annulla' }))
-  expect(screen.getByRole('button', { name: 'Elimina testo' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Altre azioni' }))
+  expect(screen.getByRole('menuitem', { name: 'Elimina testo' })).toBeTruthy()
 })
 
 test('Espandi, Sessione vuota, Le tue frasi e prova offline dicono il vero', () => {

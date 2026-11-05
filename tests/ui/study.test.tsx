@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Study } from '../../src/ui/screens/Study'
@@ -29,6 +29,12 @@ afterEach(() => {
   db.close()
 })
 
+/** «Segna come completata» ed «Elimina» stanno nel menu «⋯» della testata. */
+const fromMenu = async (name: string) => {
+  fireEvent.click(await screen.findByRole('button', { name: 'Altre azioni' }))
+  fireEvent.click(screen.getByRole('menuitem', { name }))
+}
+
 const mount = () =>
   render(
     <AppDepsProvider
@@ -41,7 +47,7 @@ const mount = () =>
 test('Segna come completata asks for confirmation, then marks done and goes to Canzoni', async () => {
   mount()
   expect(await activeSongCount(db)).toBe(1)
-  fireEvent.click(await screen.findByRole('button', { name: 'Segna come completata' }))
+  await fromMenu('Segna come completata')
   // in-page confirm: nothing changes yet
   expect((await db.songs.get('s1'))!.status).toBe('studying')
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
@@ -52,7 +58,7 @@ test('Segna come completata asks for confirmation, then marks done and goes to C
 
 test('cancelling the confirm leaves the song untouched', async () => {
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: 'Segna come completata' }))
+  await fromMenu('Segna come completata')
   fireEvent.click(await screen.findByRole('button', { name: 'Annulla' }))
   expect((await db.songs.get('s1'))!.status).toBe('studying')
   expect(screen.queryByRole('button', { name: 'Conferma' })).toBeNull()
@@ -116,7 +122,7 @@ test('completamento non salvato: avviso e si resta sulla canzone', async () => {
   const { errors } = await import('../../src/ui/report')
   errors.dismiss()
   mount()
-  fireEvent.click(await screen.findByRole('button', { name: 'Segna come completata' }))
+  await fromMenu('Segna come completata')
   db.songs.update = (() => Promise.reject(new Error('disk'))) as never
   fireEvent.click(await screen.findByRole('button', { name: 'Conferma' }))
   await waitFor(() => expect(errors.get()).toMatch(/^Non salvato\./))
@@ -241,7 +247,7 @@ test('dallo Studio: Elimina canzone chiede conferma, poi elimina e porta a Canzo
       <Study songId="s1" />
     </AppDepsProvider>,
   )
-  fireEvent.click(await screen.findByRole('button', { name: 'Elimina canzone' }))
+  await fromMenu('Elimina canzone')
   fireEvent.click(screen.getByRole('button', { name: 'Sì, elimina' }))
   await waitFor(async () => expect(await db.songs.get('s1')).toBeUndefined(), { timeout: 3000 })
   await waitFor(() => expect(window.location.hash).toBe('#/songs'), { timeout: 3000 })
@@ -286,7 +292,8 @@ test('Studio aperto dall\'indirizzo su una canzone non ancora analizzata: lo dic
   await db.songs.update('s1', { status: 'draft' })
   mount()
   expect(await screen.findByText(/non è ancora stata analizzata/)).toBeTruthy()
-  expect(screen.queryByRole('button', { name: /Segna come completata/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Altre azioni' })).toBeNull()
+  expect(screen.queryByRole('menuitem', { name: /Segna come completata/ })).toBeNull()
   expect((await db.songs.get('s1'))!.status).toBe('draft')
 })
 
@@ -383,5 +390,85 @@ describe('cover in the Study header', () => {
     expect((await db.songs.get('s1'))!.coverUrl).toBeUndefined()
     expect(container.querySelector('.settings-head img')).toBeNull()
     expect(container.querySelector('.settings-head .cover')).toBeTruthy()
+  })
+})
+
+describe('percorso e testata', () => {
+  const DAY = 86_400_000
+  const pendingWord = (id: string, lemma: string) => ({
+    id, lemma, surfaceForm: lemma, pos: 'noun', freqRank: 9000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }],
+    cefr: 'B2' as const, register: 'usable' as const, topic: '', meaningIt: 'x', explanationIt: '', extraExampleEn: '',
+    triage: 'pending' as const, userEdited: false, suspended: false,
+  })
+  const path = async () => screen.findByRole('list', { name: 'Percorso della canzone' })
+
+  test('riascolto pronto e 2 parole da smistare: Smista e Riascolto sono link, le altre tappe no', async () => {
+    await db.songs.update('s1', { studyStartedAt: new Date(now.getTime() - 8 * DAY), comprehensionBefore: 40 })
+    await db.words.bulkAdd([pendingWord('w1', 'every'), pendingWord('w2', 'slide')])
+    mount()
+    const list = await path()
+    expect(within(list).getAllByRole('listitem')).toHaveLength(6)
+    const smista = await within(list).findByRole('link', { name: 'Smista, in corso, 2 da fare' })
+    expect(smista.getAttribute('href')).toBe('#/songs/s1/triage')
+    expect(within(list).getByRole('link', { name: 'Riascolto, ora, pronto' }).getAttribute('href')).toBe('#/songs/s1/final')
+    expect(within(list).getAllByRole('link')).toHaveLength(2)
+    expect(within(list).getAllByRole('listitem')[0].textContent).toBe('Ascolto, fatta, 40%')
+  })
+
+  test('senza parole da smistare e riascolto lontano: nessuna tappa con un link', async () => {
+    mount()
+    const list = await path()
+    expect(within(list).queryAllByRole('link')).toHaveLength(0)
+    expect(within(list).getAllByRole('listitem')[5].textContent).toBe('Riascolto, da fare, tra 7 giorni')
+  })
+
+  test('con un ritornello «Ritornello a voce» parte dalla tappa Studio', async () => {
+    const chorus = ['Late train home, no one waiting', 'verse', 'Late train home, no one waiting']
+    await db.songs.update('s1', { lines: chorus })
+    mount()
+    const list = await path()
+    expect((await within(list).findByRole('link', { name: 'Studio, fatta, Ritornello a voce' })).getAttribute('href')).toBe('#/songs/s1/chorus')
+  })
+
+  test('«Apri in Spotify ↗» sta nella testata', async () => {
+    await db.songs.update('s1', { spotifyUrl: 'https://open.spotify.com/track/abc123' })
+    const { container } = mount()
+    await screen.findByRole('heading', { name: 'Night Song' })
+    const head = container.querySelector<HTMLElement>('.study-head')!
+    const a = await within(head).findByRole('link', { name: 'Apri in Spotify ↗' })
+    expect(a.getAttribute('href')).toBe('https://open.spotify.com/track/abc123')
+    expect(screen.getAllByRole('link', { name: 'Apri in Spotify ↗' })).toHaveLength(1)
+    expect(container.querySelector('.study-artist')!.textContent).toBe('A')
+  })
+
+  test('«Chiedi a Gemini» è un pulsante fluttuante che sparisce mentre si sceglie', async () => {
+    const { container } = mount()
+    const btn = await screen.findByRole('button', { name: 'Chiedi a Gemini' })
+    expect(btn.closest('.study-ask')).toBeTruthy()
+    fireEvent.click(btn)
+    expect(container.querySelector('.study-ask')).toBeNull()
+    // resta solo quello della barra
+    expect(screen.getAllByRole('button', { name: 'Chiedi a Gemini' })).toHaveLength(1)
+    expect(within(screen.getByRole('region', { name: 'Da chiedere a Gemini' })).getByRole('button', { name: 'Chiedi a Gemini' })).toBeTruthy()
+  })
+
+  test('menu «⋯»: Elimina canzone chiede ancora conferma; Annulla non elimina', async () => {
+    mount()
+    await fromMenu('Elimina canzone')
+    expect(screen.getByRole('alertdialog', { name: 'Conferma eliminazione' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Annulla' }))
+    expect(await db.songs.get('s1')).toBeTruthy()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  test('testo libero: 5 tappe con «Lettura», niente Riascolto né Spotify', async () => {
+    await db.songs.update('s1', { kind: 'text', source: 'podcast', spotifyUrl: 'https://open.spotify.com/track/abc123' })
+    mount()
+    const list = await path()
+    const items = within(list).getAllByRole('listitem')
+    expect(items).toHaveLength(5)
+    expect(items[0].textContent).toBe('Lettura, da fare')
+    expect(list.textContent).not.toContain('Riascolto')
+    expect(screen.queryByRole('link', { name: /Apri in Spotify/ })).toBeNull()
   })
 })
