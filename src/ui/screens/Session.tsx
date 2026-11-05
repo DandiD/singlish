@@ -30,6 +30,7 @@ import { WeekRhythm } from '../components/WeekRhythm'
 import { RatingSegments } from '../components/RatingSegments'
 import { segmentsLabel, sessionSegments, streakGlowAt, type Outcome } from '../../domain/sessionRhythm'
 import { songLook } from '../cover'
+import { buzz } from '../haptics'
 import type { ComponentChildren } from 'preact'
 
 const MAX_CARD_MS = 120_000
@@ -368,6 +369,7 @@ export function Session() {
           song={loaded.songById.get(found.item.contexts[0]?.songId ?? found.item.songId)}
           onRate={rate}
           onProduce={produce}
+          haptics={loaded.settings.haptics}
         />
       ) : (
         <div class="card">
@@ -416,13 +418,14 @@ export function Session() {
   )
 }
 
-function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
+function SessionCard({ card, isNew, found, song, onRate, onProduce, haptics }: {
   card: QueueItem['card']
   isNew: boolean
   found: Item
   song: Song | undefined
   onRate(rating: Rating, auto: boolean, answer: string | null): void
   onProduce(sentence: string): void
+  haptics?: boolean
 }) {
   if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} song={found.item.origin === 'expand' ? undefined : song} isNew={isNew} onRate={onRate} onProduce={onProduce} />
   if (card.kind === 'A' && found.kind === 'chunk') return <ListenCard chunk={found.item} song={song} isNew={isNew} onRate={onRate} />
@@ -451,6 +454,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
     const g = gradeAnswer(answer, surface)
     setProposed(g.rating)
     setSelected(g.rating)
+    if (g.rating === 3) buzz({ haptics })
   }
 
   const translation = fromExpand ? undefined : song?.lineTranslations?.find((t) => t.lineIndex === ctx.lineIndex)?.textIt

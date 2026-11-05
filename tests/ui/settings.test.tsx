@@ -32,6 +32,16 @@ const okBody = () =>
   new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: '{"ok":true}' }] } }] }), { status: 200 })
 
 describe('Settings', () => {
+  test('Vibrazione switch is on without the field; turning it off saves haptics false', async () => {
+    mount()
+    const box = (await screen.findByLabelText(/^Vibrazione/)) as HTMLInputElement
+    expect(box.checked).toBe(true)
+    fireEvent.click(box)
+    await waitFor(async () => expect((await getSettings(db)).haptics).toBe(false))
+    fireEvent.click(box)
+    await waitFor(async () => expect((await getSettings(db)).haptics).toBe(true))
+  })
+
   test('changing level to B2 updates settings and band', async () => {
     mount()
     const select = (await screen.findByLabelText('Livello')) as HTMLSelectElement
