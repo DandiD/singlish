@@ -5,8 +5,10 @@ import { href, onBack } from '../../router'
 import { getSettings } from '../../domain/settings'
 import { loadLabel } from '../components/UnlockSheet'
 import { estimateAvgSeconds } from '../../domain/queue'
-import { LEVEL_UP, progressStats } from '../../domain/progress'
+import { dailyActivity, LEVEL_UP, progressStats } from '../../domain/progress'
 import { averageGain } from '../../domain/finalListen'
+import { unlockedKeys } from '../../domain/unlocked'
+import { ActivityCalendar } from '../components/ActivityCalendar'
 import { Icon } from '../components/Icon'
 import { formatNumber } from '../format'
 
@@ -42,14 +44,15 @@ export function Progress() {
   // Lasciati aperti, memoria e carico si ricalcolano al ritorno in primo piano e a mezzanotte (come Oggi).
   const day = useDayTick(now)
   const data = useLive(async () => {
-    const [settings, songs, chunks, words, cards, reviews, avgSeconds] = await Promise.all([
-      getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db),
+    const [settings, songs, chunks, words, cards, reviews, avgSeconds, unlocked] = await Promise.all([
+      getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db), unlockedKeys(db),
     ])
-    return { settings, gain: averageGain(songs), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, now()) }
+    const n = now()
+    return { settings, gain: averageGain(songs), unlocked: unlocked.length, weeks: dailyActivity(reviews, settings.freeDays ?? [], n), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, n) }
   }, [db, day])
 
   if (!data) return <main class="screen progress" aria-busy="true" />
-  const { settings, gain, stats: p } = data
+  const { settings, gain, weeks, unlocked, stats: p } = data
   const minutes = settings.timerMinutes.review
   const lastTest = settings.vocabTests?.at(-1)
 
@@ -57,8 +60,13 @@ export function Progress() {
     <main class="screen progress">
       <header class="settings-head">
         <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Indietro"><Icon name="back" /></a>
-        <h1>Progressi</h1>
+        <h1>Diario</h1>
       </header>
+
+      <section class="card progress-chart">
+        <h2>Ultime 12 settimane</h2>
+        <ActivityCalendar weeks={weeks} />
+      </section>
 
       <section class="card progress-chart">
         <div class="progress-chart-head">
@@ -80,6 +88,11 @@ export function Progress() {
       </section>
 
       <div class="tiles">
+        <section class="tile">
+          <span class="note">Versi sbloccati</span>
+          <span class="tile-num">{unlocked > 0 ? unlocked : '—'}</span>
+          <span class="tile-sub">{unlocked > 0 ? 'versi capiti, in tutte le canzoni' : 'Ripassa le card di una canzone: i versi capiti si contano qui.'}</span>
+        </section>
         <section class="tile">
           <span class="note">Lessico attivo</span>
           <span class="tile-num">{p.active}</span>

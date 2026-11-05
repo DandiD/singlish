@@ -115,3 +115,40 @@ test('import replaces existing data', async () => {
 test('backup file name uses the local date', () => {
   expect(backupFileName(new Date(2026, 9, 31, 23, 30).toISOString())).toBe('singlish-backup-2026-10-31.json')
 })
+
+test('backup round-trip keeps rhythmGoal and freeDays', async () => {
+  await saveSettings(db, { rhythmGoal: 3, freeDays: ['2026-10-30', '2026-10-31'] })
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  const db2 = mk()
+  await importBackup(db2, json)
+  const s = await getSettings(db2)
+  expect(s.rhythmGoal).toBe(3)
+  expect(s.freeDays).toEqual(['2026-10-30', '2026-10-31'])
+})
+
+test('backup without rhythm fields imports with goal 5 and no free days', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  delete json.tables.settings[0].rhythmGoal
+  delete json.tables.settings[0].freeDays
+  const db2 = mk()
+  await importBackup(db2, json)
+  const s = await getSettings(db2)
+  expect(s.rhythmGoal).toBeUndefined()
+  expect(s.freeDays ?? []).toEqual([])
+})
+
+test('import drops malformed freeDays entries', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  json.tables.settings[0].freeDays = ['2026-10-30', 'ieri', 5, null, '2026-13-01x', '2026-10-31']
+  const db2 = mk()
+  await importBackup(db2, json)
+  expect((await getSettings(db2)).freeDays).toEqual(['2026-10-30', '2026-10-31'])
+})
+
+test('import ignores freeDays that is not an array', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  json.tables.settings[0].freeDays = 'oggi'
+  const db2 = mk()
+  await importBackup(db2, json)
+  expect((await getSettings(db2)).freeDays ?? []).toEqual([])
+})

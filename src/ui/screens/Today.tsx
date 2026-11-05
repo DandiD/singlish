@@ -1,6 +1,8 @@
+import { useEffect } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDayTick } from '../useDayTick'
 import { useDeps } from '../deps'
+import { reportError } from '../report'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings, saveSettings } from '../../domain/settings'
@@ -8,6 +10,7 @@ import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
 import { rCardStates, unlockedLines } from '../../domain/unlocked'
 import { finalListenDue } from '../../domain/finalListen'
+import { localDayKey, loadWeekRhythm, markFreeDay, reviewDaysSince } from '../../domain/rhythm'
 import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
 import { pendingWords } from '../../domain/triage'
@@ -16,6 +19,7 @@ import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { DayRing } from '../components/DayRing'
+import { WeekRhythm } from '../components/WeekRhythm'
 import { SongCarousel, type CarouselItem } from '../components/SongCarousel'
 import { emptyCta, ringLabel, ringWhy, songDetail, songLabel } from '../todayText'
 import { useInstall } from '../../pwa/install'
@@ -26,8 +30,6 @@ const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' 
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const wordCount = (n: number) => (n === 1 ? '1 parola' : `${n} parole`)
-const pad = (n: number) => String(n).padStart(2, '0')
-const localDayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 /** L'invito coincide con l'azione principale (stesso obiettivo): si mostra solo l'azione. */
 function sameTarget(invite: Invite, action: EmptyAction): boolean {
@@ -79,7 +81,7 @@ export function Today() {
   const day = useDayTick(now)
   const data = useLive(async () => {
     const n = now()
-    const [queue, settings, songs, chunks, words, done, hasSongs] = await Promise.all([
+    const [queue, settings, songs, chunks, words, done, hasSongs, rhythm, reviewedToday, hasUnlocked] = await Promise.all([
       buildSessionQueue(db, n),
       getSettings(db),
       activeSongs(db),
@@ -87,6 +89,10 @@ export function Today() {
       db.words.toArray(),
       doneToday(db, n),
       db.songs.count().then((c) => c > 0),
+      loadWeekRhythm(db, n),
+      reviewDaysSince(db, new Date(n.getFullYear(), n.getMonth(), n.getDate())).then((d) => d.size > 0),
+      // Un giorno può essere libero solo se c'è materiale di studio sbloccato.
+      db.cards.filter((c) => c.unlocked === 1).first().then((c) => c !== undefined),
     ])
     const rState = await rCardStates(db)
     const pendingIds = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
@@ -107,11 +113,20 @@ export function Today() {
     const doneLeft = (await Promise.all((await db.songs.where('status').equals('done').toArray())
       .map(async (song) => ({ song, toTriage: await toTriageIn(song.id) }))))
       .filter((x) => x.toTriage > 0)
-    return { queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
+    return { asOf: n, hasUnlocked, rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
 
+  // Prima apertura del giorno con coda vuota e nessun ripasso: giorno libero. Una volta per chiave di giorno.
+  const freeDue = data !== undefined && data !== null && data.hasUnlocked && data.queue.items.length === 0 && !data.reviewedToday
+  const freeKey = freeDue ? data.dayKey : null
+  useEffect(() => {
+    if (freeKey === null || !data) return
+    // Il giorno è quello della query che ha prodotto la chiave, non quello dell'istante dell'effetto.
+    void markFreeDay(db, data.asOf).catch(reportError)
+  }, [db, freeKey])
+
   if (!data) return <main class="screen" aria-busy="true" />
-  const { queue, settings, progress, doneLeft, done, hasSongs, finalDue, toCorrect } = data
+  const { rhythm, queue, settings, progress, doneLeft, done, hasSongs, finalDue, toCorrect } = data
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
   const ring = dayRing({ done, left: queue.items.length, blocked: queue.newBlockedByLoad })
@@ -145,7 +160,7 @@ export function Today() {
       <header class="today-head">
         <span class="wordmark">Singlish</span>
         <span class="head-actions">
-          <a class="icon-btn" href={href({ name: 'progress' })} aria-label="Progressi"><Icon name="chart" /></a>
+          <a class="icon-btn" href={href({ name: 'progress' })} aria-label="Diario"><Icon name="chart" /></a>
           <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
         </span>
       </header>
@@ -169,6 +184,7 @@ export function Today() {
           why={ringWhy(ring, { blocked: queue.newBlockedByLoad, minutes, toCorrect })}
           dayKey={localDayKey(now())}
         />
+        <WeekRhythm rhythm={rhythm} weekKey={rhythm.days[0].key} />
         <div class="stats">
           <div class="stat"><span class="stat-num mono">{queue.dueCount}</span><span class="note">in scadenza</span></div>
           <div class="stat"><span class="stat-num mono">{queue.newCount}</span><span class="note">nuove</span></div>

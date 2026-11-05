@@ -25,6 +25,8 @@ import { newId } from '../../domain/id'
 import { Cover } from '../components/Cover'
 import { UnlockedVerses } from '../components/UnlockedVerses'
 import { newlyUnlocked, strongestSince, unlockedKeys, type StrongItem, type UnlockedVerse } from '../../domain/unlocked'
+import { loadWeekRhythm, type WeekRhythm as Rhythm } from '../../domain/rhythm'
+import { WeekRhythm } from '../components/WeekRhythm'
 import { songLook } from '../cover'
 import type { ComponentChildren } from 'preact'
 
@@ -176,6 +178,16 @@ export function Session() {
     return () => { alive = false }
   }, [finished, sessionId])
 
+  // Il ritmo della settimana alla fine (anche a coda vuota all'apertura, ma non nel «Niente da ripassare»).
+  const [rhythm, setRhythm] = useState<Rhythm | null>(null)
+  const showEnd = finished || (loaded !== null && items.length === 0)
+  useEffect(() => {
+    if (!showEnd) return
+    let alive = true
+    loadWeekRhythm(db, now()).then((r) => { if (alive) setRhythm(r) }).catch(reportError)
+    return () => { alive = false }
+  }, [showEnd, sessionId])
+
   // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
   const pausedNow = timer.state.status === 'paused'
   useEffect(() => { if (pausedNow) resumeRef.current?.focus() }, [pausedNow])
@@ -295,6 +307,7 @@ export function Session() {
         {endData && <UnlockedVerses verses={endData.verses} strongest={endData.strongest} />}
         {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
+        {rhythm && <WeekRhythm rhythm={rhythm} weekKey={rhythm.days[0].key} />}
         {left > 0 && <p class="note">{left === 1 ? '1 card ancora da fare oggi: la trovi in Oggi.' : `${left} card ancora da fare oggi: le trovi in Oggi.`}</p>}
         {toCorrect > 0 && <p class="note">Dopo la correzione le loro card possono tornare in scadenza già oggi.</p>}
         {toCorrect > 0 && (

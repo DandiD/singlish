@@ -162,3 +162,9 @@ a.song-card:active { transform: scale(.985); }
 @media (prefers-reduced-motion: reduce) {
   .lyrics p.line-lit { animation: none !important; }
 }
+
+/* ---------- Ritmo della settimana: un impulso quando l'obiettivo è raggiunto ---------- */
+.week-rhythm--pulse .week-rhythm-dots { animation: ring-pulse var(--t-med) var(--ease-out) 1; }
+@media (prefers-reduced-motion: reduce) {
+  .week-rhythm--pulse .week-rhythm-dots { animation: none !important; }
+}

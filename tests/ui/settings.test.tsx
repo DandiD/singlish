@@ -398,3 +398,21 @@ test('uscendo dalle Impostazioni con un campo ancora aperto, quello scritto si s
   unmount()
   await waitFor(async () => expect(await getSettings(db)).toMatchObject({ newPerDay: 22, model: 'other-model' }))
 })
+
+describe('Settings, weekly goal', () => {
+  test('shows 5 when no goal is saved', async () => {
+    mount()
+    const select = (await screen.findByLabelText('Obiettivo settimanale')) as HTMLSelectElement
+    expect(select.value).toBe('5')
+    expect(screen.getByText('3 giorni su 7')).toBeTruthy()
+    expect(screen.getByText('7 giorni su 7')).toBeTruthy()
+    expect(screen.getByText('Un giorno conta se ripassi almeno una card, o se quel giorno non c\'era niente da ripassare.')).toBeTruthy()
+  })
+
+  test('changing it to 3 saves rhythmGoal', async () => {
+    mount()
+    const select = (await screen.findByLabelText('Obiettivo settimanale')) as HTMLSelectElement
+    fireEvent.change(select, { target: { value: '3' } })
+    await waitFor(async () => expect((await getSettings(db)).rhythmGoal).toBe(3))
+  })
+})

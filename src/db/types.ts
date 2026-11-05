@@ -170,4 +170,8 @@ export interface Settings {
   intensiveUntil?: Date | null
   /** Test di vocabolario fatti, dal più vecchio. */
   vocabTests?: { at: Date; estimate: number; falseAlarms: number }[]
+  /** Giorni di ripasso a settimana (3–7); assente = 5. */
+  rhythmGoal?: number
+  /** Giorni `YYYY-MM-DD` aperti senza card in coda: contano come attivi. Ultimi 84. */
+  freeDays?: string[]
 }

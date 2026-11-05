@@ -1,6 +1,7 @@
 import { State } from 'ts-fsrs'
 import type { CardRow, Chunk, Level, Review, Settings, Song, Word } from '../db/types'
 import { dueItemsWithin } from './readiness'
+import { localDayKey, weekStart } from './rhythm'
 
 const NEXT: Record<Level, Level | null> = { B1: 'B2', B2: 'C1', C1: null }
 /** Per proporre il livello successivo: voci attive del livello attuale e comprensione al primo ascolto. */
@@ -48,4 +49,35 @@ export function progressStats(
     Math.min(activeAtLevel / LEVEL_UP.active, 1) * 0.5 + Math.min((currentComprehension ?? 0) / LEVEL_UP.comprehension, 1) * 0.5
 
   return { comprehension, currentComprehension, active: activeIds.size, activeAtLevel, retention, loadMinutesPerDay, nextLevel, levelProgress }
+}
+
+export type ActivityDay = { key: string; reviews: number; level: 0 | 1 | 2 | 3 | 4; free: boolean; future: boolean }
+
+/** Intensità a 5 livelli: 0; 1-9; 10-24; 25-49; 50 o più ripassi. */
+export function activityLevel(reviews: number): 0 | 1 | 2 | 3 | 4 {
+  if (reviews >= 50) return 4
+  if (reviews >= 25) return 3
+  if (reviews >= 10) return 2
+  if (reviews >= 1) return 1
+  return 0
+}
+
+/** 12 settimane (colonne) di 7 giorni lun-dom; l'ultima è quella di `now`. */
+export function dailyActivity(reviews: Pick<Review, 'reviewedAt'>[], freeDays: string[], now: Date): ActivityDay[][] {
+  const counts = new Map<string, number>()
+  for (const r of reviews) {
+    const k = localDayKey(r.reviewedAt)
+    counts.set(k, (counts.get(k) ?? 0) + 1)
+  }
+  const free = new Set(freeDays)
+  const todayKey = localDayKey(now)
+  const start = weekStart(now)
+  return Array.from({ length: 12 }, (_, w) =>
+    Array.from({ length: 7 }, (_, i) => {
+      const key = localDayKey(new Date(start.getFullYear(), start.getMonth(), start.getDate() + (w - 11) * 7 + i))
+      const future = key > todayKey
+      const n = future ? 0 : (counts.get(key) ?? 0)
+      return { key, reviews: n, level: activityLevel(n), free: !future && free.has(key), future }
+    }),
+  )
 }

@@ -61,6 +61,17 @@ export function isBackup(file: unknown): file is BackupFile {
   return TABLE_NAMES.every((n) => Array.isArray((t as Record<string, unknown>)[n]))
 }
 
+/** Un backup a mano può avere giorni liberi malformati: si tengono solo le chiavi YYYY-MM-DD; altrimenti il campo manca. */
+function withoutFreeDays<T extends { freeDays?: unknown }>(s: T): Omit<T, 'freeDays'> {
+  const { freeDays: _f, ...rest } = s
+  return rest
+}
+
+function cleanFreeDays(v: unknown): { freeDays?: string[] } {
+  if (!Array.isArray(v)) return {}
+  return { freeDays: v.filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x)) }
+}
+
 export async function importBackup(db: SinglishDB, file: unknown): Promise<void> {
   if (!isBackup(file)) throw new Error('Backup non valido')
   const t = file.tables
@@ -81,7 +92,7 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
     ...(s.productions ? { productions: s.productions.map((p) => ({ ...p, at: d(p.at ?? null) ?? undefined })) } : {}),
   }))
   const settingsRow: Settings = {
-    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...t.settings[0], intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })) } : DEFAULT_SETTINGS),
+    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...withoutFreeDays(t.settings[0]), intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })), ...cleanFreeDays(t.settings[0].freeDays) } : DEFAULT_SETTINGS),
     id: 'settings',
     apiKey,
   }
