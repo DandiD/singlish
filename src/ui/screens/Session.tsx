@@ -10,7 +10,7 @@ import { pendingWords } from '../../domain/triage'
 import { useLive } from '../useLive'
 import { getSettings } from '../../domain/settings'
 import { elapsedMs, formatMmSs, isExpired, startTimer } from '../../domain/timer'
-import { gradeAnswer, gradeDictation } from '../../domain/text'
+import { gradeAnswer, gradeDictation, typoSpan } from '../../domain/text'
 import { useTimer } from '../useTimer'
 import { useDayTick } from '../useDayTick'
 import { TimerPill } from '../components/TimerPill'
@@ -27,7 +27,10 @@ import { UnlockedVerses } from '../components/UnlockedVerses'
 import { newlyUnlocked, strongestSince, unlockedKeys, type StrongItem, type UnlockedVerse } from '../../domain/unlocked'
 import { loadWeekRhythm, type WeekRhythm as Rhythm } from '../../domain/rhythm'
 import { WeekRhythm } from '../components/WeekRhythm'
+import { RatingSegments } from '../components/RatingSegments'
+import { segmentsLabel, sessionSegments, streakGlowAt, type Outcome } from '../../domain/sessionRhythm'
 import { songLook } from '../cover'
+import { buzz } from '../haptics'
 import type { ComponentChildren } from 'preact'
 
 const MAX_CARD_MS = 120_000
@@ -61,6 +64,8 @@ export function Session() {
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [written, setWritten] = useState(0)
+  // Esiti di questa visita, per posizione nella coda (`at` = idx): salvati solo se il voto o la frase sono stati registrati.
+  const [outcomes, setOutcomes] = useState<{ at: number; outcome: Outcome }[]>([])
   // Card che tornano più tardi oggi (passi di apprendimento di FSRS): con queste la giornata non è finita.
   const [later, setLater] = useState<number | null>(null)
   // Le frasi da correggere sono tutte quelle in attesa, come in Oggi e in «Le tue frasi» (anche di una sessione ripresa).
@@ -196,8 +201,17 @@ export function Session() {
   if (!loaded) return <main class="screen session" aria-busy="true" />
 
   // Anche le frasi già scritte nella sessione ripresa contano come card fatte: «N di M» non cala riprendendo.
-  const total = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + items.length
-  const position = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + idx
+  const doneBefore = loaded.doneReviews + loaded.doneNew + loaded.doneWritten
+  const total = doneBefore + items.length
+  const position = doneBefore + idx
+
+  // Una card saltata (voce eliminata) o senza voto registrato non ha esito: il suo segmento è «fatto»,
+  // così i segmenti restano allineati a `position` e «N di M» non cambia.
+  const segments = sessionSegments({ doneBefore: doneBefore, outcomes: [], total })
+  for (const { at, outcome } of outcomes) segments[doneBefore + at] = sessionSegments({ doneBefore: 0, outcomes: [outcome], total: 1 })[0]
+  for (let i = 0; i < idx; i++) if (!outcomes.some((o) => o.at === i)) segments[doneBefore + i] = 'done'
+  const outcomeList = outcomes.map((o) => o.outcome)
+  const glow = streakGlowAt(outcomeList).map((k) => doneBefore + outcomes[k].at)
 
   const closeSession = async () => {
     timerRef.current.stop()
@@ -228,7 +242,10 @@ export function Session() {
         await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
         return true
       })
-      if (recorded) setCounts(next)
+      if (recorded) {
+        setCounts(next)
+        setOutcomes((o) => [...o, { at: idx, outcome: { kind: 'rated', rating } }])
+      }
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
     } catch (e) {
@@ -248,6 +265,7 @@ export function Session() {
       const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
       await saveProduction(db, sessionId, { cardId: current.card.id, itemId: current.card.itemId, sentence, elapsedMs: elapsed, wasNew: current.isNew, at: now() })
       setWritten((n) => n + 1)
+      setOutcomes((o) => [...o, { at: idx, outcome: { kind: 'written' } }])
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
     } catch (e) {
@@ -329,7 +347,6 @@ export function Session() {
         <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
-          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${position / total})` }} /></div>
         </div>
         {timerReady && (
           <TimerPill
@@ -340,6 +357,7 @@ export function Session() {
             onResume={timer.resume}
           />
         )}
+        <RatingSegments segments={segments} current={position} glow={glow} label={segmentsLabel(outcomeList)} />
       </header>
 
       {found ? (
@@ -351,6 +369,7 @@ export function Session() {
           song={loaded.songById.get(found.item.contexts[0]?.songId ?? found.item.songId)}
           onRate={rate}
           onProduce={produce}
+          haptics={loaded.settings.haptics}
         />
       ) : (
         <div class="card">
@@ -399,13 +418,14 @@ export function Session() {
   )
 }
 
-function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
+function SessionCard({ card, isNew, found, song, onRate, onProduce, haptics }: {
   card: QueueItem['card']
   isNew: boolean
   found: Item
   song: Song | undefined
   onRate(rating: Rating, auto: boolean, answer: string | null): void
   onProduce(sentence: string): void
+  haptics?: boolean
 }) {
   if (card.kind === 'P' && found.kind === 'chunk') return <ProduceCard chunk={found.item} song={found.item.origin === 'expand' ? undefined : song} isNew={isNew} onRate={onRate} onProduce={onProduce} />
   if (card.kind === 'A' && found.kind === 'chunk') return <ListenCard chunk={found.item} song={song} isNew={isNew} onRate={onRate} />
@@ -434,8 +454,11 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
     const g = gradeAnswer(answer, surface)
     setProposed(g.rating)
     setSelected(g.rating)
+    if (g.rating === 3) buzz({ haptics })
   }
 
+  const translation = fromExpand ? undefined : song?.lineTranslations?.find((t) => t.lineIndex === ctx.lineIndex)?.textIt
+  const typo = proposed === 2 ? typoSpan(answer, surface) : null
   const at = findForm(verse, surface)
   const idxGap = at ? at.start : -1
 
@@ -447,7 +470,11 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           {isC ? (
             <>
               {verse.slice(0, idxGap)}
-              <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
+              {proposed === 3 ? (
+                <span class="gap snap" aria-label={`risposta: ${surface}`}>{surface}</span>
+              ) : (
+                <span class="gap" aria-label="spazio da completare">{'\u00a0'.repeat(10)}</span>
+              )}
               {verse.slice(at ? at.end : 0)}
             </>
           ) : (
@@ -468,6 +495,7 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
           <div class="section-label">SIGNIFICATO</div>
           <p class="sheet-meaning">{item.meaningIt}</p>
           {!isC && item.explanationIt && <p class="sheet-expl">{item.explanationIt}</p>}
+          {!isC && translation && <p class="verse-it">{translation}</p>}
         </div>
       )}
 
@@ -504,7 +532,11 @@ function SessionCard({ card, isNew, found, song, onRate, onProduce }: {
             <>
               <div class={`feedback f${proposed}`}>
                 <strong>{proposed === 3 ? 'Esatto' : proposed === 2 ? 'Quasi: un errore di battitura' : 'Non ancora'}</strong>
-                <p>{`Risposta attesa: ${surface} · voto proposto: ${RATING_LABEL[proposed]}`}</p>
+                <p>
+                  {'Risposta attesa: '}
+                  {typo ? <>{typo.before}<u>{typo.diff}</u>{typo.after}</> : surface}
+                  {` · voto proposto: ${RATING_LABEL[proposed]}`}
+                </p>
               </div>
               <RatingBar selected={selected ?? proposed} onSelect={setSelected} />
               <button type="submit" class="btn primary cta">Conferma</button>

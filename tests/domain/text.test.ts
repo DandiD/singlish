@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { gradeAnswer, levenshtein, normalizeAnswer, normalizeKey, splitLines } from '../../src/domain/text'
+import { gradeAnswer, levenshtein, normalizeAnswer, normalizeKey, splitLines, typoSpan } from '../../src/domain/text'
 
 describe('text', () => {
   test('splitLines cleans pasted lyrics', () => {
@@ -41,5 +41,47 @@ describe('text', () => {
   test('una contrazione scritta senza apostrofo è un errore di battitura, non una risposta sbagliata', () => {
     expect(gradeAnswer("dont let go", "don't let go")).toEqual({ rating: 2, distance: 1 })
     expect(gradeAnswer('im over it', "I'm over it").rating).toBe(2)
+  })
+})
+
+describe('typoSpan', () => {
+  test('substitution with swapped letters', () => {
+    expect(typoSpan('recieve', 'receive')).toEqual({ before: 'rec', diff: 'ei', after: 've' })
+  })
+  test('omission in the given answer: the missing expected letter', () => {
+    expect(typoSpan('runing', 'running')).toEqual({ before: 'run', diff: 'n', after: 'ing' })
+  })
+  test('single substitution', () => {
+    expect(typoSpan('wonder', 'wander')).toEqual({ before: 'w', diff: 'a', after: 'nder' })
+  })
+  test('case-insensitive: equal gives null, slices keep expected case', () => {
+    expect(typoSpan('Wander', 'wander')).toBeNull()
+    expect(typoSpan('wander', 'Wander')).toBeNull()
+    expect(typoSpan('Wonder', 'Wander')).toEqual({ before: 'W', diff: 'a', after: 'nder' })
+  })
+  test('extra letter in given: the expected letter before the insertion point', () => {
+    expect(typoSpan('runn', 'run')).toEqual({ before: 'ru', diff: 'n', after: '' })
+    expect(typoSpan('xrun', 'run')).toEqual({ before: '', diff: 'r', after: 'un' })
+  })
+  test('diff is never empty and slices recompose expected', () => {
+    for (const [g, e] of [['runn', 'run'], ['ab', 'abc'], ['', 'abc'], ['aab', 'ab'], ['abc', 'axc']]) {
+      const t = typoSpan(g, e)!
+      expect(t.diff.length).toBeGreaterThan(0)
+      expect(t.before + t.diff + t.after).toBe(e)
+    }
+  })
+  test('given is normalized like gradeAnswer: spaces and curly quotes do not shift the span', () => {
+    expect(typoSpan(' let it slid', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('let  it slid', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('let it slid ', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('don’t let ga', "don't let go")).toEqual({ before: "don't let g", diff: 'o', after: '' })
+    expect(typoSpan('don’t lt go', "don't let go")).toEqual({ before: "don't l", diff: 'e', after: 't go' })
+  })
+  test('curly quote in expected: slices still come from expected', () => {
+    expect(typoSpan("don't let ga", 'Don’t let go')).toEqual({ before: 'Don’t let g', diff: 'o', after: '' })
+  })
+  test('a difference that only contraction expansion explains: no underline', () => {
+    expect(typoSpan('i am ovr it', "I'm over it")).toBeNull()
+    expect(typoSpan('do not let ga', "don't let go")).toBeNull()
   })
 })

@@ -183,6 +183,7 @@ export function Today() {
           label={ringLabel(ring, toCorrect)}
           why={ringWhy(ring, { blocked: queue.newBlockedByLoad, minutes, toCorrect })}
           dayKey={localDayKey(now())}
+          haptics={settings.haptics}
         />
         <WeekRhythm rhythm={rhythm} weekKey={rhythm.days[0].key} />
         <div class="stats">

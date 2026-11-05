@@ -78,3 +78,34 @@ export function gradeDictation(given: string, expected: string): { rating: 1 | 2
   const wrongWords = Math.min(wordDistance(words(given), words(expected)), wordDistance(plain(given), plain(expected)))
   return { rating: wrongWords === 0 ? 3 : wrongWords === 1 ? 2 : 1, wrongWords }
 }
+
+/**
+ * La parte di `expected` che differisce da `given`, trovata con prefisso e suffisso comuni (senza maiuscole,
+ * spazi in più né apostrofi curvi in `given`). `null` anche quando la differenza è solo di contrazioni.
+ * Le parti sono fette di `expected` (before + diff + after === expected). `null` se uguali.
+ * Il suffisso non si sovrappone al prefisso, così con lettere ripetute la parte è la minima.
+ * `diff` non è mai vuoto: se `given` ha solo lettere in più (inserimento), si prende la lettera di `expected`
+ * subito prima del punto dell'inserimento (o la prima, se l'inserimento è in testa).
+ */
+export function typoSpan(given: string, expected: string): { before: string; diff: string; after: string } | null {
+  // `given` si normalizza come in gradeAnswer (spazi, apostrofi curvi); `expected` solo in modi che non cambiano
+  // la lunghezza, così le fette restano di `expected`.
+  const g = squeeze(fixQuotes(given.toLowerCase()))
+  const e = fixQuotes(expected.toLowerCase())
+  if (g === e) return null
+  // Se la differenza la spiega solo l'espansione delle contrazioni («i am» per «I'm»), sulle forme semplici
+  // non c'è una lettera da sottolineare.
+  if (levenshtein(normalizeAnswer(given), normalizeAnswer(expected)) < levenshtein(g, squeeze(e))) return null
+  const max = Math.min(g.length, e.length)
+  let p = 0
+  while (p < max && g[p] === e[p]) p++
+  let s = 0
+  while (s < max - p && g[g.length - 1 - s] === e[e.length - 1 - s]) s++
+  let start = p
+  let end = e.length - s
+  if (start === end && e.length > 0) {
+    if (start > 0) start -= 1
+    else end = 1
+  }
+  return { before: expected.slice(0, start), diff: expected.slice(start, end), after: expected.slice(end) }
+}

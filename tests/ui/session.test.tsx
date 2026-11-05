@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
@@ -8,6 +8,7 @@ import { Today } from '../../src/ui/screens/Today'
 import { newFsrsCard } from '../../src/domain/scheduler'
 import { songLook } from '../../src/ui/cover'
 import { excludeItem } from '../../src/domain/ingest'
+import { saveSettings } from '../../src/domain/settings'
 import type { CardRow, Chunk, Song } from '../../src/db/types'
 
 let db: SinglishDB
@@ -530,4 +531,65 @@ test('Today shows one cover per song', async () => {
   await screen.findByText('Other Song')
   expect(container.querySelectorAll('a.song-carousel-item[href^="#/songs/s"]').length).toBe(2)
   expect(container.querySelectorAll('.song-carousel-item .cover')).toHaveLength(2)
+})
+
+describe('haptics', () => {
+  const orig = Object.getOwnPropertyDescriptor(navigator, 'vibrate')
+  let vibrate: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    vibrate = vi.fn(() => true)
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true })
+  })
+  afterEach(() => {
+    if (orig) Object.defineProperty(navigator, 'vibrate', orig)
+    else delete (navigator as unknown as Record<string, unknown>).vibrate
+  })
+
+  test('exact C answer vibrates once', async () => {
+    await seedCOnly()
+    renderSession()
+    await typeAndCheck('let it slide')
+    await screen.findByText('Esatto')
+    expect(vibrate).toHaveBeenCalledExactlyOnceWith(10)
+  })
+
+  test('typo does not vibrate', async () => {
+    await seedCOnly()
+    renderSession()
+    await typeAndCheck('let it slid')
+    await screen.findByText('Quasi: un errore di battitura')
+    expect(vibrate).not.toHaveBeenCalled()
+  })
+
+  test('haptics off: exact answer does not vibrate', async () => {
+    await saveSettings(db, { haptics: false })
+    await seedCOnly()
+    renderSession()
+    await typeAndCheck('let it slide')
+    await screen.findByText('Esatto')
+    expect(vibrate).not.toHaveBeenCalled()
+  })
+
+  test('no navigator.vibrate: exact answer still works', async () => {
+    delete (navigator as unknown as Record<string, unknown>).vibrate
+    const { errors } = await import('../../src/ui/report')
+    errors.dismiss()
+    const thrown: unknown[] = []
+    const onError = (e: ErrorEvent) => { thrown.push(e.error ?? e.message) }
+    window.addEventListener('error', onError)
+    try {
+      await seedCOnly()
+      renderSession()
+      await typeAndCheck('let it slide')
+      await screen.findByText('Esatto')
+      fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+      await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+      expect((await db.reviews.toArray())[0]).toMatchObject({ cardId: 'k2', rating: 3, auto: true })
+      expect(await screen.findByRole('heading', { name: /Fatto per oggi|Sessione finita/ })).toBeTruthy()
+      expect(thrown).toEqual([])
+      expect(errors.get()).toBeNull()
+    } finally {
+      window.removeEventListener('error', onError)
+    }
+  })
 })

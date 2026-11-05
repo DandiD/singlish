@@ -1,12 +1,12 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact'
 import { DayRing, RING_CIRCUMFERENCE, resetRingPulse } from '../../src/ui/components/DayRing'
 import { dayRing } from '../../src/domain/today'
 
 afterEach(cleanup)
 
-function ring(done: number, left: number, blocked = false, extra: { why?: string | null; dayKey?: string } = {}) {
-  return render(<DayRing ring={dayRing({ done, left, blocked })} estMinutes={12} timerMinutes={30} label="Etichetta breve" why={extra.why ?? null} dayKey={extra.dayKey ?? '2026-11-05'} />)
+function ring(done: number, left: number, blocked = false, extra: { why?: string | null; dayKey?: string; haptics?: boolean } = {}) {
+  return render(<DayRing ring={dayRing({ done, left, blocked })} estMinutes={12} timerMinutes={30} label="Etichetta breve" why={extra.why ?? null} dayKey={extra.dayKey ?? '2026-11-05'} haptics={extra.haptics} />)
 }
 const arc = (c: Element) => c.querySelector('.day-ring-arc') as SVGElement
 
@@ -113,5 +113,34 @@ describe('DayRing', () => {
     resetRingPulse()
     expect(pulsing(ring(3, 2).container)).toBe(false)
     expect(pulsing(ring(4, 0).container)).toBe(true)
+  })
+})
+
+describe('DayRing haptics', () => {
+  const orig = Object.getOwnPropertyDescriptor(navigator, 'vibrate')
+  let vibrate: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    resetRingPulse()
+    vibrate = vi.fn(() => true)
+    Object.defineProperty(navigator, 'vibrate', { value: vibrate, configurable: true, writable: true })
+  })
+  afterEach(() => {
+    if (orig) Object.defineProperty(navigator, 'vibrate', orig)
+    else delete (navigator as unknown as Record<string, unknown>).vibrate
+  })
+
+  test('closing the ring vibrates the first time for the day, not the second', () => {
+    ring(4, 0)
+    expect(vibrate).toHaveBeenCalledExactlyOnceWith(10)
+    cleanup()
+    ring(4, 0)
+    expect(vibrate).toHaveBeenCalledTimes(1)
+  })
+  test('not done: no vibration; haptics false: none', () => {
+    ring(3, 2)
+    expect(vibrate).not.toHaveBeenCalled()
+    cleanup()
+    ring(4, 0, false, { haptics: false })
+    expect(vibrate).not.toHaveBeenCalled()
   })
 })

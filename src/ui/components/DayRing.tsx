@@ -1,6 +1,7 @@
-import { useId, useRef, useState } from 'preact/hooks'
+import { useEffect, useId, useRef, useState } from 'preact/hooks'
 import type { dayRing } from '../../domain/today'
 import { plural } from '../plural'
+import { buzz } from '../haptics'
 
 const R = 52
 export const RING_CIRCUMFERENCE = 2 * Math.PI * R
@@ -19,9 +20,11 @@ type Props = {
   why: string | null
   /** Il giorno locale di oggi, YYYY-MM-DD. */
   dayKey: string
+  /** Vibrazione alla chiusura dell'anello; assente = attiva. */
+  haptics?: boolean
 }
 
-export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey }: Props) {
+export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, haptics }: Props) {
   const [open, setOpen] = useState(false)
   const whyId = useId()
   const { done, total, state, blocked } = ring
@@ -39,6 +42,10 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey }: 
     pulseDay.current = dayKey
   }
   const pulse = state === 'done' && pulseDay.current === dayKey
+  // La vibrazione parte con l'impulso, una volta per montaggio (e per giorno), fuori dal render.
+  useEffect(() => {
+    if (pulse) buzz({ haptics })
+  }, [pulse])
 
   return (
     <div class={`day-ring day-ring--${state}${blocked ? ' day-ring--blocked' : ''}${pulse ? ' day-ring--pulse' : ''}`}>
