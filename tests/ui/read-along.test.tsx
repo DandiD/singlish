@@ -24,13 +24,16 @@ const chunk: Chunk = { id: 'c1', songId: 's1', key: 'let it slide', baseForm: 'l
   explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false }
 
 beforeEach(async () => {
+  // Solo l'orologio è finto: la guardia di «Letta tutta» legge Date.now().
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-11-05T10:00:00Z'))
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/songs/s1'
   window.location.hash = '#/songs/s1/read'
   await db.songs.add(song)
   await db.chunks.add(chunk)
 })
-afterEach(() => { cleanup(); db.close(); delete (navigator as any).wakeLock })
+afterEach(() => { cleanup(); db.close(); delete (navigator as any).wakeLock; vi.useRealTimers() })
 const mount = () => render(
   <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
     <ReadAlong songId="s1" />
@@ -123,11 +126,56 @@ test('sull\'ultima riga Avanti diventa «Letta tutta»: salva readAlongAt e torn
   fireEvent.click(zone('next'))
   fireEvent.keyDown(document, { key: 'ArrowRight' })
   expect((await db.songs.get('s1'))!.readAlongAt).toBeUndefined()
+  // Passato il tempo di guardia dell'ultima riga, un doppio tocco salva una volta sola.
+  vi.setSystemTime(Date.now() + 500)
   const done = screen.getByRole('button', { name: 'Letta tutta' })
   fireEvent.click(done)
   fireEvent.click(done)
   await waitFor(async () => expect((await db.songs.get('s1'))!.readAlongAt).toEqual(now))
   await waitFor(() => expect(window.location.hash).toBe('#/songs/s1'))
+})
+
+test('doppio tocco su «Avanti» sulla penultima riga: «Letta tutta» è un altro pulsante e ignora i tocchi per 400 ms', async () => {
+  mount()
+  await screen.findByText('Riga 1 di 4')
+  fireEvent.click(screen.getByRole('button', { name: 'Avanti' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Avanti' }))
+  const avanti = screen.getByRole('button', { name: 'Avanti' })
+  fireEvent.click(avanti)
+  const done = screen.getByRole('button', { name: 'Letta tutta' })
+  expect(done).not.toBe(avanti)
+  // Il secondo tocco del doppio tocco, e uno poco dopo: non finiscono la lettura.
+  fireEvent.click(done)
+  vi.setSystemTime(Date.now() + 300)
+  fireEvent.click(done)
+  await new Promise((r) => setTimeout(r, 30))
+  expect((await db.songs.get('s1'))!.readAlongAt).toBeUndefined()
+  expect(window.location.hash).toBe('#/songs/s1/read')
+  vi.setSystemTime(Date.now() + 200)
+  fireEvent.click(done)
+  await waitFor(async () => expect((await db.songs.get('s1'))!.readAlongAt).toEqual(now))
+})
+
+test('un tasto tenuto premuto (keydown ripetuto) non scorre le righe', async () => {
+  mount()
+  await screen.findByText('Riga 1 di 4')
+  fireEvent.keyDown(document, { key: 'ArrowRight' })
+  expect(screen.getByText('Riga 2 di 4')).toBeTruthy()
+  fireEvent.keyDown(document, { key: 'ArrowRight', repeat: true })
+  fireEvent.keyDown(document, { key: 'PageDown', repeat: true })
+  expect(screen.getByText('Riga 2 di 4')).toBeTruthy()
+  fireEvent.keyDown(document, { key: 'ArrowLeft', repeat: true })
+  expect(screen.getByText('Riga 2 di 4')).toBeTruthy()
+})
+
+test('la nuvoletta è una regione di stato: il lettore di schermo legge il significato', async () => {
+  mount()
+  await screen.findByText('Riga 1 di 4')
+  fireEvent.click(zone('next'))
+  fireEvent.click(zone('next'))
+  const item = await screen.findByRole('button', { name: 'let it slide' })
+  fireEvent.click(item)
+  expect(screen.getByRole('status').textContent).toContain('lasciar correre')
 })
 
 test('testo libero: «Leggi riga per riga», «Letto tutto», niente Spotify né ritornello', async () => {
@@ -219,4 +267,23 @@ test('useWakeLock: tornando sulla scheda richiede il blocco che il sistema ha to
   document.dispatchEvent(new Event('visibilitychange'))
   await waitFor(() => expect(wl.request).toHaveBeenCalledTimes(2))
   vis.mockRestore()
+})
+
+test('useWakeLock: smontato, toglie l\'ascolto di visibilitychange e non richiede più il blocco', async () => {
+  const wl = fakeWakeLock()
+  const add = vi.spyOn(document, 'addEventListener')
+  const remove = vi.spyOn(document, 'removeEventListener')
+  const h = renderHook(() => useWakeLock(true))
+  await waitFor(() => expect(wl.sentinels).toHaveLength(1))
+  const listener = add.mock.calls.find((c) => c[0] === 'visibilitychange')![1]
+  h.unmount()
+  await waitFor(() => expect(remove).toHaveBeenCalledWith('visibilitychange', listener))
+  const vis = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+  wl.sentinels[0].released = true
+  document.dispatchEvent(new Event('visibilitychange'))
+  await new Promise((r) => setTimeout(r, 10))
+  expect(wl.request).toHaveBeenCalledTimes(1)
+  vis.mockRestore()
+  add.mockRestore()
+  remove.mockRestore()
 })

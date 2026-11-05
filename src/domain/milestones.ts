@@ -30,7 +30,16 @@ export function milestoneTitle(id: MilestoneId): string {
 const ACTIVE_TEXT = 'Le usi senza aiuto: le riconosci e le completi.'
 
 /** I traguardi raggiunti ora, ricalcolati dai dati (mai da eventi), nell'ordine di `MILESTONE_ORDER`. */
-export async function reachedMilestones(db: SinglishDB, now: Date): Promise<Milestone[]> {
+export function reachedMilestones(db: SinglishDB, now: Date): Promise<Milestone[]> {
+  return compute(db, now, {})
+}
+
+/** Come `reachedMilestones`, senza quelli già visti; i giorni dei ripassi si leggono solo se un traguardo di settimana manca ancora. */
+export function unseenReached(db: SinglishDB, now: Date, seen: Partial<Record<MilestoneId, unknown>>): Promise<Milestone[]> {
+  return compute(db, now, seen)
+}
+
+async function compute(db: SinglishDB, now: Date, seen: Partial<Record<MilestoneId, unknown>>): Promise<Milestone[]> {
   const [settings, songs, chunks, words, cards, reviews, avgSeconds, rState] = await Promise.all([
     getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.where('reviewedAt').aboveOrEqual(new Date(now.getTime() - 31 * 86_400_000)).toArray(),
     estimateAvgSeconds(db), rCardStates(db),
@@ -46,8 +55,10 @@ export async function reachedMilestones(db: SinglishDB, now: Date): Promise<Mile
   )
   const stats = progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, now)
 
-  const dayKeys = new Set([...(await reviewDaysSince(db, new Date(0))), ...(settings.freeDays ?? [])])
-  const weeks = weeksReached(dayKeys, rhythmGoalOf(settings), now)
+  const weeksWanted = !seen['week-goal'] || !seen['week-goal-4']
+  const weeks = weeksWanted
+    ? weeksReached(new Set([...(await reviewDaysSince(db, new Date(0))), ...(settings.freeDays ?? [])]), rhythmGoalOf(settings), now)
+    : { any: false, fourInARow: false }
 
   const out: Record<MilestoneId, Milestone | null> = {
     'song-all-unlocked': allUnlocked
@@ -66,7 +77,7 @@ export async function reachedMilestones(db: SinglishDB, now: Date): Promise<Mile
         ? { id: 'level-up', title: `Pronto per il ${stats.nextLevel}`, text: 'Puoi alzare il livello nelle Impostazioni.' }
         : null,
   }
-  return MILESTONE_ORDER.map((id) => out[id]).filter((m): m is Milestone => m !== null)
+  return MILESTONE_ORDER.filter((id) => !seen[id]).map((id) => out[id]).filter((m): m is Milestone => m !== null)
 }
 
 /** Salva la data in cui il traguardo è stato mostrato; non sovrascrive una data già salvata. */

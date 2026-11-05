@@ -66,6 +66,8 @@ test('«Una canzone tutta capita» si mostra una volta e resta nel Diario', asyn
 
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Ripasso di oggi' })).toBeVisible()
+  // Prima di dire «nessun foglio» si aspetta che Oggi abbia finito di decidere.
+  await expect(page.locator('main.today[data-milestones-checked]')).toHaveCount(1)
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await page.goto('/#/progress')

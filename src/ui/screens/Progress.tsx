@@ -7,7 +7,7 @@ import { loadLabel } from '../components/UnlockSheet'
 import { estimateAvgSeconds } from '../../domain/queue'
 import { dailyActivity, LEVEL_UP, progressStats } from '../../domain/progress'
 import { averageGain } from '../../domain/finalListen'
-import { MILESTONE_ORDER, milestoneTitle, reachedMilestones } from '../../domain/milestones'
+import { MILESTONE_ORDER, milestoneTitle } from '../../domain/milestones'
 import { unlockedKeys } from '../../domain/unlocked'
 import { ActivityCalendar } from '../components/ActivityCalendar'
 import { Icon } from '../components/Icon'
@@ -45,14 +45,13 @@ export function Progress() {
   // Lasciati aperti, memoria e carico si ricalcolano al ritorno in primo piano e a mezzanotte (come Oggi).
   const day = useDayTick(now)
   const data = useLive(async () => {
-    const [settings, songs, chunks, words, cards, reviews, avgSeconds, unlocked, reached] = await Promise.all([
-      getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db), unlockedKeys(db), reachedMilestones(db, now()),
+    const [settings, songs, chunks, words, cards, reviews, avgSeconds, unlocked] = await Promise.all([
+      getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db), unlockedKeys(db),
     ])
     const n = now()
-    // Traguardi visti: restano anche se ora non sono più veri (il titolo non dipende dai dati).
+    // Traguardi visti: restano anche se ora non sono più veri; il titolo è quello fisso, che non dipende dai dati.
     const seen = settings.milestonesSeen ?? {}
-    const titles = new Map(reached.map((m) => [m.id, m.title]))
-    const milestones = MILESTONE_ORDER.filter((id) => seen[id]).map((id) => ({ id, title: titles.get(id) ?? milestoneTitle(id), seenAt: seen[id] }))
+    const milestones = MILESTONE_ORDER.filter((id) => seen[id]).map((id) => ({ id, title: milestoneTitle(id), seenAt: seen[id] }))
     return { milestones, settings, gain: averageGain(songs), unlocked: unlocked.length, weeks: dailyActivity(reviews, settings.freeDays ?? [], n), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, n) }
   }, [db, day])
 

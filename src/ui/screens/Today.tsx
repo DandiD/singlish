@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDayTick } from '../useDayTick'
 import { useDeps } from '../deps'
@@ -17,10 +17,10 @@ import { pendingWords } from '../../domain/triage'
 import { dayRing, doneToday, emptyAction, featuredInvite, type EmptyAction, type Invite } from '../../domain/today'
 import { useAddGate } from '../components/UnlockSheet'
 import { MilestoneSheet } from '../components/MilestoneSheet'
-import { markMilestoneSeen, reachedMilestones, seedMilestonesSeen, type Milestone } from '../../domain/milestones'
+import { MILESTONE_ORDER, markMilestoneSeen, seedMilestonesSeen, unseenReached, type Milestone } from '../../domain/milestones'
 import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
-import { DayRing } from '../components/DayRing'
+import { DayRing, ringWillPulse } from '../components/DayRing'
 import { WeekRhythm } from '../components/WeekRhythm'
 import { songPath } from '../../domain/path'
 import { SongCarousel, type CarouselItem } from '../components/SongCarousel'
@@ -28,6 +28,12 @@ import { emptyCta, ringLabel, ringWhy, songDetail, songLabel } from '../todayTex
 import { useInstall } from '../../pwa/install'
 import { InstallBanner } from '../components/InstallBanner'
 
+
+/** Al massimo un foglio di traguardo per avvio dell'app, non per ogni ritorno su Oggi. */
+let milestoneShown = false
+export function resetMilestoneSheet() {
+  milestoneShown = false
+}
 
 const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
@@ -82,19 +88,25 @@ export function Today() {
   const install = useInstall()
   // Lasciata aperta la sera, Oggi si ricalcola al mattino (ritorno in primo piano o mezzanotte).
   const day = useDayTick(now)
-  // Un solo foglio di traguardo per apertura. Prima si semina (utenti esistenti: nessuna raffica), poi si decide.
-  const [milestone, setMilestone] = useState<Milestone | null>(null)
+  // Il primo traguardo raggiunto e non visto (`undefined` finché non si sa). Prima si semina (utenti esistenti: nessuna raffica).
+  const [nextMilestone, setNextMilestone] = useState<Milestone | null | undefined>(undefined)
   useEffect(() => {
     let live = true
     void (async () => {
       const n = now()
-      if (await seedMilestonesSeen(db, n)) return
-      const [reached, settings] = await Promise.all([reachedMilestones(db, n), getSettings(db)])
-      const first = reached.find((m) => !settings.milestonesSeen?.[m.id])
-      if (live && first) setMilestone(first)
-    })().catch(reportError)
+      if (await seedMilestonesSeen(db, n)) return null
+      const seen = (await getSettings(db)).milestonesSeen ?? {}
+      // Tutti già visti: niente da ricalcolare.
+      if (MILESTONE_ORDER.every((id) => seen[id])) return null
+      return (await unseenReached(db, n, seen))[0] ?? null
+    })().then((m) => { if (live) setNextMilestone(m) }, (e) => { reportError(e); if (live) setNextMilestone(null) })
     return () => { live = false }
   }, [db])
+  const [milestone, setMilestone] = useState<Milestone | null>(null)
+  const [decided, setDecided] = useState(false)
+  // L'anello completo pulsa (e vibra) in questo montaggio: il traguardo non gli si sovrappone, aspetta un'altra apertura.
+  const ringPulsed = useRef(false)
+  const gateOpen = gate.sheet !== null
   const closeMilestone = () => {
     if (!milestone) return
     void markMilestoneSeen(db, milestone.id, now()).catch(reportError)
@@ -137,6 +149,16 @@ export function Today() {
     return { asOf: n, hasUnlocked, rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
 
+  // Si decide a dati pronti (anello noto) e senza il foglio dello sblocco aperto: allora un solo foglio, o nessuno.
+  const ready = data !== undefined && data !== null
+  useEffect(() => {
+    if (decided || nextMilestone === undefined || !ready || gateOpen) return
+    setDecided(true)
+    if (!nextMilestone || ringPulsed.current || milestoneShown) return
+    milestoneShown = true
+    setMilestone(nextMilestone)
+  }, [decided, nextMilestone, ready, gateOpen])
+
   // Prima apertura del giorno con coda vuota e nessun ripasso: giorno libero. Una volta per chiave di giorno.
   const freeDue = data !== undefined && data !== null && data.hasUnlocked && data.queue.items.length === 0 && !data.reviewedToday
   const freeKey = freeDue ? data.dayKey : null
@@ -151,6 +173,8 @@ export function Today() {
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
   const ring = dayRing({ done, left: queue.items.length, blocked: queue.newBlockedByLoad })
+  // Prima che DayRing si disegni (e segni il giorno come già pulsato).
+  if (ringWillPulse(localDayKey(now()), ring.state)) ringPulsed.current = true
 
   // Le stesse fonti della Sessione vuota: smistare nelle canzoni in studio o completate, studiare le «Da studiare», analizzare bozze e code.
   const toTriage = [
@@ -179,7 +203,7 @@ export function Today() {
   const leftToTriage = doneLeft.filter((d) => d.song.id !== invitedSong)
 
   return (
-    <main class="screen today">
+    <main class="screen today" data-milestones-checked={decided ? 'true' : undefined}>
       <header class="today-head">
         <span class="wordmark">Singlish</span>
         <span class="head-actions">

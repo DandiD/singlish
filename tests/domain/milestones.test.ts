@@ -1,8 +1,8 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import type { CardRow, Chunk, Review, Song } from '../../src/db/types'
-import { MILESTONE_ORDER, markMilestoneSeen, reachedMilestones, seedMilestonesSeen } from '../../src/domain/milestones'
+import { MILESTONE_ORDER, markMilestoneSeen, reachedMilestones, seedMilestonesSeen, unseenReached } from '../../src/domain/milestones'
 import { newFsrsCard } from '../../src/domain/scheduler'
 import { getSettings, saveSettings } from '../../src/domain/settings'
 
@@ -26,9 +26,9 @@ const card = (itemId: string, kind: 'R' | 'C', state: State = State.Review): Car
 })
 const ids = async () => (await reachedMilestones(db, now)).map((m) => m.id)
 
-/** n voci attive (card C in Review, sbloccata) di livello B1, tutte nella canzone s9 (non conta per le altre condizioni). */
-async function addActive(n: number) {
-  await db.chunks.bulkPut(Array.from({ length: n }, (_, i) => chunk(`a${i}`, 's9', 0)))
+/** n voci attive (card C in Review, sbloccata) di livello `cefr` (B1), tutte nella canzone s9 (non conta per le altre condizioni). */
+async function addActive(n: number, cefr: Chunk['cefr'] = 'B1') {
+  await db.chunks.bulkPut(Array.from({ length: n }, (_, i) => chunk(`a${i}`, 's9', 0, { cefr })))
   await db.cards.bulkPut(Array.from({ length: n }, (_, i) => card(`a${i}`, 'C')))
 }
 const rev = (i: number, at: Date): Review => ({ id: 'r' + i, cardId: 'x', rating: 3, auto: false, answer: null, elapsedMs: 1, reviewedAt: at, wasNew: false })
@@ -133,7 +133,15 @@ describe('reachedMilestones', () => {
     await addActive(149)
     await db.songs.add(song('s1', { comprehensionBefore: 80 }))
     expect(await ids()).not.toContain('level-up')
-    await addActive(150)
+  })
+
+  test('level-up: at C1 there is no next level, even with 150 C1 items active and comprehension 80', async () => {
+    await db.songs.add(song('s1', { comprehensionBefore: 80 }))
+    // Controllo: a B2, con 150 voci B2 attive, il traguardo c'è.
+    await addActive(150, 'B2')
+    await saveSettings(db, { level: 'B2' })
+    expect(await ids()).toContain('level-up')
+    await addActive(150, 'C1')
     await saveSettings(db, { level: 'C1' })
     expect(await ids()).not.toContain('level-up')
   })
@@ -144,6 +152,34 @@ describe('reachedMilestones', () => {
     const got = await ids()
     expect(got).toEqual(MILESTONE_ORDER.filter((i) => got.includes(i)))
     expect(got).toEqual(['final-gain-20', 'active-50', 'active-150'])
+  })
+})
+
+describe('unseenReached', () => {
+  async function seedAll() {
+    await addActive(150)
+    await db.songs.add(song('s1', { comprehensionBefore: 40, comprehensionAfter: 70 }))
+    await saveSettings(db, { rhythmGoal: 3, freeDays: ['2026-11-02', '2026-11-03', '2026-11-04'] })
+  }
+  test('with nothing seen it equals reachedMilestones', async () => {
+    await seedAll()
+    expect(await unseenReached(db, now, {})).toEqual(await reachedMilestones(db, now))
+    expect((await unseenReached(db, now, {})).map((m) => m.id)).toContain('week-goal')
+  })
+  test('leaves out the seen ones', async () => {
+    await seedAll()
+    const got = await unseenReached(db, now, { 'final-gain-20': now, 'active-50': now })
+    expect(got.map((m) => m.id)).toEqual(['active-150', 'week-goal'])
+  })
+  test('both week milestones seen: the review days are not read', async () => {
+    await seedAll()
+    const where = vi.spyOn(db.reviews, 'where')
+    await unseenReached(db, now, {})
+    const full = where.mock.calls.length
+    where.mockClear()
+    const got = await unseenReached(db, now, { 'week-goal': now, 'week-goal-4': now })
+    expect(where.mock.calls.length).toBe(full - 1)
+    expect(got.map((m) => m.id)).toEqual(['final-gain-20', 'active-50', 'active-150'])
   })
 })
 

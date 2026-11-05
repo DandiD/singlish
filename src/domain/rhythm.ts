@@ -48,11 +48,9 @@ export function rhythmText(r: WeekRhythm): string {
 
 /** Chiavi dei giorni con almeno un ripasso, da `since` in poi. */
 export async function reviewDaysSince(db: SinglishDB, since: Date): Promise<Set<string>> {
-  const out = new Set<string>()
-  await db.reviews.where('reviewedAt').aboveOrEqual(since).each((r) => {
-    out.add(localDayKey(r.reviewedAt))
-  })
-  return out
+  // Solo le chiavi dell'indice (le date), senza leggere i ripassi interi.
+  const keys = await db.reviews.where('reviewedAt').aboveOrEqual(since).keys()
+  return new Set(keys.map((k) => localDayKey(k as Date)))
 }
 
 /** Segna `now` come giorno libero; non scrive se c'è già. Tiene solo gli ultimi 84 giorni. */

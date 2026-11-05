@@ -99,6 +99,8 @@ test('leggere riga per riga senza scroll orizzontale, fino a «Letta tutta»', a
   await expect(current).toContainText('Supercalifragilistic')
   await noOverflow()
 
+  // «Letta tutta» ignora i tocchi nei primi 400 ms dopo la comparsa dell'ultima riga (doppio tocco su «Avanti»).
+  await page.waitForTimeout(450)
   await page.getByRole('button', { name: 'Letta tutta' }).click()
   await expect(page.getByRole('heading', { name: 'Paper Sky' })).toBeVisible()
   await expect(page.locator('.song-path')).toContainText(/letta il \d{1,2} \p{L}+/u)

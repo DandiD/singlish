@@ -71,8 +71,10 @@ test('il ritmo conta il ripasso di oggi, il Diario lo mostra, l\'obiettivo si ca
 
   await page.getByRole('link', { name: 'Torna a Oggi' }).click()
   await expect(page.getByRole('heading', { name: 'Ripasso di oggi' })).toBeVisible()
-  // Il giro ha raggiunto un traguardo (obiettivo o canzone): il foglio si chiude con «Bene».
-  await page.getByRole('dialog').getByRole('button', { name: 'Bene' }).click()
+  // Il giro ha raggiunto un traguardo (la canzone tutta capita), ma ora pulsa l'anello: il foglio aspetta un'altra apertura di Oggi.
+  await expect(page.locator('main.today[data-milestones-checked]')).toHaveCount(1)
+  await expect(page.locator('.day-ring--pulse')).toHaveCount(1)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(rhythm).toContainText(textFor(earlier + 1, goal))
 
   await rhythm.click()
@@ -90,5 +92,8 @@ test('il ritmo conta il ripasso di oggi, il Diario lo mostra, l\'obiettivo si ca
   await page.getByLabel('Obiettivo settimanale').selectOption('7')
   await page.goto('/#/')
   await expect(page.getByRole('heading', { name: 'Ripasso di oggi' })).toBeVisible()
+  // Ritorno su Oggi senza impulso dell'anello: ora il foglio del traguardo compare, e si chiude con «Bene».
+  await page.getByRole('dialog', { name: 'Una canzone tutta capita' }).getByRole('button', { name: 'Bene' }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.getByRole('link', { name: /^Ritmo della settimana:/ })).toContainText(textFor(earlier + 1, 7))
 })

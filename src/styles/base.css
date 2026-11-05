@@ -503,6 +503,8 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .ra-line .hl[aria-expanded="true"] { outline: 2px solid var(--line-strong); outline-offset: 1px; }
 .ra-bubble { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 16px; }
 .ra-bubble-form { font-weight: 600; }
+/* Vuota, la regione di stato non aggiunge spazio fra le righe (resta nel DOM per essere annunciata). */
+.ra-bubble-live:empty { margin-top: -14px; }
 .ra-next { margin: 0; font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 20px; line-height: 1.35; color: var(--text-2); overflow-wrap: anywhere; }
 .ra-foot { padding-top: 12px; border-top: 1px solid var(--line); }
 

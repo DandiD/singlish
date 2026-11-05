@@ -9,7 +9,15 @@ import { getSettings, saveSettings } from '../../src/domain/settings'
 import { resetRhythmPulse } from '../../src/ui/components/WeekRhythm'
 import { resetRingPulse } from '../../src/ui/components/DayRing'
 import { LIMIT_NOTE } from '../../src/domain/ingest'
+import { resetMilestoneSheet } from '../../src/ui/screens/Today'
+import { MILESTONE_ORDER, unseenReached, type Milestone } from '../../src/domain/milestones'
 import type { CardRow, Chunk, Review, Song, Word } from '../../src/db/types'
+
+// Il calcolo dei traguardi resta quello vero; lo spia serve a sapere se e quando Oggi lo chiede.
+vi.mock('../../src/domain/milestones', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/domain/milestones')>()
+  return { ...actual, unseenReached: vi.fn(actual.unseenReached) }
+})
 
 // Titoli e versi inventati.
 let db: SinglishDB
@@ -66,6 +74,8 @@ async function seedPendingSentence(when: Date) {
 beforeEach(() => {
   resetRingPulse()
   resetRhythmPulse()
+  resetMilestoneSheet()
+  vi.mocked(unseenReached).mockClear()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/'
 })
@@ -78,6 +88,8 @@ const deps = (clock: () => Date = () => now) => ({ db, fetch: (async () => new R
 const mount = (clock?: () => Date) => render(<AppDepsProvider value={deps(clock)}><Today /></AppDepsProvider>)
 const loaded = () => screen.findByRole('heading', { name: 'Ripasso di oggi' })
 const invites = (c: Element) => c.querySelectorAll('a.final-due')
+/** Oggi ha finito di decidere se mostrare un traguardo. */
+const milestonesChecked = () => waitFor(() => expect(document.querySelector('main.today[data-milestones-checked]')).not.toBeNull())
 
 describe('anello del giorno e azione principale', () => {
   test('coda con 5 card e nessun ripasso oggi: 0 di 5, «Inizia il giro»', async () => {
@@ -535,8 +547,9 @@ describe('traguardi', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(dialog.isConnected).toBe(false)
     await waitFor(async () => expect((await getSettings(db)).milestonesSeen?.['final-gain-20']).toEqual(now))
-    // Rimontando Oggi, il primo non torna: compare il secondo.
+    // Riaprendo l'app (un nuovo avvio), il primo non torna: compare il secondo.
     first.unmount()
+    resetMilestoneSheet()
     mount()
     expect(await screen.findByRole('dialog', { name: 'Una settimana a ritmo' })).toBeTruthy()
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
@@ -559,7 +572,79 @@ describe('traguardi', () => {
     await saveSettings(db, { milestonesSeen: { 'final-gain-20': at(-1), 'week-goal': at(-1) } })
     mount()
     await loaded()
-    await new Promise((r) => setTimeout(r, 50))
+    await milestonesChecked()
+    expect(vi.mocked(unseenReached)).toHaveBeenCalledTimes(1)
+    await vi.mocked(unseenReached).mock.results[0].value
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('tutti i traguardi già visti: Oggi non li ricalcola', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: Object.fromEntries(MILESTONE_ORDER.map((id) => [id, at(-1)])) })
+    mount()
+    await loaded()
+    await milestonesChecked()
+    expect(vi.mocked(unseenReached)).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  test('un solo foglio per avvio dell\'app: Oggi → altrove → Oggi non ne mostra un secondo', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: {} })
+    const first = mount()
+    await screen.findByRole('dialog', { name: 'Venti punti in più' })
+    fireEvent.click(screen.getByRole('button', { name: 'Bene' }))
+    await waitFor(async () => expect((await getSettings(db)).milestonesSeen?.['final-gain-20']).toEqual(now))
+    first.unmount()
+    const second = mount()
+    await loaded()
+    await milestonesChecked()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // Al prossimo avvio, il secondo.
+    second.unmount()
+    resetMilestoneSheet()
+    mount()
+    expect(await screen.findByRole('dialog', { name: 'Una settimana a ritmo' })).toBeTruthy()
+  })
+
+  test('giro appena finito (l\'anello pulsa): nessun foglio e una sola vibrazione; il foglio arriva alla prossima apertura di Oggi', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: {} })
+    await seedReviewedToday(2)
+    const first = mount()
+    await loaded()
+    await milestonesChecked()
+    expect(document.querySelector('.day-ring--pulse')).not.toBeNull()
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(vibrate).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(vibrate).toHaveBeenCalledTimes(1)
+    first.unmount()
+    mount()
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(document.querySelector('.day-ring--pulse')).toBeNull()
+  })
+
+  test('con il foglio dello sblocco aperto il traguardo aspetta; chiuso quello, compare', async () => {
+    await seedTwoMilestones()
+    await saveSettings(db, { milestonesSeen: {}, timerMinutes: { review: 1 } })
+    for (let i = 0; i < 40; i++) {
+      await db.chunks.add({ ...chunk(`x${i}`), songId: '', contexts: [], origin: 'expand' })
+      await db.cards.add(card(`xk${i}`, `x${i}`, at(2)))
+    }
+    let release: (m: Milestone[]) => void = () => {}
+    vi.mocked(unseenReached).mockImplementationOnce(() => new Promise((r) => { release = r }))
+    mount()
+    await loaded()
+    fireEvent.click(screen.getByRole('link', { name: 'Aggiungi' }))
+    await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })
+    await waitFor(() => expect(vi.mocked(unseenReached)).toHaveBeenCalled())
+    release([{ id: 'final-gain-20', title: 'Venti punti in più', text: 'x' }])
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('dialog', { name: 'Venti punti in più' })).toBeNull()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Aspetto, va bene così' }))
+    expect(await screen.findByRole('dialog', { name: 'Venti punti in più' })).toBeTruthy()
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
   })
 })

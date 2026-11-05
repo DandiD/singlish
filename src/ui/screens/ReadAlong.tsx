@@ -10,6 +10,9 @@ import { itemsInSong } from '../../domain/songItems'
 import { Highlighted } from '../components/Highlighted'
 import { Icon } from '../components/Icon'
 
+/** Dopo la comparsa dell'ultima riga, «Letta tutta» non risponde per questo tempo. */
+const LAST_LINE_GUARD_MS = 400
+
 /** Lettura a tempo: una riga alla volta, avanti e indietro a mano mentre la canzone suona fuori dall'app. */
 export function ReadAlong({ songId }: { songId: string }) {
   const { db, now } = useDeps()
@@ -29,6 +32,10 @@ export function ReadAlong({ songId }: { songId: string }) {
   const lines = song ? readingLines(song) : []
   const count = lines.length
   const last = idx >= count - 1
+  // Quando è comparsa l'ultima riga: «Letta tutta» ignora i tocchi per un attimo (il secondo tocco di un doppio «Avanti»).
+  const lastShownAt = useRef<number | null>(null)
+  if (!last || count === 0) lastShownAt.current = null
+  else if (lastShownAt.current === null) lastShownAt.current = Date.now()
 
   const forward = () => { if (open) { setOpen(null); return } if (!last) setIdx(idx + 1) }
   const backward = () => { if (open) { setOpen(null); return } if (idx > 0) setIdx(idx - 1) }
@@ -39,6 +46,8 @@ export function ReadAlong({ songId }: { songId: string }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey || e.ctrlKey || e.metaKey) return
+      // Un tasto tenuto premuto non fa scorrere le righe.
+      if (e.repeat) return
       const t = e.target as HTMLElement | null
       if (t instanceof HTMLElement && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return
       const k = keys.current
@@ -74,6 +83,7 @@ export function ReadAlong({ songId }: { songId: string }) {
 
   const done = async () => {
     if (acting.current) return
+    if (lastShownAt.current === null || Date.now() - lastShownAt.current < LAST_LINE_GUARD_MS) return
     acting.current = true
     const here = stillHere()
     try {
@@ -112,12 +122,15 @@ export function ReadAlong({ songId }: { songId: string }) {
                 <Highlighted line={line.text} spans={spans} onPick={(id) => setOpen((cur) => (cur === id ? null : id))} openId={open} />
               </p>
             </div>
-            {item && (
-              <div class="ra-bubble" onClick={(e) => e.stopPropagation()}>
-                <span class="ra-bubble-form" lang="en">{item.surfaceForm}</span>
-                <span>{item.meaningIt}</span>
-              </div>
-            )}
+            {/* Regione di stato sempre presente: il lettore di schermo legge il significato quando la nuvoletta si apre. */}
+            <div class="ra-bubble-live" role="status">
+              {item && (
+                <div class="ra-bubble" onClick={(e) => e.stopPropagation()}>
+                  <span class="ra-bubble-form" lang="en">{item.surfaceForm}</span>
+                  <span>{item.meaningIt}</span>
+                </div>
+              )}
+            </div>
             {next && <p class="ra-next" aria-hidden="true" lang="en">{next.text}</p>}
           </div>
         </div>
@@ -128,9 +141,9 @@ export function ReadAlong({ songId }: { songId: string }) {
         <footer class="ra-foot grid2">
           <button type="button" class="btn outline" disabled={idx === 0} onClick={() => { setOpen(null); if (idx > 0) setIdx(idx - 1) }}>Indietro</button>
           {last ? (
-            <button type="button" class="btn primary" onClick={() => void done()}>{isText ? 'Letto tutto' : 'Letta tutta'}</button>
+            <button key="done" type="button" class="btn primary" onClick={() => void done()}>{isText ? 'Letto tutto' : 'Letta tutta'}</button>
           ) : (
-            <button type="button" class="btn primary" onClick={() => { setOpen(null); setIdx(idx + 1) }}>Avanti</button>
+            <button key="next" type="button" class="btn primary" onClick={() => { setOpen(null); setIdx(idx + 1) }}>Avanti</button>
           )}
         </footer>
       )}

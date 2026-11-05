@@ -141,3 +141,27 @@ test('Diario: un traguardo raggiunto ma non ancora visto non compare', async () 
   await screen.findByRole('heading', { name: 'Diario', level: 1 })
   expect(screen.queryByRole('heading', { name: 'Traguardi' })).toBeNull()
 })
+
+test('Diario: il titolo di «level-up» è quello fisso, anche se il traguardo è vero ora e dopo un cambio di livello', async () => {
+  // 150 voci B1 attive e comprensione 70: a B1 il traguardo è vero («Pronto per il B2»), ma il Diario usa il titolo fisso.
+  await db.songs.add(song('s1', 1, 70))
+  const items: Chunk[] = Array.from({ length: 150 }, (_, i) => ({
+    id: `a${i}`, songId: 's9', key: `a${i}`, baseForm: `a${i}`, surfaceForm: `a${i}`, lineIndex: 0, contexts: [{ songId: 's9', lineIndex: 0 }],
+    type: 'idiom', cefr: 'B1', register: 'usable', topic: '', meaningIt: '', explanationIt: '', extraExampleEn: '', productionPromptIt: '',
+    pronunciationNoteIt: '', userEdited: false, suspended: false,
+  }))
+  await db.chunks.bulkAdd(items)
+  await db.cards.bulkAdd(items.map((c): CardRow => ({
+    id: c.id + 'C', itemType: 'chunk', itemId: c.id, kind: 'C', unlocked: 1, due: now, fsrs: { ...newFsrsCard(now), state: State.Review, due: now }, goodRCount: 2,
+  })))
+  await saveSettings(db, { milestonesSeen: { 'level-up': new Date('2026-10-20T10:00:00') } })
+  const first = mount(<Progress />)
+  const section = (await screen.findByRole('heading', { name: 'Traguardi' })).closest('section')!
+  expect(section.textContent).toContain('Pronto per il livello successivo')
+  expect(section.textContent).not.toContain('Pronto per il B2')
+  first.unmount()
+  await saveSettings(db, { level: 'B2' })
+  mount(<Progress />)
+  const again = (await screen.findByRole('heading', { name: 'Traguardi' })).closest('section')!
+  expect(again.textContent).toContain('Pronto per il livello successivo')
+})
