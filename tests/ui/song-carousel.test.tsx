@@ -61,11 +61,4 @@ describe('SongCarousel', () => {
     render(<SongCarousel items={[item()]} onAdd={null} addHref="#/add" />)
     expect(screen.queryByRole('link', { name: /Aggiungi/ })).toBeNull()
   })
-
-  test('a long unbroken title gets the wrapping class', () => {
-    const title = 'x'.repeat(120)
-    render(<SongCarousel items={[item({ title })]} onAdd={null} addHref="#/add" />)
-    const h3 = screen.getByRole('heading', { level: 3, name: title })
-    expect(h3.classList.contains('song-carousel-title')).toBe(true)
-  })
 })

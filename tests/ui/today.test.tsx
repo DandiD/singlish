@@ -233,6 +233,28 @@ describe('coda vuota: l\'azione principale porta a ciò che crea card, senza inv
     expect(invites(container)).toHaveLength(0)
   })
 
+  test('nessuna canzone: «Aggiungi una canzone» passa dal controllo di sblocco e, se è tutto pronto, apre Aggiungi', async () => {
+    mount()
+    await loaded()
+    const cta = screen.getByRole('link', { name: 'Aggiungi una canzone' })
+    expect(fireEvent.click(cta)).toBe(false) // il link non si segue da solo: decide il controllo
+    await waitFor(() => expect(window.location.hash).toBe('#/songs/new'))
+  })
+
+  test('nessuna canzone ma carico alto: «Aggiungi una canzone» apre il foglio dello sblocco', async () => {
+    // Voci di Espandi (senza canzone) in ripasso fra due giorni, timer di 1 minuto: il carico non regge.
+    await saveSettings(db, { timerMinutes: { review: 1 } })
+    for (let i = 0; i < 40; i++) {
+      await db.chunks.add({ ...chunk(`x${i}`), songId: '', contexts: [], origin: 'expand' })
+      await db.cards.add(card(`xk${i}`, `x${i}`, at(2)))
+    }
+    mount()
+    await loaded()
+    fireEvent.click(screen.getByRole('link', { name: 'Aggiungi una canzone' }))
+    expect(await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })).toBeTruthy()
+    await waitFor(() => expect(window.location.hash).toBe('#/'))
+  })
+
   test('canzoni senza niente da fare: nessuna azione principale', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'studying'))
     const { container } = mount()
@@ -278,6 +300,31 @@ describe('invito in evidenza', () => {
   })
 })
 
+describe('canzoni completate con parole da smistare', () => {
+  test('con card in coda sono l\'invito, e non si ripetono sotto «Da smistare nelle canzoni completate»', async () => {
+    await db.songs.bulkAdd([song('s1', 'Paper Sea', 'studying'), song('s2', 'Tin Harbour', 'done')])
+    await seedDue(1)
+    await db.words.add(pendingWord('gull', 's2'))
+    const { container } = mount()
+    const invite = await screen.findByRole('link', { name: /DA SMISTARE.*1 parola da smistare in «Tin Harbour»/ })
+    expect(invite.getAttribute('href')).toBe('#/songs/s2/triage')
+    expect(invites(container)).toHaveLength(1)
+    expect(screen.queryByRole('heading', { name: 'Da smistare nelle canzoni completate' })).toBeNull()
+  })
+
+  test('a coda vuota l\'invito coincide con l\'azione e non si mostra: la canzone resta sotto il suo titolo', async () => {
+    await db.songs.add(song('s2', 'Tin Harbour', 'done'))
+    await db.words.add(pendingWord('gull', 's2'))
+    const { container } = mount()
+    const cta = await screen.findByRole('link', { name: 'Smista le parole di «Tin Harbour»' })
+    expect(cta.getAttribute('href')).toBe('#/songs/s2/triage')
+    expect(invites(container)).toHaveLength(0)
+    expect(screen.getByRole('heading', { name: 'Da smistare nelle canzoni completate' })).toBeTruthy()
+    const row = screen.getByRole('link', { name: /Tin Harbour.*Completata · 1 parola da smistare/ })
+    expect(row.getAttribute('href')).toBe('#/songs/s2')
+  })
+})
+
 describe('carosello delle canzoni aperte', () => {
   const titles = ['Paper Sea', 'Borrowed Moon', 'Glass Tide', 'Copper Rain']
   test('4 canzoni aperte: 4 link con il titolo, niente «Aggiungi», la nota del limite', async () => {
@@ -289,6 +336,18 @@ describe('carosello delle canzoni aperte', () => {
     }
     expect(screen.queryByRole('link', { name: 'Aggiungi' })).toBeNull()
     expect(screen.getByText(LIMIT_NOTE)).toBeTruthy()
+  })
+
+  test('la copertina di una bozza porta all\'analisi, quella di una canzone da studiare allo Studio', async () => {
+    await db.songs.bulkAdd([
+      song('s1', 'Paper Sea', 'draft', { addedAt: at(-10) }),
+      song('s2', 'Borrowed Moon', 'analyzed', { addedAt: at(-9) }),
+    ])
+    const { container } = mount()
+    await screen.findByText('2 di 4')
+    const covers = [...container.querySelectorAll<HTMLAnchorElement>('.song-carousel a')]
+    expect(covers.find((a) => a.textContent!.includes('Paper Sea'))!.getAttribute('href')).toBe('#/songs/s1/analyzing')
+    expect(covers.find((a) => a.textContent!.includes('Borrowed Moon'))!.getAttribute('href')).toBe('#/songs/s2')
   })
 
   test('2 canzoni: «Aggiungi» apre il controllo di sblocco', async () => {

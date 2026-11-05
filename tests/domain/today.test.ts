@@ -32,6 +32,14 @@ describe('featuredInvite', () => {
   })
 })
 
+describe('la prima canzone con parole da smistare, non la prima della lista', () => {
+  const toTriage = [{ song: A, count: 0 }, { song: B, count: 3 }]
+  test('featuredInvite ed emptyAction saltano la canzone senza parole', () => {
+    expect(featuredInvite({ toCorrect: 0, finalDue: [], toTriage, toStudy: [] })).toEqual({ kind: 'triage', song: B, count: 3 })
+    expect(emptyAction({ hasSongs: true, toCorrect: 0, toTriage, toStudy: [], toAnalyze: [] })).toEqual({ kind: 'triage', song: B, count: 3 })
+  })
+})
+
 describe('emptyAction', () => {
   const full = { hasSongs: true, toCorrect: 1, toTriage: [{ song: A, count: 2 }], toStudy: [B], toAnalyze: [A] }
   test('ordine dei rami, e nessuna canzone vince su tutto', () => {
@@ -69,6 +77,10 @@ describe('doneToday', () => {
   })
   test('ripassi di oggi + frasi di oggi ancora da correggere; la frase senza card non conta', async () => {
     expect(await doneToday(db, now)).toBe(3)
+  })
+  test('la frase scritta oggi su un chunk sospeso non conta (è fuori dal ripasso)', async () => {
+    await db.chunks.update('c1', { suspended: true })
+    expect(await doneToday(db, now)).toBe(2)
   })
   test('dopo mezzanotte si riparte da zero', async () => {
     expect(await doneToday(db, new Date(2026, 10, 6, 0, 1))).toBe(0)
