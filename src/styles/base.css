@@ -446,3 +446,12 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .song-hue-4 { --song: var(--song-4); --song-tint: var(--song-4-tint); }
 .song-hue-5 { --song: var(--song-5); --song-tint: var(--song-5-tint); }
 .song-hue-6 { --song: var(--song-6); --song-tint: var(--song-6-tint); }
+
+/* Copertina: immagine Spotify o versione generata (tinta, motivo, iniziali) */
+.cover { position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; overflow: hidden; background: var(--song-tint); color: var(--song); }
+.cover-sm { width: 40px; height: 40px; border-radius: 12px; font-size: 15px; }
+.cover-md { width: 56px; height: 56px; border-radius: 14px; font-size: 20px; }
+.cover-lg { width: 120px; height: 120px; border-radius: 20px; font-size: 40px; }
+.cover img { width: 100%; height: 100%; object-fit: cover; }
+.cover-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cover-initials { position: relative; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 700; line-height: 1; color: var(--song); }
