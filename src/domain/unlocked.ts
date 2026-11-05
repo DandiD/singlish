@@ -41,6 +41,30 @@ export function unlockedLines(
   return { lines, unlocked: lines.filter((l) => l.unlocked).length, total: lines.length }
 }
 
+/** Raggruppa le voci per canzone dai `contexts` (una volta sola, O(voci)). */
+export function groupBySong(chunks: Chunk[], words: Word[]): Map<string, { chunks: Chunk[]; words: Word[] }> {
+  const out = new Map<string, { chunks: Chunk[]; words: Word[] }>()
+  const slot = (songId: string) => {
+    let g = out.get(songId)
+    if (!g) out.set(songId, (g = { chunks: [], words: [] }))
+    return g
+  }
+  for (const c of chunks) for (const id of new Set(c.contexts.map((x) => x.songId))) slot(id).chunks.push(c)
+  for (const w of words) for (const id of new Set(w.contexts.map((x) => x.songId))) slot(id).words.push(w)
+  return out
+}
+
+/** `unlockedLines` per ciascuna canzone, sulle sole voci di quella canzone. */
+export function unlockedBySong(
+  songs: Song[], chunks: Chunk[], words: Word[], rState: Map<string, State>,
+): Map<string, ReturnType<typeof unlockedLines>> {
+  const groups = groupBySong(chunks, words)
+  return new Map(songs.map((s) => {
+    const g = groups.get(s.id)
+    return [s.id, unlockedLines(s, g?.chunks ?? [], g?.words ?? [], rState)]
+  }))
+}
+
 /** Stato FSRS della card R di ogni voce (id della voce → stato). */
 export async function rCardStates(db: SinglishDB): Promise<Map<string, State>> {
   const cards = await db.cards.where('kind').equals('R').toArray()
@@ -54,8 +78,10 @@ async function currentUnlocked(db: SinglishDB): Promise<{ song: Song; lineIndex:
     db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), rCardStates(db),
   ])
   const out: { song: Song; lineIndex: number }[] = []
-  for (const song of songs.filter((s) => ACTIVE.has(s.status)).sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())) {
-    for (const l of unlockedLines(song, chunks, words, rState).lines) if (l.unlocked) out.push({ song, lineIndex: l.lineIndex })
+  const active = songs.filter((s) => ACTIVE.has(s.status)).sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())
+  const per = unlockedBySong(active, chunks, words, rState)
+  for (const song of active) {
+    for (const l of per.get(song.id)!.lines) if (l.unlocked) out.push({ song, lineIndex: l.lineIndex })
   }
   return out
 }
@@ -73,10 +99,14 @@ export async function newlyUnlocked(db: SinglishDB, before: string[]): Promise<U
   const fresh = (await currentUnlocked(db)).filter((u) => !seen.has(lineKey(u.song.id, u.lineIndex)))
   if (!fresh.length) return []
   const [chunks, words] = await Promise.all([db.chunks.toArray(), db.words.toArray()])
+  const groups = groupBySong(chunks, words)
   const spansBySong = new Map<string, Span[][]>()
   return fresh.map(({ song, lineIndex }) => {
     let all = spansBySong.get(song.id)
-    if (!all) spansBySong.set(song.id, (all = itemsInSong(song, chunks, words).spansByLine))
+    if (!all) {
+      const g = groups.get(song.id)
+      spansBySong.set(song.id, (all = itemsInSong(song, g?.chunks ?? [], g?.words ?? []).spansByLine))
+    }
     return {
       song,
       lineIndex,
@@ -101,19 +131,22 @@ export async function strongestSince(db: SinglishDB, since: Date, limit = 3): Pr
     if (!card) continue
     growth.set(card.itemId, (growth.get(card.itemId) ?? 0) + (r.stability.after - r.stability.before))
   }
+  const ids = [...growth].filter(([, g]) => g > 0).map(([id]) => id)
+  const chunkRows = await db.chunks.bulkGet(ids)
+  const wordRows = await db.words.bulkGet(ids)
+  const items = ids.map((id, i) => ({ id, chunk: chunkRows[i], word: chunkRows[i] ? undefined : wordRows[i] }))
+  const songIds = [...new Set(items.map((x) => (x.chunk ?? x.word)?.songId).filter((x): x is string => !!x))]
+  const songRows = new Map((await db.songs.bulkGet(songIds)).filter((x) => !!x).map((x) => [x!.id, x!]))
   const out: StrongItem[] = []
-  for (const [itemId, g] of growth) {
-    if (!(g > 0)) continue
-    const chunk = await db.chunks.get(itemId)
-    const word = chunk ? undefined : await db.words.get(itemId)
+  for (const { id: itemId, chunk, word } of items) {
     const item = chunk ?? word
     if (!item) continue
     out.push({
       itemId,
       text: chunk ? chunk.baseForm : word!.lemma,
       meaningIt: item.meaningIt,
-      song: (await db.songs.get(item.songId)) ?? null,
-      growth: g,
+      song: songRows.get(item.songId) ?? null,
+      growth: growth.get(itemId)!,
     })
   }
   return out.sort((a, b) => b.growth - a.growth || a.text.localeCompare(b.text)).slice(0, limit)

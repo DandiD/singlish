@@ -19,7 +19,7 @@ export function UnlockedVerses({ verses, strongest }: { verses: UnlockedVerse[] 
             <li key={`${v.song.id}:${v.lineIndex}`} class={`unlocked-item song-hue-${songLook(v.song.id).hue}`}>
               <div class="unlocked-song">
                 <Cover song={v.song} size="sm" />
-                <span class="note">{v.song.title}</span>
+                <span class="note" lang="en">{v.song.title}</span>
               </div>
               <p class="unlocked-line" lang="en"><Highlighted line={v.line} spans={v.spans} /></p>
               {v.translation && <p class="note">{v.translation}</p>}
@@ -39,7 +39,7 @@ export function UnlockedVerses({ verses, strongest }: { verses: UnlockedVerse[] 
           <li key={s.itemId} class={`unlocked-item${s.song ? ` song-hue-${songLook(s.song.id).hue}` : ''}`}>
             <p class="unlocked-line" lang="en">{s.text}</p>
             <p class="note">{s.meaningIt}</p>
-            {s.song && <p class="note">{s.song.title}</p>}
+            {s.song && <p class="note" lang="en">{s.song.title}</p>}
           </li>
         ))}
       </ul>

@@ -76,6 +76,7 @@ describe('Studio: testo vivo', () => {
   })
 
   test('primo ingresso: il verso si accende e unlockedSeen si salva; il secondo no', async () => {
+    await db.songs.update('s1', { unlockedSeen: [] })
     mount()
     await waitFor(() => expect(paras()[0].classList.contains('line-lit')).toBe(true))
     expect(paras()[0].style.getPropertyValue('--i')).toBe('0')
@@ -106,5 +107,39 @@ describe('Studio: testo vivo', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Chiedi a Gemini' }))
     await waitFor(() => expect(document.querySelector('.lyrics.picking')).not.toBeNull())
     expect(paras().every((p) => !/line-/.test(p.className))).toBe(true)
+  })
+
+  test('canzone senza unlockedSeen: nulla si accende, ma l\'elenco si salva', async () => {
+    mount()
+    await screen.findByText(/1 di 2 versi sbloccati/)
+    await waitFor(async () => expect(await seen()).toEqual([0]))
+    expect(document.querySelector('.line-lit')).toBeNull()
+    expect(paras()[0].classList.contains('line-open')).toBe(true)
+  })
+
+  test('sette versi nuovi: --i limitato a 4', async () => {
+    const lines = Array.from({ length: 7 }, (_, i) => `invented verse ${i}`)
+    await db.songs.update('s1', { lines, unlockedSeen: [] })
+    await db.chunks.clear()
+    await db.words.clear()
+    await db.cards.clear()
+    const cs: Chunk[] = lines.map((_, i) => ({ ...chunk, id: 'x' + i, key: 'x' + i, lineIndex: i, contexts: [{ songId: 's1', lineIndex: i }] }))
+    await db.chunks.bulkAdd(cs)
+    await db.cards.bulkAdd(cs.map((c) => card('k' + c.id, 'chunk', c.id, State.Review)))
+    mount()
+    await waitFor(() => expect(document.querySelectorAll('.line-lit')).toHaveLength(7))
+    expect(paras().map((p) => p.style.getPropertyValue('--i'))).toEqual(['0', '1', '2', '3', '4', '4', '4'])
+  })
+
+  test('uscendo da Chiedi a Gemini il verso non si riaccende', async () => {
+    await db.songs.update('s1', { unlockedSeen: [] })
+    mount()
+    await waitFor(() => expect(paras()[0].classList.contains('line-lit')).toBe(true))
+    fireEvent.click(screen.getByRole('button', { name: 'Chiedi a Gemini' }))
+    await waitFor(() => expect(document.querySelector('.lyrics.picking')).not.toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: /Annulla/ }))
+    await waitFor(() => expect(document.querySelector('.lyrics.picking')).toBeNull())
+    expect(paras()[0].classList.contains('line-open')).toBe(true)
+    expect(document.querySelector('.line-lit')).toBeNull()
   })
 })

@@ -94,11 +94,15 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const unlock = data?.song ? unlockedLines(data.song, data.chunks, data.words, data.rState) : null
   const unlockedNow = unlock ? unlock.lines.filter((l) => l.unlocked).map((l) => l.lineIndex) : null
   const litRef = useRef<{ songId: string; lines: number[] } | null>(null)
-  if (data?.song && unlockedNow && litRef.current?.songId !== songId) {
+  const fresh = data?.song?.id === songId
+  if (fresh && data?.song && unlockedNow && litRef.current?.songId !== songId) {
+    // Senza `unlockedSeen` (canzone salvata prima di questa versione) i versi già sbloccati non sono una novità: nulla si accende.
     const before = new Set(data.song.unlockedSeen ?? [])
-    litRef.current = { songId, lines: unlockedNow.filter((i) => !before.has(i)) }
+    litRef.current = { songId, lines: data.song.unlockedSeen === undefined ? [] : unlockedNow.filter((i) => !before.has(i)) }
   }
-  const seenKey = data?.song && unlockedNow && data.song.status !== 'draft' && data.song.status !== 'queued' ? unlockedNow.join(',') : null
+  // L'animazione si gioca una volta sola per visita: entrando in «Chiedi a Gemini» il set si svuota.
+  if (asking && litRef.current) litRef.current.lines = []
+  const seenKey = fresh && data?.song && unlockedNow && data.song.status !== 'draft' && data.song.status !== 'queued' ? unlockedNow.join(',') : null
   const storedKey = (data?.song?.unlockedSeen ?? []).join(',')
   useEffect(() => {
     if (seenKey === null || seenKey === storedKey) return
@@ -228,7 +232,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           const k = u?.unlocked ? (litRef.current?.lines.indexOf(i) ?? -1) : -1
           const cls = u ? (u.unlocked ? 'line-open' : 'line-studying') + (k >= 0 ? ' line-lit' : '') : undefined
           return (
-          <p key={i} class={cls} style={k >= 0 ? { '--i': k } : undefined}>
+          <p key={i} class={cls} style={k >= 0 ? { '--i': Math.min(k, 4) } : undefined}>
             {asking ? (
               <PickLine line={l} lineIndex={i} picked={picked} onToggle={toggle} disabled={askBusy} />
             ) : (

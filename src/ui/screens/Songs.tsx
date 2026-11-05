@@ -11,7 +11,7 @@ import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { ensureCover } from '../../domain/cover'
-import { rCardStates, unlockedLines } from '../../domain/unlocked'
+import { rCardStates, unlockedBySong } from '../../domain/unlocked'
 import { unlockedText } from '../todayText'
 
 
@@ -44,7 +44,7 @@ export function Songs() {
   // «X di Y versi sbloccati» dalla stessa fonte di Oggi: solo per le canzoni in studio e completate.
   const unlocked = useLive(async () => {
     const [all, chunks, words, rState] = await Promise.all([db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), rCardStates(db)])
-    return new Map(all.filter((x) => x.status === 'studying' || x.status === 'done').map((x) => [x.id, unlockedLines(x, chunks, words, rState)]))
+    return unlockedBySong(all.filter((x) => x.status === 'studying' || x.status === 'done'), chunks, words, rState)
   }, [db])
   const [editing, setEditing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)

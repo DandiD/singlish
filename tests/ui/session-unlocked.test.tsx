@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -124,14 +124,39 @@ test('resumed session without unlockedAtStart: only the strongest items, never a
 
 test('only "Di nuovo": no unlocked section at all', async () => {
   await db.songs.add(mkSong(2))
-  await setNow(await seedItem('c0', 0, true))
+  // la card è in Review con stabilità: un «Di nuovo» contato darebbe una crescita > 0
+  await setNow(await seedItem('c0', 0, false))
   renderSession()
   await rate('Di nuovo')
-  await screen.findByText(/ripassata/)
-  await waitFor(() => expect(screen.queryByRole('heading', { level: 1, name: /Sessione finita|Fatto per oggi/ })).toBeTruthy())
-  await new Promise((r) => setTimeout(r, 100))
+  await screen.findByText('1 ripassata · 0 nuove')
+  await screen.findByRole('heading', { level: 1, name: /Sessione finita|Fatto per oggi/ })
+  const reviews = await db.reviews.toArray()
+  const again = reviews.find((r) => r.rating === 1 && r.reviewedAt.getTime() >= now.getTime() - 120_000)!
+  expect(again.stability!.after).toBeGreaterThan(0)
+  // lascia girare l'effetto dei dati di fine sessione prima di verificare l'assenza
+  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0))
   expect(screen.queryByText(/Oggi hai sbloccato/)).toBeNull()
   expect(screen.queryByText('Le voci più forti di oggi')).toBeNull()
+})
+
+test('resumed session with unlockedAtStart: the end also lists verses unlocked before the leave', async () => {
+  await db.songs.add(mkSong(3))
+  const d0 = await seedItem('c0', 0, true)
+  const d1 = await seedItem('c1', 1, true)
+  await setNow(new Date(Math.max(d0.getTime(), d1.getTime())))
+  const first = renderSession()
+  await rate('Bene')
+  await screen.findByRole('button', { name: 'Mostra significato' })
+  const sess = (await db.sessions.toArray())[0]
+  expect(sess.unlockedAtStart).toEqual([])
+  first.unmount()
+  renderSession()
+  await rate('Bene')
+  await screen.findByRole('heading', { name: 'Oggi hai sbloccato 2 versi' })
+  const list = screen.getByRole('list', { name: 'Versi sbloccati' })
+  expect(list.textContent).toContain('invented verse number 0')
+  expect(list.textContent).toContain('invented verse number 1')
+  expect((await db.sessions.toArray())[0].unlockedAtStart).toEqual([])
 })
 
 test('a new session saves unlockedAtStart', async () => {
