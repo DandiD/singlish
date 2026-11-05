@@ -8,6 +8,12 @@ describe('songLook', () => {
     expect(songLook('abc')).toEqual(songLook('abc'));
   });
 
+  test('looks are pinned: a hash refactor must not change existing song looks', () => {
+    expect(songLook('song-0')).toEqual({ hue: 6, motif: 'waves' })
+    expect(songLook('song-1')).toEqual({ hue: 1, motif: 'circles' })
+    expect(songLook('song-8')).toEqual({ hue: 2, motif: 'lines' })
+  })
+
   test('hue is always an integer from 1 to 6', () => {
     for (const id of [...ids(500), '', 'x', 'é♪']) {
       const { hue } = songLook(id);

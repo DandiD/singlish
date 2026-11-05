@@ -139,7 +139,7 @@ main[tabindex="-1"]:focus, main h1[tabindex="-1"]:focus { outline: none; }
 .song-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
 .song-card h2 { margin: 0; font-size: 17px; }
 .song-card p { margin: 0; }
-.song-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.song-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .badge { font-size: 12px; font-weight: 600; color: var(--accent-text-2); text-transform: uppercase; letter-spacing: .4px; }
 .song-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .song-edit { display: flex; flex-direction: column; gap: 12px; }
@@ -233,7 +233,7 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .today-songs-head h2 { margin: 0; font-size: 18px; }
 .link-add { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; color: var(--accent-text); text-decoration: none; }
 .today .song-card { text-decoration: none; color: var(--text); }
-.today .song-card h3 { margin: 0; font-size: 16px; }
+.today .song-card h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
 .bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .bar-fill { width: 100%; height: 100%; background: var(--accent); transform-origin: left center; }
 
@@ -462,15 +462,13 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 
 /* Copertine e tinte per canzone (le variabili --song e --song-tint vengono da .song-hue-N). */
 .song-card-top { display: flex; align-items: center; gap: 12px; }
-.song-card-top h3 { min-width: 0; }
-.song-top { align-items: center; }
+.song-card-top h3 { min-width: 0; overflow-wrap: anywhere; }
 .song-top h2 { flex: 1; min-width: 0; }
-.study-head { align-items: center; padding: 16px; border-radius: 20px; background: color-mix(in srgb, var(--song-tint) 14%, transparent); }
 .session-card[class*="song-hue-"] { border-left: 4px solid var(--song); }
 .session-song { display: flex; align-items: center; gap: 12px; }
 .session-song .note { margin: 0; }
 /* Testata dello Studio: indietro e timer in alto, copertina grande sopra il titolo (che va a capo a larghezza piena). */
-.study-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; }
+.study-head { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 16px; border-radius: 20px; background: color-mix(in srgb, var(--song-tint) 14%, transparent); }
 .study-head > .icon-btn { grid-column: 1; grid-row: 1; }
 .study-head > .cover { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 .study-head > .grow { grid-column: 1 / -1; grid-row: 3; }
