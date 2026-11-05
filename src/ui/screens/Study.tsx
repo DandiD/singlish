@@ -30,10 +30,8 @@ import { newId } from '../../domain/id'
 import { ensureCover } from '../../domain/cover'
 import { Cover } from '../components/Cover'
 import { songLook } from '../cover'
+import { LEGEND } from '../../domain/legend'
 
-const LEGEND: [string, string][] = [
-  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['fp', 'espressione fissa'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
-]
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const { db, now, fetch, sleep } = useDeps()

@@ -80,3 +80,59 @@ test('aree scoperte: i temi con meno voci e i più coperti', async () => {
   expect(box.textContent).toMatch(/Altro 0/)
   expect(box.textContent).toMatch(/Le più coperte: emozioni 2, lavoro 1\./)
 })
+
+async function seed() {
+  await db.songs.add(song)
+  await db.chunks.bulkAdd([chunk('let it slide'), chunk('hold on', { meaningIt: 'aspetta' }), chunk('figure out', { type: 'phrasal_verb', cefr: 'B1', meaningIt: 'capire' })])
+  await db.words.add(word('wander'))
+}
+
+test('striscia: un pulsante per tipo con conteggio, larghezza proporzionale, niente tipi a 0', async () => {
+  await seed()
+  mount()
+  const strip = await screen.findByRole('group', { name: 'Composizione' })
+  const buttons = within(strip).getAllByRole('button')
+  expect(buttons.map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Phrasal verb: 1', 'Idiomi: 2', 'Parole: 1'])
+  expect((screen.getByRole('button', { name: 'Idiomi: 2' }) as HTMLElement).style.flexGrow).toBe('2')
+  expect((screen.getByRole('button', { name: 'Parole: 1' }) as HTMLElement).style.flexGrow).toBe('1')
+  expect(screen.getByRole('list', { name: 'Legenda dei tipi' }).textContent).toContain('Idiomi 2')
+})
+
+test('striscia: toccare un tipo filtra, ritoccare toglie il filtro', async () => {
+  await seed()
+  mount()
+  const list = await screen.findByRole('list', { name: 'Voci del lessico' })
+  const idioms = screen.getByRole('button', { name: 'Idiomi: 2' })
+  fireEvent.click(idioms)
+  expect(idioms.getAttribute('aria-pressed')).toBe('true')
+  expect(within(list).getAllByRole('link')).toHaveLength(2)
+  fireEvent.click(idioms)
+  expect(idioms.getAttribute('aria-pressed')).toBe('false')
+  expect(within(list).getAllByRole('link')).toHaveLength(4)
+})
+
+test('striscia combinata con ricerca e chip', async () => {
+  await seed()
+  mount()
+  const list = await screen.findByRole('list', { name: 'Voci del lessico' })
+  fireEvent.click(screen.getByRole('button', { name: 'Idiomi: 2' }))
+  fireEvent.input(screen.getByLabelText('Cerca nel lessico'), { target: { value: 'aspetta' } })
+  expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual([expect.stringContaining('hold on')])
+  fireEvent.click(screen.getByRole('button', { name: 'B1' }))
+  expect(screen.getByText('Nessuna voce con questi filtri.')).toBeTruthy()
+})
+
+test('tre tacche per voce, accese secondo lo stato', async () => {
+  await seed()
+  mount()
+  const list = await screen.findByRole('list', { name: 'Voci del lessico' })
+  const ticks = (name: RegExp) => {
+    const el = within(list).getByRole('link', { name }).querySelector('.lex-ticks')!
+    expect(el.getAttribute('aria-hidden')).toBe('true')
+    return [...el.children].map((c) => c.classList.contains('on'))
+  }
+  expect(ticks(/let it slide/)).toEqual([true, false, false]) // nuovo
+  await db.chunks.update('hold on', { suspended: true })
+  expect(await screen.findByText('B2 · sospeso')).toBeTruthy()
+  expect(ticks(/hold on/)).toEqual([false, false, false])
+})

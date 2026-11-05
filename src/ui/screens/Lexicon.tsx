@@ -2,7 +2,8 @@ import { useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { coverage, lexicon, TOPICS, type LexChip, type LexEntry } from '../../domain/lexicon'
+import { composition, coverage, lexicon, strength, TOPICS, type LexChip, type LexEntry } from '../../domain/lexicon'
+import { TYPE_ORDER } from '../../domain/legend'
 import { CHUNK_CLASS } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
 import { useAddGate } from '../components/UnlockSheet'
@@ -23,13 +24,16 @@ export function Lexicon() {
   const [q, setQ] = useState('')
   const [chip, setChip] = useState<LexChip>('tutti')
   const [topic, setTopic] = useState('')
+  const [type, setType] = useState<LexEntry['type'] | null>(null)
   const gate = useAddGate()
 
   if (!data) return <main class="screen lexicon" aria-busy="true" />
   const all = lexicon(data, {})
-  const shown = lexicon(data, { q, chip, topic: topic || undefined })
+  const shown = lexicon(data, { q, chip, topic: topic || undefined, type: type ?? undefined })
   const nChunks = all.filter((e) => e.kind === 'chunk').length
   const nWords = all.length - nChunks
+  const comp = composition(all).filter((c) => c.count > 0)
+  const clsOf = (t: LexEntry['type']) => TYPE_ORDER.find((x) => x.type === t)!.cls
   const cov = coverage(all)
   const least = cov.slice(0, 3)
   const most = cov.slice(-2).reverse().filter((t) => t.count > 0)
@@ -65,6 +69,24 @@ export function Lexicon() {
                 </select>
               </label>
             </div>
+            <div class="comp" role="group" aria-label="Composizione">
+              <div class="comp-strip">
+                {comp.map((c) => (
+                  <button
+                    key={c.type}
+                    type="button"
+                    class={`comp-seg ${clsOf(c.type)}`}
+                    style={{ flexGrow: c.count }}
+                    aria-label={`${c.label}: ${c.count}`}
+                    aria-pressed={type === c.type}
+                    onClick={() => setType(type === c.type ? null : c.type)}
+                  ><span class="comp-fill" aria-hidden="true" /></button>
+                ))}
+              </div>
+              <ul class="legend" aria-label="Legenda dei tipi">
+                {comp.map((c) => <li key={c.type}><span class={`swatch hl ${clsOf(c.type)}`} aria-hidden="true" />{`${c.label} ${c.count}`}</li>)}
+              </ul>
+            </div>
             <div class="coverage">
               <span class="coverage-title">Aree scoperte</span>
               <span class="note">
@@ -92,6 +114,9 @@ export function Lexicon() {
                   <span class="lex-main">
                     <span class="lex-title" lang="en">{e.title}</span>
                     <span class="note">{`${e.meaning}${e.where ? ` · ${e.where}` : ''}`}</span>
+                  </span>
+                  <span class="lex-ticks" aria-hidden="true">
+                    {[1, 2, 3].map((n) => <span key={n} class={n <= strength(e.status) ? 'on' : ''} />)}
                   </span>
                   <span class={e.status === 'attivo' ? 'lex-status on' : 'lex-status'}>{`${e.cefr} · ${e.status}`}</span>
                 </a>

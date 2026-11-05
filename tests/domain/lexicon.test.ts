@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { State } from 'ts-fsrs'
-import { lexicon, coverage, type LexFilter } from '../../src/domain/lexicon'
+import { lexicon, coverage, composition, strength, type LexFilter } from '../../src/domain/lexicon'
 import { newFsrsCard } from '../../src/domain/scheduler'
 import type { CardRow, Chunk, Song, Word } from '../../src/db/types'
 
@@ -83,5 +83,27 @@ describe('lessico', () => {
     expect(c.find((t) => t.topic === 'emotions')!.count).toBe(2) // let it slide e figure out; hold on è sospesa
     expect(c[0].count).toBeLessThanOrEqual(c[c.length - 1].count)
     expect(c.some((t) => t.topic === 'health' && t.count === 0)).toBe(true)
+  })
+  test('filtro per tipo', () => {
+    expect(ids({ type: 'idiom' })).toEqual(['hold on', 'let it slide'])
+    expect(ids({ type: 'word' }).sort()).toEqual(['drift', 'wander'])
+    expect(ids({ type: 'slang', chip: 'B1' })).toEqual([])
+  })
+  test('composizione: ordine fisso, tipi a 0 inclusi', () => {
+    expect(composition(lexicon(data, {}))).toEqual([
+      { type: 'phrasal_verb', label: 'Phrasal verb', count: 1 },
+      { type: 'idiom', label: 'Idiomi', count: 2 },
+      { type: 'collocation', label: 'Collocazioni', count: 0 },
+      { type: 'fixed_phrase', label: 'Frasi fisse', count: 0 },
+      { type: 'slang', label: 'Slang', count: 1 },
+      { type: 'word', label: 'Parole', count: 2 },
+    ])
+  })
+  test('forza per stato', () => {
+    expect(strength('nuovo')).toBe(1)
+    expect(strength('impara')).toBe(2)
+    expect(strength('attivo')).toBe(3)
+    expect(strength('sospeso')).toBe(0)
+    expect(strength('da smistare')).toBe(0)
   })
 })

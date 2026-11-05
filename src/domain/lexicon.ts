@@ -1,4 +1,5 @@
 import { State } from 'ts-fsrs'
+import { TYPE_ORDER } from './legend'
 import type { CardRow, Chunk, Song, Word } from '../db/types'
 
 export type LexStatus = 'nuovo' | 'impara' | 'attivo' | 'sospeso' | 'da smistare'
@@ -20,7 +21,7 @@ export interface LexEntry {
 }
 
 export type LexChip = 'tutti' | 'B1' | 'B2' | 'C1' | 'attivi' | 'solo canzone' | 'parole'
-export interface LexFilter { q?: string; chip?: LexChip; topic?: string }
+export interface LexFilter { q?: string; chip?: LexChip; topic?: string; type?: LexEntry['type'] }
 
 export const TOPICS: Record<string, string> = {
   emotions: 'Emozioni', relationships: 'Relazioni', work: 'Lavoro', travel: 'Viaggi', money: 'Soldi',
@@ -67,6 +68,7 @@ export function lexicon(data: { songs: Song[]; chunks: Chunk[]; words: Word[]; c
   return all.filter((e) => {
     if (q && !fold(`${e.title} ${e.meaning}`).includes(q)) return false
     if (f.topic && e.topic !== f.topic) return false
+    if (f.type && e.type !== f.type) return false
     switch (f.chip ?? 'tutti') {
       case 'B1': case 'B2': case 'C1': return e.cefr === f.chip
       case 'attivi': return e.status === 'attivo'
@@ -83,4 +85,14 @@ export function coverage(entries: LexEntry[]): { topic: string; label: string; c
   return Object.entries(TOPICS)
     .map(([topic, label]) => ({ topic, label, count: counted.filter((e) => e.topic === topic).length }))
     .sort((a, b) => a.count - b.count || a.label.localeCompare(b.label, 'it'))
+}
+
+/** Quante voci per tipo, in ordine fisso; i tipi senza voci hanno 0. */
+export function composition(entries: LexEntry[]): { type: LexEntry['type']; label: string; count: number }[] {
+  return TYPE_ORDER.map(({ type, label }) => ({ type, label, count: entries.filter((e) => e.type === type).length }))
+}
+
+/** Tacche accese (0–3): quanto la voce è consolidata. */
+export function strength(status: LexStatus): 0 | 1 | 2 | 3 {
+  return status === 'attivo' ? 3 : status === 'impara' ? 2 : status === 'nuovo' ? 1 : 0
 }

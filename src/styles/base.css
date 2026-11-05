@@ -341,6 +341,19 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .filter-chip select { min-height: 42px; border: 0; background: transparent; color: inherit; font: inherit; }
 .coverage { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
 .coverage-title { font-size: 14px; font-weight: 600; }
+.comp { display: flex; flex-direction: column; gap: 8px; }
+.comp-strip { display: flex; gap: 2px; }
+.comp-seg { flex-basis: 0; min-width: 12px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; }
+.comp-fill { display: block; width: 100%; height: 12px; border-radius: 3px; background: var(--text-2); }
+.comp-seg.pv .comp-fill { background: var(--blue); }
+.comp-seg.id .comp-fill { background: var(--accent); }
+.comp-seg.co .comp-fill, .comp-seg.fp .comp-fill { background: var(--green); }
+.comp-seg.sl .comp-fill { background: var(--violet); }
+.comp-seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.comp-seg[aria-pressed="true"] .comp-fill { height: 20px; outline: 2px solid var(--text); outline-offset: 1px; }
+.lex-ticks { display: inline-flex; gap: 2px; }
+.lex-ticks span { width: 4px; height: 12px; border-radius: 2px; background: var(--line-strong); }
+.lex-ticks span.on { background: var(--green); }
 .lex-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .lex-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--divider); color: var(--text); text-decoration: none; }
 .lex-bar { width: 4px; align-self: stretch; min-height: 36px; border-radius: 2px; background: var(--text-2); }
