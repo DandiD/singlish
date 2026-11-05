@@ -12,6 +12,7 @@ import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
 import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
+import { Cover } from '../components/Cover'
 import { plural } from '../plural'
 import { useInstall } from '../../pwa/install'
 import { InstallBanner } from '../components/InstallBanner'
@@ -131,14 +132,14 @@ export function Today() {
           song.status === 'draft' || song.status === 'queued' ? (
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'analyzing', songId: song.id })}>
-                <h3>{song.title}</h3>
+                <div class="song-card-top"><Cover song={song} size="md" /><h3>{song.title}</h3></div>
                 <p class="note">Da analizzare</p>
               </a>
             </li>
           ) : (
             <li key={song.id}>
               <a class="song-card" href={href({ name: 'study', songId: song.id })}>
-                <h3>{song.title}</h3>
+                <div class="song-card-top"><Cover song={song} size="md" /><h3>{song.title}</h3></div>
                 <p class="note">{song.status === 'analyzed'
                   ? (total === 0 && toTriage > 0 ? `Da studiare · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare` : total === 0 ? 'Da studiare · nessuna voce da ripassare' : `Da studiare · ${total} chunk e parole${toTriage > 0 ? ` · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare` : ''}`)
                   : total === 0 && toTriage > 0 ? `${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare nello Studio`
@@ -159,7 +160,7 @@ export function Today() {
             {doneLeft.map(({ song, toTriage }) => (
               <li key={song.id}>
                 <a class="song-card left-to-triage" href={href({ name: 'study', songId: song.id })}>
-                  <h3>{song.title}</h3>
+                  <div class="song-card-top"><Cover song={song} size="md" /><h3>{song.title}</h3></div>
                   <p class="note">{`${song.kind === 'text' ? 'Completato' : 'Completata'} · ${toTriage === 1 ? '1 parola' : `${toTriage} parole`} da smistare`}</p>
                 </a>
               </li>

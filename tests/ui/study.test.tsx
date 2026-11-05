@@ -4,6 +4,9 @@ import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Study } from '../../src/ui/screens/Study'
 import { activeSongCount } from '../../src/domain/ingest'
+import { resetCoverAttempts } from '../../src/domain/cover'
+import { songLook } from '../../src/ui/cover'
+import { vi } from 'vitest'
 import type { Song } from '../../src/db/types'
 
 let db: SinglishDB
@@ -16,6 +19,7 @@ const song: Song = {
 }
 
 beforeEach(async () => {
+  resetCoverAttempts()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/songs/s1'
   await db.songs.add(song)
@@ -317,4 +321,66 @@ test('Chiedi a Gemini: mentre la richiesta è in corso le parole e «Annulla» n
   expect((screen.getAllByRole('button', { name: 'Every' })[0] as HTMLButtonElement).disabled).toBe(true)
   await waitFor(() => expect(release).toBeTypeOf('function'))
   release()
+})
+
+describe('cover in the Study header', () => {
+  const TRACK = 'https://open.spotify.com/track/abc123'
+  const THUMB = 'https://i.scdn.co/image/ab67616d00001e02aaaa'
+  const withFetch = (fetchFn: typeof fetch) =>
+    render(
+      <AppDepsProvider value={{ db, fetch: fetchFn, sleep: async () => {}, now: () => now }}>
+        <Study songId="s1" />
+      </AppDepsProvider>,
+    )
+  const okFetch = () =>
+    vi.fn(async () => new Response(JSON.stringify({ title: 'T', thumbnail_url: THUMB }), { status: 200 })) as unknown as typeof fetch
+
+  test('fetches the cover once, saves it and shows the image in the header', async () => {
+    await db.songs.update('s1', { spotifyUrl: TRACK })
+    const f = okFetch()
+    const { container } = withFetch(f)
+    await waitFor(async () => expect((await db.songs.get('s1'))!.coverUrl).toBe(THUMB))
+    await waitFor(() => expect(container.querySelector('.settings-head img')?.getAttribute('src')).toBe(THUMB))
+    expect(f).toHaveBeenCalledTimes(1)
+    expect((f as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(`https://open.spotify.com/oembed?url=${encodeURIComponent(TRACK)}`)
+    expect(container.querySelector('.settings-head .cover-lg')).toBeTruthy()
+  })
+
+  test('header carries the song hue', async () => {
+    const { container } = withFetch(okFetch())
+    await screen.findByRole('heading', { name: 'Night Song' })
+    expect(container.querySelector('.settings-head.song-hue-' + songLook('s1').hue)).toBeTruthy()
+  })
+
+  test('a song without a Spotify link makes no request and shows the generated cover', async () => {
+    const f = okFetch()
+    const { container } = withFetch(f)
+    await screen.findByRole('heading', { name: 'Night Song' })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(f).not.toHaveBeenCalled()
+    expect(container.querySelector('.settings-head img')).toBeNull()
+    expect(container.querySelector('.settings-head .cover')).toBeTruthy()
+  })
+
+  test('a text makes no request even with a stray link', async () => {
+    await db.songs.update('s1', { kind: 'text', spotifyUrl: TRACK })
+    const f = okFetch()
+    withFetch(f)
+    await screen.findByRole('heading', { name: 'Night Song' })
+    await new Promise((r) => setTimeout(r, 30))
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  test('a rejected fetch leaves no alert, no saved cover, and the generated cover', async () => {
+    await db.songs.update('s1', { spotifyUrl: TRACK })
+    const f = vi.fn(async () => { throw new TypeError('Failed to fetch') }) as unknown as typeof fetch
+    const { container } = withFetch(f)
+    await screen.findByRole('heading', { name: 'Night Song' })
+    await waitFor(() => expect(f).toHaveBeenCalledTimes(1))
+    await new Promise((r) => setTimeout(r, 30))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect((await db.songs.get('s1'))!.coverUrl).toBeUndefined()
+    expect(container.querySelector('.settings-head img')).toBeNull()
+    expect(container.querySelector('.settings-head .cover')).toBeTruthy()
+  })
 })

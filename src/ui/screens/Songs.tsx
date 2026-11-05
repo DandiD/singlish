@@ -9,6 +9,7 @@ import { href } from '../../router'
 import { activeSongCount, deleteSong, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import type { Song } from '../../db/types'
 import { Icon } from '../components/Icon'
+import { Cover } from '../components/Cover'
 
 
 export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song'): string {
@@ -69,6 +70,7 @@ export function Songs() {
         ) : (
           <li class="song-card" key={s.id}>
             <div class="song-top">
+              <Cover song={s} size="md" />
               <h2>{s.title}</h2>
               <span class="badge">{statusLabel(s.status, s.kind)}</span>
             </div>
