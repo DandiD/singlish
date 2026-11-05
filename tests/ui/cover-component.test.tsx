@@ -68,7 +68,7 @@ describe('Cover', () => {
   test('a text never shows an image, even with a coverUrl', () => {
     const { container } = render(<Cover song={song({ kind: 'text', coverUrl: URL_A })} size="md" />)
     expect(container.querySelector('img')).toBeNull()
-    expect(container.textContent).toBe('PL')
+    expect(container.querySelector('.cover-initials')!.textContent).toBe('PL')
   })
 
   test.each(['waves', 'circles', 'lines'] as const)('draws the %s motif', (motif) => {

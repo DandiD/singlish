@@ -13,6 +13,13 @@ export type Stage = {
 
 const DAY = 86_400_000
 
+/** Guadagno del riascolto («+28», «-5», «0»), o null senza i due valori. */
+export function gainText(song: Pick<Song, 'comprehensionBefore' | 'comprehensionAfter'>): string | null {
+  if (song.comprehensionBefore == null || song.comprehensionAfter == null) return null
+  const gain = song.comprehensionAfter - song.comprehensionBefore
+  return gain > 0 ? `+${gain}` : `${gain}`
+}
+
 /** Giorni che mancano al riascolto: per eccesso, almeno 1 (stessa regola in millisecondi di `finalListenDue`). */
 function daysLeft(song: Song, now: Date): number {
   const start = song.studyStartedAt ?? song.analyzedAt ?? song.addedAt
@@ -53,8 +60,7 @@ export function songPath(input: { song: Song; toTriage: number; unlocked: number
 
   let final: Stage
   if (song.comprehensionAfter != null) {
-    const gain = song.comprehensionBefore != null ? song.comprehensionAfter - song.comprehensionBefore : null
-    const detail = gain == null ? `${song.comprehensionAfter}%` : gain > 0 ? `+${gain}` : `${gain}`
+    const detail = gainText(song) ?? `${song.comprehensionAfter}%`
     final = { id: 'final', name: 'Riascolto', state: 'done', detail, action: null }
   } else if (finalReady) {
     final = { id: 'final', name: 'Riascolto', state: 'current', detail: 'pronto', action: 'finalListen' }

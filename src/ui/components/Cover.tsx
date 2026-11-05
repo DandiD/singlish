@@ -1,9 +1,9 @@
 import { useState } from 'preact/hooks'
 import type { Song } from '../../db/types'
 import { safeCoverUrl } from '../../domain/spotify'
-import { coverInitials, songLook, type Motif } from '../cover'
+import { coverInitials, songLook, SOURCE_LABEL, type Motif } from '../cover'
 
-type CoverSong = Pick<Song, 'id' | 'title' | 'kind' | 'coverUrl'>
+type CoverSong = Pick<Song, 'id' | 'title' | 'kind' | 'coverUrl'> & Partial<Pick<Song, 'source'>>
 
 function MotifArt({ motif }: { motif: Motif }) {
   return (
@@ -67,6 +67,8 @@ export function Cover({ song, size }: { song: CoverSong; size: 'sm' | 'md' | 'lg
         <>
           <MotifArt motif={look.motif} />
           <span class="cover-initials">{coverInitials(song.title)}</span>
+          {/* Un testo libero dice la sua fonte al posto di un'icona; troppo piccola la copertina sm per scriverla. */}
+          {song.kind === 'text' && size !== 'sm' && <span class="cover-source">{SOURCE_LABEL[song.source ?? 'altro']}</span>}
         </>
       )}
     </span>

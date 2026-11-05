@@ -41,7 +41,8 @@ async function seed() {
 
 async function openEdit() {
   const card = (await screen.findByRole('heading', { name: 'Paper Lanterns' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fireEvent.click(within(card).getByRole('button', { name: /^Azioni per/ }))
+  fireEvent.click(within(card).getByRole('menuitem', { name: 'Modifica' }))
   return card
 }
 
