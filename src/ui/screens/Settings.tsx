@@ -276,10 +276,10 @@ export function Settings() {
         </div>
         <label class="intensive">
           <span>
-            <strong>Vibrazione</strong>
-            <span class="note">Una vibrazione brevissima quando la risposta è esatta e quando chiudi l'anello del giorno.</span>
+            <strong id="haptics-label">Vibrazione</strong>
+            <span class="note" id="haptics-note">Una vibrazione brevissima quando la risposta è esatta e quando chiudi l'anello del giorno.</span>
           </span>
-          <input type="checkbox" checked={settings.haptics !== false} onChange={(e) => store({ haptics: (e.currentTarget as HTMLInputElement).checked })} />
+          <input type="checkbox" aria-labelledby="haptics-label" aria-describedby="haptics-note" checked={settings.haptics !== false} onChange={(e) => store({ haptics: (e.currentTarget as HTMLInputElement).checked })} />
         </label>
       </section>
 
