@@ -484,6 +484,30 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .chorus-foot { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
 .chorus-foot > .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
+/* Lettura a tempo: metà sinistra indietro, metà destra avanti; il testo lascia passare i tocchi tranne sulle voci */
+.read-along { display: flex; flex-direction: column; gap: 14px; min-height: 100dvh; }
+.ra-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.ra-tools > .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; text-decoration: none; }
+.ra-stage { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 240px; }
+.ra-zone { position: absolute; top: 0; bottom: 0; width: 50%; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.ra-zone.prev { left: 0; }
+.ra-zone.next { right: 0; }
+.ra-text { position: relative; display: flex; flex-direction: column; gap: 14px; pointer-events: none; min-width: 0; }
+.ra-text .hl, .ra-bubble { pointer-events: auto; }
+.ra-count { margin: 0; }
+.ra-current { display: flex; flex-direction: column; gap: 6px; }
+.ra-tag { align-self: flex-start; font-size: 12px; font-weight: 600; letter-spacing: .6px; color: var(--muted); }
+.ra-line { margin: 0; font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 28px; line-height: 1.35; color: var(--text); overflow-wrap: anywhere; }
+.ra-line .hl[role="button"] { position: relative; cursor: pointer; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.ra-line .hl[role="button"]::after { content: ''; position: absolute; inset: -7px 0; }
+.ra-line .hl[aria-expanded="true"] { outline: 2px solid var(--line-strong); outline-offset: 1px; }
+.ra-bubble { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 16px; }
+.ra-bubble-form { font-weight: 600; }
+/* Vuota, la regione di stato non aggiunge spazio fra le righe (resta nel DOM per essere annunciata). */
+.ra-bubble-live:empty { margin-top: -14px; }
+.ra-next { margin: 0; font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 20px; line-height: 1.35; color: var(--text-2); overflow-wrap: anywhere; }
+.ra-foot { padding-top: 12px; border-top: 1px solid var(--line); }
+
 /* Espandi */
 .expand { display: flex; flex-direction: column; gap: 10px; }
 .expand-link { display: flex; align-items: center; justify-content: center; text-decoration: none; margin-bottom: 10px; }
@@ -629,3 +653,9 @@ html:has(.study-ask) { scroll-padding-bottom: calc(12px + 44px + 12px + env(safe
 .lex-group { margin-top: 16px; }
 .lex-group-head { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 16px; line-height: 1.25; }
 .lex-group-title { min-width: 0; overflow-wrap: anywhere; }
+
+/* ---------- Traguardi ---------- */
+.sheet.milestone h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+.sheet.milestone p { margin: 0; color: var(--text-2); }
+.milestones ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.milestones li { display: flex; flex-direction: column; gap: 2px; }

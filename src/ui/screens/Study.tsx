@@ -9,7 +9,6 @@ import { songPath } from '../../domain/path'
 import { SongPath } from '../components/SongPath'
 import { MoreMenu } from '../components/MoreMenu'
 import { askGemini, groupSelection, tokenize } from '../../domain/ask'
-import { chorusLines } from '../../domain/chorus'
 import { geminiProblem } from '../errors'
 import { useOnline } from '../components/OfflineBadge'
 import { DELETE_NOTE } from './Songs'
@@ -182,7 +181,6 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const wordCount = placed.words.size
   const gp = song.grammarPoint
   const isText = song.kind === 'text'
-  const hasChorus = !isText && chorusLines(song.lines).length > 0
   const stages = songPath({
     song, toTriage: pending, unlocked: unlock?.unlocked ?? 0, lines: unlock?.total ?? 0,
     finalReady: finalListenDue([song], now()).length > 0, now: now(),
@@ -274,7 +272,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         </div>
       ) : null}
 
-      <SongPath stages={stages} songId={songId} chorus={hasChorus} />
+      <SongPath stages={stages} songId={songId} kind={song.kind === 'text' ? 'text' : 'song'} />
 
       {pending > 0 && (
         <a class="banner" href={href({ name: 'triage', songId })}>

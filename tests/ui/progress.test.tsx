@@ -119,3 +119,49 @@ test('Versi sbloccati senza dati: trattino e cosa fare', async () => {
   expect(tile.querySelector('.tile-num')!.textContent).toBe('—')
   expect(tile.textContent).toContain('Ripassa le card di una canzone: i versi capiti si contano qui.')
 })
+
+test('Diario: «Traguardi» elenca i visti con la data, anche se persi; senza visti la sezione non c\'è', async () => {
+  mount(<Progress />)
+  await screen.findByRole('heading', { name: 'Diario', level: 1 })
+  expect(screen.queryByRole('heading', { name: 'Traguardi' })).toBeNull()
+  cleanup()
+  // «Venti punti in più» è ancora raggiunto; «Una canzone tutta capita» è stato visto ma ora è perso.
+  await db.songs.bulkAdd([{ ...song('Alba', 5, 40), comprehensionAfter: 70 }])
+  await saveSettings(db, { milestonesSeen: { 'final-gain-20': new Date(2026, 10, 5, 9), 'song-all-unlocked': new Date(2026, 9, 20, 9) } })
+  mount(<Progress />)
+  const h = await screen.findByRole('heading', { name: 'Traguardi' })
+  const items = [...h.parentElement!.querySelectorAll('li')].map((li) => li.textContent)
+  expect(items).toEqual(['Una canzone tutta capitavisto il 20 ottobre', 'Venti punti in piùvisto il 5 novembre'])
+})
+
+test('Diario: un traguardo raggiunto ma non ancora visto non compare', async () => {
+  await db.songs.bulkAdd([{ ...song('Alba', 5, 40), comprehensionAfter: 70 }])
+  await saveSettings(db, { milestonesSeen: {} })
+  mount(<Progress />)
+  await screen.findByRole('heading', { name: 'Diario', level: 1 })
+  expect(screen.queryByRole('heading', { name: 'Traguardi' })).toBeNull()
+})
+
+test('Diario: il titolo di «level-up» è quello fisso, anche se il traguardo è vero ora e dopo un cambio di livello', async () => {
+  // 150 voci B1 attive e comprensione 70: a B1 il traguardo è vero («Pronto per il B2»), ma il Diario usa il titolo fisso.
+  await db.songs.add(song('s1', 1, 70))
+  const items: Chunk[] = Array.from({ length: 150 }, (_, i) => ({
+    id: `a${i}`, songId: 's9', key: `a${i}`, baseForm: `a${i}`, surfaceForm: `a${i}`, lineIndex: 0, contexts: [{ songId: 's9', lineIndex: 0 }],
+    type: 'idiom', cefr: 'B1', register: 'usable', topic: '', meaningIt: '', explanationIt: '', extraExampleEn: '', productionPromptIt: '',
+    pronunciationNoteIt: '', userEdited: false, suspended: false,
+  }))
+  await db.chunks.bulkAdd(items)
+  await db.cards.bulkAdd(items.map((c): CardRow => ({
+    id: c.id + 'C', itemType: 'chunk', itemId: c.id, kind: 'C', unlocked: 1, due: now, fsrs: { ...newFsrsCard(now), state: State.Review, due: now }, goodRCount: 2,
+  })))
+  await saveSettings(db, { milestonesSeen: { 'level-up': new Date('2026-10-20T10:00:00') } })
+  const first = mount(<Progress />)
+  const section = (await screen.findByRole('heading', { name: 'Traguardi' })).closest('section')!
+  expect(section.textContent).toContain('Pronto per il livello successivo')
+  expect(section.textContent).not.toContain('Pronto per il B2')
+  first.unmount()
+  await saveSettings(db, { level: 'B2' })
+  mount(<Progress />)
+  const again = (await screen.findByRole('heading', { name: 'Traguardi' })).closest('section')!
+  expect(again.textContent).toContain('Pronto per il livello successivo')
+})

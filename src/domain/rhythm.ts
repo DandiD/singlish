@@ -48,11 +48,9 @@ export function rhythmText(r: WeekRhythm): string {
 
 /** Chiavi dei giorni con almeno un ripasso, da `since` in poi. */
 export async function reviewDaysSince(db: SinglishDB, since: Date): Promise<Set<string>> {
-  const out = new Set<string>()
-  await db.reviews.where('reviewedAt').aboveOrEqual(since).each((r) => {
-    out.add(localDayKey(r.reviewedAt))
-  })
-  return out
+  // Solo le chiavi dell'indice (le date), senza leggere i ripassi interi.
+  const keys = await db.reviews.where('reviewedAt').aboveOrEqual(since).keys()
+  return new Set(keys.map((k) => localDayKey(k as Date)))
 }
 
 /** Segna `now` come giorno libero; non scrive se c'è già. Tiene solo gli ultimi 84 giorni. */
@@ -69,4 +67,32 @@ export async function markFreeDay(db: SinglishDB, now: Date): Promise<void> {
 export async function loadWeekRhythm(db: SinglishDB, now: Date): Promise<WeekRhythm> {
   const [settings, reviewDays] = await Promise.all([getSettings(db), reviewDaysSince(db, weekStart(now))])
   return weekRhythm({ reviewDays, freeDays: settings.freeDays ?? [], goal: rhythmGoalOf(settings), now })
+}
+
+const parseDayKey = (key: string): Date => {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/** Settimane lun–dom (fino a quella di `now`) con almeno `goal` giorni attivi; `fourInARow` = quattro di fila. */
+export function weeksReached(dayKeys: Set<string>, goal: number, now: Date): { any: boolean; fourInARow: boolean } {
+  const keys = [...dayKeys].sort()
+  if (!keys.length) return { any: false, fourInARow: false }
+  const perWeek = new Map<string, number>()
+  for (const k of keys) {
+    const w = localDayKey(weekStart(parseDayKey(k)))
+    perWeek.set(w, (perWeek.get(w) ?? 0) + 1)
+  }
+  const last = weekStart(now)
+  let any = false
+  let run = 0
+  let fourInARow = false
+  // Calendario, non millisecondi: la settimana dopo è sempre lunedì + 7 giorni, anche col cambio d'ora.
+  for (let w = weekStart(parseDayKey(keys[0])); w <= last; w = new Date(w.getFullYear(), w.getMonth(), w.getDate() + 7)) {
+    if ((perWeek.get(localDayKey(w)) ?? 0) >= goal) {
+      any = true
+      if (++run >= 4) fourInARow = true
+    } else run = 0
+  }
+  return { any, fourInARow }
 }

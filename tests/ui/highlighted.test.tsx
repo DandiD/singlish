@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'vitest'
-import { highlightLine } from '../../src/ui/components/Highlighted'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/preact'
+import { Highlighted, highlightLine } from '../../src/ui/components/Highlighted'
 
 describe('highlightLine', () => {
   test('highlights case-insensitively and survives misses', () => {
@@ -25,5 +26,31 @@ describe('highlightLine', () => {
 
   test('line without matches stays intact', () => {
     expect(highlightLine('Nothing here', [{ text: 'zzz', id: 'x', className: 'w' }])).toEqual([{ text: 'Nothing here' }])
+  })
+})
+
+describe('Highlighted con onPick', () => {
+  afterEach(() => cleanup())
+  test('le voci sono pulsanti: tocco, Invio e Spazio passano l\'id senza arrivare al contenitore; aria-expanded segue openId', () => {
+    const onPick = vi.fn()
+    const outer = vi.fn()
+    render(
+      <p onClick={outer}>
+        <Highlighted line="We let it slide tonight" spans={[{ text: 'let it slide', id: 'c1', className: 'id' }]} onPick={onPick} openId="c1" />
+      </p>,
+    )
+    const item = screen.getByRole('button', { name: 'let it slide' })
+    expect(item.tagName).toBe('SPAN')
+    expect(item.getAttribute('tabindex')).toBe('0')
+    expect(item.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(item)
+    expect(onPick).toHaveBeenCalledWith('c1')
+    expect(outer).not.toHaveBeenCalled()
+    fireEvent.keyDown(item, { key: 'Enter' })
+    fireEvent.keyDown(item, { key: ' ' })
+    expect(onPick).toHaveBeenCalledTimes(3)
+    fireEvent.keyDown(item, { key: 'a' })
+    expect(onPick).toHaveBeenCalledTimes(3)
+    expect(screen.queryByRole('button', { name: 'We' })).toBeNull()
   })
 })

@@ -7,6 +7,7 @@ import { loadLabel } from '../components/UnlockSheet'
 import { estimateAvgSeconds } from '../../domain/queue'
 import { dailyActivity, LEVEL_UP, progressStats } from '../../domain/progress'
 import { averageGain } from '../../domain/finalListen'
+import { MILESTONE_ORDER, milestoneTitle } from '../../domain/milestones'
 import { unlockedKeys } from '../../domain/unlocked'
 import { ActivityCalendar } from '../components/ActivityCalendar'
 import { Icon } from '../components/Icon'
@@ -48,11 +49,14 @@ export function Progress() {
       getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(), estimateAvgSeconds(db), unlockedKeys(db),
     ])
     const n = now()
-    return { settings, gain: averageGain(songs), unlocked: unlocked.length, weeks: dailyActivity(reviews, settings.freeDays ?? [], n), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, n) }
+    // Traguardi visti: restano anche se ora non sono più veri; il titolo è quello fisso, che non dipende dai dati.
+    const seen = settings.milestonesSeen ?? {}
+    const milestones = MILESTONE_ORDER.filter((id) => seen[id]).map((id) => ({ id, title: milestoneTitle(id), seenAt: seen[id] }))
+    return { milestones, settings, gain: averageGain(songs), unlocked: unlocked.length, weeks: dailyActivity(reviews, settings.freeDays ?? [], n), stats: progressStats({ settings, songs, chunks, words, cards, reviews, avgSeconds }, n) }
   }, [db, day])
 
   if (!data) return <main class="screen progress" aria-busy="true" />
-  const { settings, gain, weeks, unlocked, stats: p } = data
+  const { milestones, settings, gain, weeks, unlocked, stats: p } = data
   const minutes = settings.timerMinutes.review
   const lastTest = settings.vocabTests?.at(-1)
 
@@ -134,6 +138,17 @@ export function Progress() {
             <div class="bar-fill" style={{ transform: `scaleX(${p.levelProgress})` }} />
           </div>
           <p class="note">{`Servono ${LEVEL_UP.active} chunk e parole ${settings.level} attivi e il ${LEVEL_UP.comprehension}% al primo ascolto. Quando ci sei, puoi alzare il livello nelle Impostazioni.`}</p>
+        </section>
+      )}
+
+      {milestones.length > 0 && (
+        <section class="card milestones">
+          <h2>Traguardi</h2>
+          <ul>
+            {milestones.map((m) => (
+              <li key={m.id}><strong>{m.title}</strong><span class="note">{`visto il ${dayFmt.format(m.seenAt)}`}</span></li>
+            ))}
+          </ul>
         </section>
       )}
     </main>

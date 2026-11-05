@@ -1,4 +1,5 @@
 import { reportError } from './report'
+import { useWakeLock } from './useWakeLock'
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
 import { db as defaultDb } from '../db/db'
 import type { SinglishDB } from '../db/db'
@@ -18,7 +19,6 @@ export function useTimer(sessionId: string, opts: UseTimerOpts, db: SinglishDB =
   stateRef.current = state
   const loaded = useRef(false)
   const vibrated = useRef(false)
-  const lock = useRef<{ release(): Promise<void> } | null>(null)
 
   const apply = useCallback((next: TimerState) => {
     stateRef.current = next
@@ -59,25 +59,7 @@ export function useTimer(sessionId: string, opts: UseTimerOpts, db: SinglishDB =
     return () => document.removeEventListener('visibilitychange', onVis)
   }, [opts.autoPauseOnHide, apply])
 
-  useEffect(() => {
-    const release = () => {
-      const l = lock.current
-      lock.current = null
-      try { void l?.release().catch(() => {}) } catch { /* ignore */ }
-    }
-    if (running && opts.wakeLock) {
-      try {
-        const wl = (navigator as any).wakeLock
-        if (wl?.request) {
-          Promise.resolve(wl.request('screen')).then(
-            (l: { release(): Promise<void> }) => { lock.current = l },
-            () => {},
-          )
-        }
-      } catch { /* ignore */ }
-    }
-    return release
-  }, [running, opts.wakeLock])
+  useWakeLock(running && opts.wakeLock)
 
   const expired = state.status !== 'idle' && isExpired(state, now)
 

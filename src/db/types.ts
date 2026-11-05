@@ -36,6 +36,8 @@ export interface Song {
   finalListenAt?: Date | null
   /** Ritornello a voce: quando l'ha cantato senza testo. */
   chorusDoneAt?: Date | null
+  /** Lettura riga per riga: quando è arrivato in fondo. */
+  readAlongAt?: Date | null
   /** Indici dei versi sbloccati già mostrati nello Studio: quelli nuovi si accendono all'apertura. */
   unlockedSeen?: number[]
 }
@@ -176,4 +178,6 @@ export interface Settings {
   rhythmGoal?: number
   /** Giorni `YYYY-MM-DD` aperti senza card in coda: contano come attivi. Ultimi 84. */
   freeDays?: string[]
+  /** Traguardi già mostrati: id → data. Assente = mai seminato (prima apertura); `{}` = seminato, nessuno visto. */
+  milestonesSeen?: Record<string, Date>
 }

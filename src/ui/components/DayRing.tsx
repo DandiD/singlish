@@ -11,6 +11,10 @@ let pulsedDay: string | null = null
 export function resetRingPulse() {
   pulsedDay = null
 }
+/** L'anello pulserà al prossimo disegno: è completo e oggi non ha ancora pulsato. Da chiamare prima di disegnarlo. */
+export function ringWillPulse(dayKey: string, state: ReturnType<typeof dayRing>['state']): boolean {
+  return state === 'done' && pulsedDay !== dayKey
+}
 
 type Props = {
   ring: ReturnType<typeof dayRing>
@@ -37,7 +41,7 @@ export function DayRing({ ring, estMinutes, timerMinutes, label, why, dayKey, ha
     + (blocked ? ', card nuove in pausa' : '')
   // Chi pulsa lo tiene per tutto il montaggio (un nuovo render non toglie la classe a metà animazione).
   const pulseDay = useRef<string | null>(null)
-  if (state === 'done' && pulsedDay !== dayKey) {
+  if (ringWillPulse(dayKey, state)) {
     pulsedDay = dayKey
     pulseDay.current = dayKey
   }

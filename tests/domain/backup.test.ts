@@ -152,3 +152,55 @@ test('import ignores freeDays that is not an array', async () => {
   await importBackup(db2, json)
   expect((await getSettings(db2)).freeDays ?? []).toEqual([])
 })
+
+test('readAlongAt survives export and import as a Date', async () => {
+  const when = new Date('2026-11-05T08:30:00Z')
+  await db.songs.update('s1', { readAlongAt: when })
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  expect(typeof json.tables.songs[0].readAlongAt).toBe('string')
+  const db2 = mk()
+  await importBackup(db2, json)
+  const got = (await db2.songs.get('s1'))!.readAlongAt
+  expect(got).toBeInstanceOf(Date)
+  expect(got!.getTime()).toBe(when.getTime())
+})
+
+test('backup round-trip turns milestonesSeen dates back into Date', async () => {
+  await saveSettings(db, { milestonesSeen: { 'active-50': new Date('2026-10-01T08:00:00Z') } })
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  expect(typeof json.tables.settings[0].milestonesSeen['active-50']).toBe('string')
+  const db2 = mk()
+  await importBackup(db2, json)
+  const seen = (await getSettings(db2)).milestonesSeen!
+  expect(seen['active-50']).toBeInstanceOf(Date)
+  expect(seen['active-50'].toISOString()).toBe('2026-10-01T08:00:00.000Z')
+})
+
+test('backup without milestonesSeen imports it as absent; empty object stays empty', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  const db2 = mk()
+  await importBackup(db2, json)
+  expect((await getSettings(db2)).milestonesSeen).toBeUndefined()
+  await saveSettings(db, { milestonesSeen: {} })
+  const db3 = mk()
+  await importBackup(db3, JSON.parse(JSON.stringify(await exportBackup(db, now))))
+  expect((await getSettings(db3)).milestonesSeen).toEqual({})
+})
+
+test.each([['string', 'oggi'], ['array', ['active-50']], ['null', null], ['number', 5]])('import with milestonesSeen as %s leaves it absent', async (_n, junk) => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  json.tables.settings[0].milestonesSeen = junk
+  const db2 = mk()
+  await importBackup(db2, json)
+  expect((await getSettings(db2)).milestonesSeen).toBeUndefined()
+})
+
+test('import keeps only known ids with valid dates in milestonesSeen', async () => {
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  json.tables.settings[0].milestonesSeen = { 'active-50': '2026-10-01T08:00:00Z', 'week-goal': 'mai', 'level-up': 5, 'inventato': '2026-10-01T08:00:00Z' }
+  const db2 = mk()
+  await importBackup(db2, json)
+  const seen = (await getSettings(db2)).milestonesSeen!
+  expect(Object.keys(seen)).toEqual(['active-50'])
+  expect(seen['active-50']).toBeInstanceOf(Date)
+})

@@ -7,6 +7,7 @@ test('parseRoute maps hashes', () => {
   expect(parseRoute('#/songs/abc')).toEqual({ name: 'study', songId: 'abc' })
   expect(parseRoute('#/songs/abc?item=x1')).toEqual({ name: 'study', songId: 'abc', itemId: 'x1' })
   expect(parseRoute('#/songs/abc/triage')).toEqual({ name: 'triage', songId: 'abc' })
+  expect(parseRoute('#/songs/abc/read')).toEqual({ name: 'readAlong', songId: 'abc' })
   expect(parseRoute('#/nope')).toEqual({ name: 'notFound' })
 })
 
@@ -18,6 +19,8 @@ test('parseRoute falls back to notFound on malformed hash', () => {
 test('href round-trips', () => {
   const r = { name: 'analyzing', songId: 'z' } as const
   expect(parseRoute(href(r))).toEqual(r)
+  expect(href({ name: 'readAlong', songId: 'a b' })).toBe('#/songs/a%20b/read')
+  expect(parseRoute(href({ name: 'readAlong', songId: 'a b' }))).toEqual({ name: 'readAlong', songId: 'a b' })
 })
 
 describe('navDirection', () => {
@@ -27,6 +30,8 @@ describe('navDirection', () => {
     expect(navDirection({ name: 'study', songId: 'a' }, { name: 'triage', songId: 'a' })).toBe('forward')
     expect(navDirection({ name: 'triage', songId: 'a' }, { name: 'study', songId: 'a' })).toBe('back')
     expect(navDirection({ name: 'session' }, { name: 'today' })).toBe('back')
+    expect(navDirection({ name: 'study', songId: 'a' }, { name: 'readAlong', songId: 'a' })).toBe('forward')
+    expect(navDirection({ name: 'readAlong', songId: 'a' }, { name: 'chorus', songId: 'a' })).toBe('fade')
   })
   test('tra schede allo stesso livello solo dissolvenza', () => {
     expect(navDirection({ name: 'today' }, { name: 'songs' })).toBe('fade')
