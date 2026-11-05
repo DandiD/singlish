@@ -65,6 +65,7 @@ export function Songs() {
   const openSongs = songs.filter((s) => s.status !== 'done')
   const doneSongs = songs.filter((s) => s.status === 'done')
 
+  // Titoli: h2 per le aperte (sotto h1 «Canzoni»), h3 per le completate (sotto h2 «Completate»).
   const item = (s: Song) => {
     const u = unlocked?.get(s.id)
     const ring = u && u.total > 0 ? u.unlocked / u.total : null
@@ -88,7 +89,7 @@ export function Songs() {
                 <span class={ring === null ? 'shelf-frame' : 'shelf-frame song-carousel-ring'} style={ring === null ? undefined : { '--p': `${ring}turn` }}>
                   <Cover song={s} size="lg" />
                 </span>
-                <h2>{s.title}</h2>
+                {s.status === 'done' ? <h3>{s.title}</h3> : <h2>{s.title}</h2>}
               </a>
               <div class="shelf-more">
                 <MoreMenu label={`Azioni per «${s.title}»`} items={actions} />

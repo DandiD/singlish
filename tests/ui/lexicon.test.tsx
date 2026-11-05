@@ -112,6 +112,19 @@ test('striscia: toccare un tipo filtra, ritoccare toglie il filtro', async () =>
   expect(within(list).getAllByRole('link')).toHaveLength(4)
 })
 
+test('striscia: se il tipo filtrato scende a 0 il filtro si toglie', async () => {
+  await seed()
+  mount()
+  const list = await screen.findByRole('list', { name: 'Voci del lessico' })
+  fireEvent.click(screen.getByRole('button', { name: 'Phrasal verb: 1' }))
+  expect(within(list).getAllByRole('link')).toHaveLength(1)
+  await db.chunks.delete('figure out')
+  await screen.findByText('2 chunk · 1 parola')
+  expect(screen.queryByRole('button', { name: /^Phrasal verb/ })).toBeNull()
+  expect(screen.queryByText('Nessuna voce con questi filtri.')).toBeNull()
+  expect(within(screen.getByRole('list', { name: 'Voci del lessico' })).getAllByRole('link')).toHaveLength(3)
+})
+
 test('striscia combinata con ricerca e chip', async () => {
   await seed()
   mount()
@@ -190,7 +203,7 @@ test('per canzone: i filtri valgono anche per i gruppi, il gruppo vuoto sparisce
   fireEvent.click(screen.getByRole('button', { name: 'Tutti' }))
   fireEvent.input(screen.getByLabelText('Cerca nel lessico'), { target: { value: '' } })
   fireEvent.click(screen.getByRole('button', { name: 'Idiomi: 3' }))
-  expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(3)
+  expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.querySelector('.lex-group-title')!.textContent)).toEqual(['Paper Boats', 'Lantern Road', 'Altre voci'])
 })
 
 test('.comp-seg ha una larghezza minima di 24px (WCAG 2.5.8)', () => {

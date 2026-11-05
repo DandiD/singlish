@@ -1,4 +1,4 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href } from '../../router'
@@ -46,10 +46,15 @@ export function Lexicon() {
   const [type, setType] = useState<LexEntry['type'] | null>(null)
   const [view, setView] = useState<'all' | 'songs'>('all')
   const gate = useAddGate()
+  // Il tipo filtrato non c'è più (voci eliminate): il suo tratto sparisce dalla striscia, quindi il filtro si toglie.
+  const all = data ? lexicon(data, {}) : []
+  const typeGone = type !== null && !all.some((e) => e.type === type)
+  useEffect(() => {
+    if (data && typeGone) setType(null)
+  }, [data, typeGone])
 
   if (!data) return <main class="screen lexicon" aria-busy="true" />
-  const all = lexicon(data, {})
-  const shown = lexicon(data, { q, chip, topic: topic || undefined, type: type ?? undefined })
+  const shown = lexicon(data, { q, chip, topic: topic || undefined, type: typeGone ? undefined : type ?? undefined })
   const nChunks = all.filter((e) => e.kind === 'chunk').length
   const nWords = all.length - nChunks
   const comp = composition(all).filter((c) => c.count > 0)

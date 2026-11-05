@@ -48,9 +48,11 @@ describe('Canzoni come scaffale', () => {
     const { container } = mount()
     await screen.findByRole('heading', { name: 'Old Tide' })
     const done = screen.getByRole('heading', { name: 'Completate', level: 2 })
-    const headings = [...container.querySelectorAll('h2')].map((h) => h.textContent)
-    // Le aperte nello stesso ordine di oggi (le più recenti prima), la completata dopo il titolo.
-    expect(headings).toEqual(['Rough Draft', 'Paper Lanterns', 'Completate', 'Old Tide'])
+    const headings = [...container.querySelectorAll('h2, h3')].map((h) => `${h.tagName} ${h.textContent}`)
+    // Le aperte nello stesso ordine di oggi (le più recenti prima), sotto il titolo della schermata (h2);
+    // le completate sotto «Completate» scendono di un livello (h3).
+    expect(headings).toEqual(['H2 Rough Draft', 'H2 Paper Lanterns', 'H2 Completate', 'H3 Old Tide'])
+    expect(screen.getByRole('heading', { name: 'Old Tide', level: 3 })).toBeTruthy()
     expect(container.querySelectorAll('.shelf')).toHaveLength(2)
     expect(done.nextElementSibling!.contains(screen.getByRole('heading', { name: 'Old Tide' }))).toBe(true)
   })

@@ -50,6 +50,11 @@ describe('songPath', () => {
     expect(stage(path(mk(), { toTriage: 3 }), 'triage')).toMatchObject({ state: 'partial', detail: '3 da fare', action: 'triage' })
   })
 
+  it('triage: todo before analysis (no words yet)', () => {
+    expect(stage(path(mk({ status: 'draft' })), 'triage')).toMatchObject({ state: 'todo', detail: null, action: null })
+    expect(stage(path(mk({ status: 'queued' })), 'triage')).toMatchObject({ state: 'todo', detail: null, action: null })
+  })
+
   it('review: done, partial, todo with counts, todo without lines', () => {
     expect(stage(path(mk(), { lines: 4, unlocked: 4 }), 'review')).toMatchObject({ state: 'done', action: null })
     expect(stage(path(mk(), { lines: 4, unlocked: 2 }), 'review')).toMatchObject({ state: 'partial', detail: '2 di 4' })

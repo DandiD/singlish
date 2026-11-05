@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 export type MoreMenuItem = { text: string; onSelect(): void; danger?: boolean }
 
-/** Pulsante «⋯» con un piccolo menu: Invio o tocco lo apre, Esc e un tocco fuori lo chiudono, il fuoco torna al pulsante. */
+/** Pulsante «⋯» con un piccolo menu: Invio, Spazio, Freccia giù o tocco lo apre; Esc (ovunque sia il fuoco) lo chiude
+ *  e riporta il fuoco al pulsante; un tocco fuori o il fuoco che esce dal menu lo chiudono. */
 export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[] }) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -15,26 +16,45 @@ export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[
     if (refocus) button.current?.focus()
   }
 
-  // Aperto: il fuoco va sulla prima voce.
-  useEffect(() => {
+  // Aperto: il fuoco va sulla prima voce. Effetti «layout»: partono subito dopo il render, non un frame dopo,
+  // così un Esc premuto appena il menu compare viene già ascoltato.
+  useLayoutEffect(() => {
     if (open) entries()[0]?.focus()
   }, [open])
 
-  // Un tocco fuori chiude senza spostare il fuoco.
-  useEffect(() => {
+  // Un tocco fuori chiude senza spostare il fuoco; Esc chiude ovunque sia il fuoco (anche prima che entri nel menu).
+  useLayoutEffect(() => {
     if (!open) return
     const onDown = (e: Event) => {
       if (!wrap.current?.contains(e.target as Node)) setOpen(false)
     }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      close(true)
+    }
     document.addEventListener('pointerdown', onDown)
-    return () => document.removeEventListener('pointerdown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
   }, [open])
 
+  // Invio e Spazio restano al clic nativo (che apre e chiude); Freccia giù apre e porta sulla prima voce.
   const onButtonKey = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
-      e.preventDefault() // niente clic nativo dopo: aprirebbe e richiuderebbe
-      setOpen(true)
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (open) entries()[0]?.focus()
+      else setOpen(true)
     }
+  }
+  // Il fuoco che va su un altro elemento fuori dal menu (Tab, VoiceOver su un altro «⋯») lo chiude.
+  // Senza relatedTarget (fuoco sul body, clic su un'area non focalizzabile) decide il pointerdown fuori:
+  // chiudere qui annullerebbe il clic su una voce in Safari, dove i pulsanti non prendono il fuoco.
+  const onFocusOut = (e: FocusEvent) => {
+    const next = e.relatedTarget as Node | null
+    if (open && next && !wrap.current?.contains(next)) setOpen(false)
   }
   const onMenuKey = (e: KeyboardEvent) => {
     const all = entries()
@@ -56,7 +76,7 @@ export function MoreMenu({ label, items }: { label: string; items: MoreMenuItem[
   }
 
   return (
-    <div class="more-menu" ref={wrap}>
+    <div class="more-menu" ref={wrap} onFocusOut={onFocusOut}>
       <button
         ref={button}
         type="button"

@@ -27,7 +27,10 @@ async function seed(page: Page) {
       desiredRetention: 0.9, newPerDay: 16, timerMinutes: { study: 15, review: 30 }, persistAsked: true, installBannerDismissed: true,
     })
     const base = { artist: 'Artista inventato', spotifyUrl: null, coverUrl: null, level: 'B1', grammarPoint: null, connectedSpeech: [], lineTranslations: [] }
-    const lines = ['we fold the paper sky', 'and wait for borrowed rain', 'the harbour hums a quiet tune', 'while lanterns drift away', 'nobody counts the hours', 'we keep the window open']
+    // Abbastanza versi da far scorrere la pagina, con un'espressione (un link) ogni tanto fino in fondo.
+    const things = ['kettle', 'pebble', 'ribbon', 'compass', 'feather', 'thimble', 'saucer', 'lantern', 'button', 'marble']
+    const extra = things.flatMap((t) => [`we carry the ${t} home`, 'and hum along the stairs', 'the evening folds in two'])
+    const lines = ['we fold the paper sky', 'and wait for borrowed rain', 'the harbour hums a quiet tune', 'while lanterns drift away', 'nobody counts the hours', 'we keep the window open', ...extra]
     tx.objectStore('songs').put({
       ...base, id: 's1', kind: 'song', title: longTitle, lines, status: 'studying', difficultyKnownPct: 50, comprehensionBefore: 50,
       addedAt: new Date(now - 3 * DAY), analyzedAt: new Date(now - 3 * DAY), studyStartedAt: new Date(now - DAY),
@@ -45,6 +48,15 @@ async function seed(page: Page) {
       contexts: [{ songId: 's1', lineIndex: 0 }], type: 'collocation', cefr: 'B1', register: 'usable', topic: 'casa',
       meaningIt: 'piegare la carta', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
       userEdited: false, suspended: false,
+    })
+    things.forEach((t, k) => {
+      const lineIndex = 6 + 3 * k
+      tx.objectStore('chunks').put({
+        id: `cx${k}`, songId: 's1', key: `carry the ${t}`, baseForm: `carry the ${t}`, surfaceForm: `carry the ${t}`, lineIndex,
+        contexts: [{ songId: 's1', lineIndex }], type: 'collocation', cefr: 'B1', register: 'usable', topic: 'casa',
+        meaningIt: `portare il ${t}`, explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '',
+        userEdited: false, suspended: false,
+      })
     })
     const word = (id: string, lemma: string, lineIndex: number) => ({
       id, lemma, surfaceForm: lemma, pos: 'noun', freqRank: 3000, songId: 's1', lineIndex, contexts: [{ songId: 's1', lineIndex }], cefr: 'B1',
@@ -102,6 +114,21 @@ test('percorso, scaffale e collezione a 390 px senza scroll orizzontale', async 
   const overlap = a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y
   expect(overlap).toBe(false)
 
+  // Un link che riceve il fuoco nella fascia in basso non resta sotto il pulsante fluttuante (scroll-padding-bottom).
+  await page.evaluate(() => window.scrollTo(0, 0))
+  const askBox = (await ask.boundingBox())!
+  const focusedBox = await page.evaluate((askTop) => {
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.lyrics a')]
+    const target = links.find((el) => el.getBoundingClientRect().bottom > askTop)
+    if (!target) return null
+    target.focus()
+    const r = target.getBoundingClientRect()
+    return { y: r.top, bottom: r.bottom }
+  }, askBox.y)
+  expect(focusedBox).not.toBeNull()
+  const askNow = (await ask.boundingBox())!
+  expect(focusedBox!.bottom).toBeLessThanOrEqual(askNow.y)
+
   // Smista dal percorso, poi indietro.
   await page.evaluate(() => window.scrollTo(0, 0))
   await smista.click()
@@ -113,8 +140,7 @@ test('percorso, scaffale e collezione a 390 px senza scroll orizzontale', async 
   const more = page.locator('.study-head [aria-haspopup="menu"]')
   await more.click()
   await expect(page.getByRole('menu')).toBeVisible()
-  await expect(page.getByRole('menuitem').first()).toBeFocused()
-  await page.keyboard.press('Escape')
+  await page.keyboard.press('Escape') // subito, senza aspettare che il fuoco entri nel menu
   await expect(page.getByRole('menu')).toHaveCount(0)
   await expect(more).toBeFocused()
 
@@ -141,7 +167,9 @@ test('percorso, scaffale e collezione a 390 px senza scroll orizzontale', async 
   await seg.click()
   await page.getByRole('radio', { name: 'Per canzone' }).click()
   await expect(page.getByRole('radio', { name: 'Per canzone' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('heading', { level: 2 }).first()).toBeVisible()
+  // Solo s1 ha voci: un solo gruppo, col suo titolo (s2 e s3 non ne hanno, «Altre voci» non serve).
+  await expect(page.locator('.lex-group-title')).toHaveText([LONG_TITLE])
+  await expect(page.getByRole('heading', { level: 2, name: LONG_TITLE })).toBeVisible()
   await noOverflow(page, ['.comp', '.lex-list'])
   await page.getByRole('radio', { name: 'Tutte' }).click()
   await noOverflow(page, ['.comp', '.lex-list'])

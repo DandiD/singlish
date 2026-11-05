@@ -47,9 +47,12 @@ export function songPath(input: { song: Song; toTriage: number; unlocked: number
     state: studied ? 'done' : song.status === 'analyzed' ? 'current' : 'todo',
   }
 
-  const triage: Stage = toTriage > 0
-    ? { id: 'triage', name: 'Smista', state: 'partial', detail: `${toTriage} da fare`, action: 'triage' }
-    : { id: 'triage', name: 'Smista', state: 'done', detail: null, action: null }
+  // Prima dell'analisi le parole non esistono ancora: niente da smistare non vuol dire «fatto».
+  const triage: Stage = !analyzed
+    ? { id: 'triage', name: 'Smista', state: 'todo', detail: null, action: null }
+    : toTriage > 0
+      ? { id: 'triage', name: 'Smista', state: 'partial', detail: `${toTriage} da fare`, action: 'triage' }
+      : { id: 'triage', name: 'Smista', state: 'done', detail: null, action: null }
 
   const review: Stage = lines === 0
     ? { id: 'review', name: 'Ripasso', state: 'todo', detail: null, action: null }
