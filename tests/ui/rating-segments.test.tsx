@@ -42,3 +42,41 @@ test('reduced motion switches off segment and glow animations', () => {
   expect(reduce).toMatch(/\.seg-glow[^{]*\{[^}]*animation:\s*none/)
   expect(reduce).toMatch(/transition:\s*none/)
 })
+
+test('segment colour arrives in --t-fast (spec §7.4)', () => {
+  const css = read('motion.css')
+  const body = rule(css.slice(css.indexOf('/* ---------- Segmenti')), '.seg')
+  expect(body).toMatch(/background-color\s+var\(--t-fast\)/)
+})
+
+// Contrasto WCAG fra due esadecimali.
+const lum = (hex: string) => {
+  const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
+}
+const contrast = (a: string, b: string) => {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p)
+  return (x + 0.05) / (y + 0.05)
+}
+const theme = (sel: string) => {
+  const tokens = read('tokens.css')
+  const body = tokens.slice(tokens.indexOf(sel)).match(/\{([^}]*)\}/)![1]
+  return Object.fromEntries([...body.matchAll(/--([\w-]+):\s*(#[0-9A-Fa-f]{6})/g)].map((m) => [m[1], m[2]]))
+}
+
+test('«da fare» and «Di nuovo» stand out from the background (≥3:1) in both themes, by shape too', () => {
+  const base = read('base.css')
+  const todo = rule(base, '.seg-todo')
+  const empty = rule(base, '.seg-empty')
+  // da fare: riempimento basso (una linea sottile); Di nuovo: solo il bordo, senza riempimento
+  expect(todo).toMatch(/100% 2px/)
+  expect(empty).toMatch(/background:\s*transparent/)
+  expect(empty).toMatch(/inset 0 0 0 1px/)
+  for (const t of [theme('[data-theme="dark"]'), theme('[data-theme="light"]')]) {
+    for (const body of [todo, empty]) {
+      const vars = [...body.matchAll(/var\(--([\w-]+)\)/g)].map((m) => m[1])
+      expect(vars.length).toBeGreaterThan(0)
+      for (const v of vars) expect(contrast(t[v], t.bg), `--${v}`).toBeGreaterThanOrEqual(3)
+    }
+  }
+})

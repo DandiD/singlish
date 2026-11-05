@@ -170,7 +170,7 @@ a.song-card:active { transform: scale(.985); }
 }
 
 /* ---------- Segmenti della sessione: il colore arriva con una piccola scala; la serie brilla una volta ---------- */
-.seg { transition: background-color var(--t-med) var(--ease-out), transform var(--t-med) var(--ease-spring); }
+.seg { transition: background-color var(--t-fast) var(--ease-out), transform var(--t-med) var(--ease-spring); }
 .seg-full, .seg-half, .seg-empty, .seg-written { animation: seg-in var(--t-med) var(--ease-spring); }
 @keyframes seg-in { from { transform: scaleY(0.4); } }
 .seg-glow { animation: seg-glow 900ms var(--ease-out) 1; }
