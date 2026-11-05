@@ -156,6 +156,25 @@ test('doppio tocco su «Avanti» sulla penultima riga: «Letta tutta» è un alt
   await waitFor(async () => expect((await db.songs.get('s1'))!.readAlongAt).toEqual(now))
 })
 
+test('da tastiera: «Avanti» col fuoco diventa «Letta tutta» e il fuoco passa al nuovo pulsante, senza attivarlo', async () => {
+  mount()
+  await screen.findByText('Riga 1 di 4')
+  const avanti = screen.getByRole('button', { name: 'Avanti' })
+  avanti.focus()
+  // Invio su un pulsante lo attiva con un click.
+  for (let i = 0; i < 3; i++) fireEvent.click(document.activeElement as HTMLElement)
+  expect(screen.getByText('Riga 4 di 4')).toBeTruthy()
+  const done = screen.getByRole('button', { name: 'Letta tutta' })
+  expect(document.activeElement).toBe(done)
+  // Un Invio subito dopo non fa nulla (guardia di 400 ms).
+  fireEvent.click(document.activeElement as HTMLElement)
+  await new Promise((r) => setTimeout(r, 30))
+  expect((await db.songs.get('s1'))!.readAlongAt).toBeUndefined()
+  vi.setSystemTime(Date.now() + 500)
+  fireEvent.click(document.activeElement as HTMLElement)
+  await waitFor(async () => expect((await db.songs.get('s1'))!.readAlongAt).toEqual(now))
+})
+
 test('un tasto tenuto premuto (keydown ripetuto) non scorre le righe', async () => {
   mount()
   await screen.findByText('Riga 1 di 4')

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
@@ -36,6 +36,16 @@ export function ReadAlong({ songId }: { songId: string }) {
   const lastShownAt = useRef<number | null>(null)
   if (!last || count === 0) lastShownAt.current = null
   else if (lastShownAt.current === null) lastShownAt.current = Date.now()
+  // «Avanti» col fuoco che diventa «Letta tutta» (un altro elemento): il fuoco passa al nuovo pulsante, non al body.
+  const nextBtn = useRef<HTMLButtonElement>(null)
+  const doneBtn = useRef<HTMLButtonElement>(null)
+  const refocus = useRef(false)
+  if (last && nextBtn.current && document.activeElement === nextBtn.current) refocus.current = true
+  useLayoutEffect(() => {
+    if (!last || !refocus.current) return
+    refocus.current = false
+    doneBtn.current?.focus()
+  }, [last])
 
   const forward = () => { if (open) { setOpen(null); return } if (!last) setIdx(idx + 1) }
   const backward = () => { if (open) { setOpen(null); return } if (idx > 0) setIdx(idx - 1) }
@@ -141,9 +151,9 @@ export function ReadAlong({ songId }: { songId: string }) {
         <footer class="ra-foot grid2">
           <button type="button" class="btn outline" disabled={idx === 0} onClick={() => { setOpen(null); if (idx > 0) setIdx(idx - 1) }}>Indietro</button>
           {last ? (
-            <button key="done" type="button" class="btn primary" onClick={() => void done()}>{isText ? 'Letto tutto' : 'Letta tutta'}</button>
+            <button key="done" ref={doneBtn} type="button" class="btn primary" onClick={() => void done()}>{isText ? 'Letto tutto' : 'Letta tutta'}</button>
           ) : (
-            <button key="next" type="button" class="btn primary" onClick={() => { setOpen(null); setIdx(idx + 1) }}>Avanti</button>
+            <button key="next" ref={nextBtn} type="button" class="btn primary" onClick={() => { setOpen(null); setIdx(idx + 1) }}>Avanti</button>
           )}
         </footer>
       )}
