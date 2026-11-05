@@ -1,12 +1,12 @@
 import { useLive } from '../useLive'
 import { useDayTick } from '../useDayTick'
-import { State } from 'ts-fsrs'
 import { useDeps } from '../deps'
 import { href } from '../../router'
 import { buildSessionQueue } from '../../domain/queue'
 import { getSettings, saveSettings } from '../../domain/settings'
 import { activeSongs, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { itemsInSong } from '../../domain/songItems'
+import { rCardStates, unlockedLines } from '../../domain/unlocked'
 import { finalListenDue } from '../../domain/finalListen'
 import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
@@ -88,8 +88,7 @@ export function Today() {
       doneToday(db, n),
       db.songs.count().then((c) => c > 0),
     ])
-    const rCards = await db.cards.where('kind').equals('R').toArray()
-    const rState = new Map(rCards.map((c) => [c.itemId, c.fsrs.state]))
+    const rState = await rCardStates(db)
     const pendingIds = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
     // Le parole da smistare di una canzone sono quelle che Smista mostra: una sola fonte.
     const toTriageIn = async (songId: string) => (await pendingWords(db, songId)).length
@@ -99,13 +98,10 @@ export function Today() {
         // Le voci che lo Studio evidenzia e conta, meno le parole ancora da smistare.
         const placed = itemsInSong(song, chunks, words)
         const ids = [...placed.chunks, ...[...placed.words].filter((id) => !pendingIds.has(id))]
-        const done = ids.filter((id) => {
-          const s = rState.get(id)
-          return s !== undefined && s !== State.New
-        }).length
+        const { unlocked, total: lines } = unlockedLines(song, chunks, words, rState)
         // Voci della canzone tolte dal ripasso con Sospendi: le dice quando non resta altro.
         const suspended = [...chunks, ...words].filter((x) => x.suspended && x.contexts.some((c) => c.songId === song.id)).length
-        return { song, total: ids.length, done, toTriage: await toTriageIn(song.id), suspended }
+        return { song, items: ids.length, lines, unlocked, toTriage: await toTriageIn(song.id), suspended }
       }))
     // Canzoni completate con parole mai smistate: non contano fra le aperte, ma Oggi le nomina (lo sblocco e la Sessione vuota ne parlano).
     const doneLeft = (await Promise.all((await db.songs.where('status').equals('done').toArray())
@@ -134,13 +130,13 @@ export function Today() {
   const invitedSong = invite && invite.kind !== 'correct' ? invite.song.id : null
 
   const items: CarouselItem[] = progress.map((row) => {
-    const { song, total, done } = row
+    const { song, lines, unlocked } = row
     // Un riascolto pronto che non è l'invito si apre dalla copertina, se no resterebbe irraggiungibile.
     const finalReady = song.id !== invitedSong && finalDue.some((s) => s.id === song.id)
     const target = song.status === 'draft' || song.status === 'queued'
       ? href({ name: 'analyzing', songId: song.id })
       : finalReady ? href({ name: 'finalListen', songId: song.id }) : href({ name: 'study', songId: song.id })
-    return { song, href: target, label: songLabel(row, finalReady), detail: songDetail(row), progress: total > 0 ? done / total : null }
+    return { song, href: target, label: songLabel(row, finalReady), detail: songDetail(row), progress: lines > 0 ? unlocked / lines : null }
   })
   const leftToTriage = doneLeft.filter((d) => d.song.id !== invitedSong)
 

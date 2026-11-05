@@ -132,7 +132,7 @@ describe('studio di una canzone', () => {
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
     // 1 chunk + 3 parole, meno w2 da smistare
-    expect(card.textContent).toContain('0 di 3 chunk e parole nel ripasso')
+    expect(card.textContent).toContain('0 di 2 versi sbloccati')
   })
 })
 
@@ -232,7 +232,7 @@ describe('Oggi e Studio sulla stessa canzone', () => {
   }
   const todayTotal = async (title: string) => {
     const card = (await screen.findByRole('heading', { name: title })).closest('a')!
-    return +card.textContent!.match(/di (\d+) chunk e parole/)![1]
+    return +card.textContent!.match(/Da studiare · (\d+) chunk e parole/)![1]
   }
   test('il totale di Oggi è sempre le voci dello Studio meno quelle da smistare, prima e dopo lo smistamento', async () => {
     const { applyTriage } = await import('../../src/domain/triage')
@@ -243,9 +243,12 @@ describe('Oggi e Studio sulla stessa canzone', () => {
       await waitFor(() => expect(screen.getByText(/^Studio · /)).toBeTruthy())
       const s = studyNumbers()
       cleanup()
+      // «Da studiare» è la riga di Oggi che conta le voci: si legge con la canzone non ancora in studio.
+      await db.songs.update('s1', { status: 'analyzed' })
       mount(<Today />)
       expect(await todayTotal('Lantern Road')).toBe(s.items - s.pending)
       if (step === 'dopo') expect(s.pending).toBe(0)
+      await db.songs.update('s1', { status: 'studying' })
       cleanup()
     }
   })
@@ -278,9 +281,10 @@ describe('voce salvata senza la forma del verso (dati vecchi)', () => {
     const reachable = shown().size + within(others).getAllByRole('link').length
     expect(counted()).toBe(reachable)
     cleanup()
+    await db.songs.update('s2', { status: 'analyzed' }) // aprire lo Studio la porta «in studio»
     mount(<Today />)
     const card = (await screen.findByRole('heading', { name: 'Harbour Lights' })).closest('a')!
-    expect(card.textContent).toContain(`${reachable} chunk e parole`)
+    expect(card.textContent).toContain(`Da studiare · ${reachable} chunk e parole`)
   })
 })
 
@@ -297,7 +301,8 @@ test('una parola dentro un chunk dello stesso verso: elencata sotto il testo, co
   expect(+m[1] + +m[2]).toBe(reachable)
   const pending = 1 // w2
   cleanup()
+  await db.songs.update('s1', { status: 'analyzed' })
   mount(<Today />)
   const card = (await screen.findByRole('heading', { name: 'Lantern Road' })).closest('a')!
-  expect(card.textContent).toContain(`di ${reachable - pending} chunk e parole`)
+  expect(card.textContent).toContain(`Da studiare · ${reachable - pending} chunk e parole`)
 })
