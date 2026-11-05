@@ -18,7 +18,7 @@ const ACTIVE_TEXT = 'Le usi senza aiuto: le riconosci e le completi.'
 /** I traguardi raggiunti ora, ricalcolati dai dati (mai da eventi), nell'ordine di `MILESTONE_ORDER`. */
 export async function reachedMilestones(db: SinglishDB, now: Date): Promise<Milestone[]> {
   const [settings, songs, chunks, words, cards, reviews, avgSeconds, rState] = await Promise.all([
-    getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.toArray(),
+    getSettings(db), db.songs.toArray(), db.chunks.toArray(), db.words.toArray(), db.cards.toArray(), db.reviews.where('reviewedAt').aboveOrEqual(new Date(now.getTime() - 31 * 86_400_000)).toArray(),
     estimateAvgSeconds(db), rCardStates(db),
   ])
   const byAge = [...songs].sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())
@@ -68,7 +68,7 @@ export async function markMilestoneSeen(db: SinglishDB, id: MilestoneId, now: Da
 export async function seedMilestonesSeen(db: SinglishDB, now: Date): Promise<boolean> {
   if ((await getSettings(db)).milestonesSeen !== undefined) return false
   const reached = await reachedMilestones(db, now)
-  return db.transaction('rw', [db.settings, db.songs, db.chunks, db.words, db.cards, db.reviews], async () => {
+  return db.transaction('rw', db.settings, async () => {
     if ((await getSettings(db)).milestonesSeen !== undefined) return false
     await saveSettings(db, { milestonesSeen: Object.fromEntries(reached.map((m) => [m.id, now])) })
     return true

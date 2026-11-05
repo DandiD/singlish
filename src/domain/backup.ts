@@ -2,6 +2,7 @@ import type { SinglishDB } from '../db/db'
 import type { CardRow, Chunk, Review, SessionRow, Settings, Song, Word } from '../db/types'
 import { DEFAULT_SETTINGS, getSettings } from './settings'
 import { repairHomes } from './ingest'
+import { MILESTONE_ORDER } from './milestones'
 
 export type BackupFile = {
   app: 'singlish'
@@ -62,6 +63,11 @@ export function isBackup(file: unknown): file is BackupFile {
 }
 
 /** Un backup a mano può avere giorni liberi malformati: si tengono solo le chiavi YYYY-MM-DD; altrimenti il campo manca. */
+function withoutSeen<T extends { milestonesSeen?: unknown }>(s: T): Omit<T, 'milestonesSeen'> {
+  const { milestonesSeen: _m, ...rest } = s
+  return rest
+}
+
 function withoutFreeDays<T extends { freeDays?: unknown }>(s: T): Omit<T, 'freeDays'> {
   const { freeDays: _f, ...rest } = s
   return rest
@@ -95,13 +101,14 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
     if (!m || typeof m !== 'object' || Array.isArray(m)) return {}
     const out: Record<string, Date> = {}
     for (const [k, v] of Object.entries(m)) {
-      const date = d(v as Date | string | null)
+      if (!(MILESTONE_ORDER as string[]).includes(k)) continue
+      const date = typeof v === 'string' || v instanceof Date ? new Date(v) : null
       if (date && !Number.isNaN(date.getTime())) out[k] = date
     }
     return { milestonesSeen: out }
   }
   const settingsRow: Settings = {
-    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...withoutFreeDays(t.settings[0]), intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })), ...cleanFreeDays(t.settings[0].freeDays), ...seenDates(t.settings[0].milestonesSeen) } : DEFAULT_SETTINGS),
+    ...(t.settings[0] ? { ...DEFAULT_SETTINGS, ...withoutSeen(withoutFreeDays(t.settings[0])), intensiveUntil: d(t.settings[0].intensiveUntil ?? null), vocabTests: (t.settings[0].vocabTests ?? []).map((v) => ({ ...v, at: d(v.at) })), ...cleanFreeDays(t.settings[0].freeDays), ...seenDates(t.settings[0].milestonesSeen) } : DEFAULT_SETTINGS),
     id: 'settings',
     apiKey,
   }
