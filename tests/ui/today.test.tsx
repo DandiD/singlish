@@ -193,6 +193,25 @@ describe('coda vuota: l\'azione principale porta a ciò che crea card, senza inv
     expect(container.querySelectorAll('a[href="#/songs/s1/triage"]')).toHaveLength(1)
   })
 
+  test('le parole da smistare sono quelle di Smista (`pendingWords`), anche senza il verso fra i contesti', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    // Parola salvata prima dei contesti: Smista la trova dal suo verso (songId + lineIndex).
+    await db.words.add({ ...pendingWord('gull'), contexts: [] })
+    mount()
+    const cta = await screen.findByRole('link', { name: 'Smista le parole di «Paper Sea»' })
+    expect(cta.getAttribute('href')).toBe('#/songs/s1/triage')
+  })
+
+  test('anche per le completate le parole da smistare sono quelle di Smista (`pendingWords`)', async () => {
+    await db.songs.bulkAdd([song('s1', 'Paper Sea', 'studying'), song('s2', 'Tin Harbour', 'done')])
+    await seedDue(1)
+    await db.words.bulkAdd([pendingWord('gull'), { ...pendingWord('tide', 's2'), contexts: [] }])
+    mount()
+    expect(await screen.findByRole('heading', { name: 'Da smistare nelle canzoni completate' })).toBeTruthy()
+    const left = screen.getByRole('link', { name: /Tin Harbour/ })
+    expect(left.textContent).toContain('Completata · 1 parola da smistare')
+  })
+
   test('solo una canzone «Da studiare»: «Apri lo Studio di «…»»', async () => {
     await db.songs.add(song('s1', 'Paper Sea', 'analyzed'))
     const { container } = mount()

@@ -1,12 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/preact'
-import { DayRing, RING_CIRCUMFERENCE } from '../../src/ui/components/DayRing'
+import { DayRing, RING_CIRCUMFERENCE, resetRingPulse } from '../../src/ui/components/DayRing'
 import { dayRing } from '../../src/domain/today'
 
 afterEach(cleanup)
 
-function ring(done: number, left: number, blocked = false, extra: { why?: string | null } = {}) {
-  return render(<DayRing ring={dayRing({ done, left, blocked })} estMinutes={12} timerMinutes={30} label="Etichetta breve" why={extra.why ?? null} />)
+function ring(done: number, left: number, blocked = false, extra: { why?: string | null; dayKey?: string } = {}) {
+  return render(<DayRing ring={dayRing({ done, left, blocked })} estMinutes={12} timerMinutes={30} label="Etichetta breve" why={extra.why ?? null} dayKey={extra.dayKey ?? '2026-11-05'} />)
 }
 const arc = (c: Element) => c.querySelector('.day-ring-arc') as SVGElement
 
@@ -86,5 +86,20 @@ describe('DayRing', () => {
     expect(target.textContent).toBe('Le nuove sono trattenute.')
     fireEvent.click(btn)
     expect(target.hasAttribute('hidden')).toBe(true)
+  })
+
+  test('«Fatto per oggi» pulsa una volta sola al giorno', () => {
+    resetRingPulse()
+    const pulsing = (c: Element) => c.querySelector('.day-ring')!.classList.contains('day-ring--pulse')
+    expect(pulsing(ring(4, 0).container)).toBe(true)
+    cleanup()
+    expect(pulsing(ring(4, 0).container)).toBe(false)
+    cleanup()
+    expect(pulsing(ring(4, 0, false, { dayKey: '2026-11-06' }).container)).toBe(true)
+    cleanup()
+    // Solo lo stato «done» pulsa.
+    resetRingPulse()
+    expect(pulsing(ring(3, 2).container)).toBe(false)
+    expect(pulsing(ring(4, 0).container)).toBe(true)
   })
 })

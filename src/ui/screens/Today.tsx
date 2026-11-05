@@ -10,6 +10,7 @@ import { itemsInSong } from '../../domain/songItems'
 import { finalListenDue } from '../../domain/finalListen'
 import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
+import { pendingWords } from '../../domain/triage'
 import { dayRing, doneToday, emptyAction, featuredInvite, type EmptyAction, type Invite } from '../../domain/today'
 import { useAddGate } from '../components/UnlockSheet'
 import { Icon } from '../components/Icon'
@@ -26,6 +27,8 @@ const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' 
 const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const wordCount = (n: number) => (n === 1 ? '1 parola' : `${n} parole`)
+const pad = (n: number) => String(n).padStart(2, '0')
+const localDayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 
 /** L'invito coincide con l'azione principale (stesso obiettivo): si mostra solo l'azione. */
 function sameTarget(invite: Invite, action: EmptyAction): boolean {
@@ -87,9 +90,11 @@ export function Today() {
     const rCards = await db.cards.where('kind').equals('R').toArray()
     const rState = new Map(rCards.map((c) => [c.itemId, c.fsrs.state]))
     const pendingIds = new Set(words.filter((w) => w.triage === 'pending').map((w) => w.id))
-    const progress = songs
+    // Le parole da smistare di una canzone sono quelle che Smista mostra: una sola fonte.
+    const toTriageIn = async (songId: string) => (await pendingWords(db, songId)).length
+    const progress = await Promise.all(songs
       .sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())
-      .map((song) => {
+      .map(async (song) => {
         // Le voci che lo Studio evidenzia e conta, meno le parole ancora da smistare.
         const placed = itemsInSong(song, chunks, words)
         const ids = [...placed.chunks, ...[...placed.words].filter((id) => !pendingIds.has(id))]
@@ -97,14 +102,13 @@ export function Today() {
           const s = rState.get(id)
           return s !== undefined && s !== State.New
         }).length
-        const toTriage = [...placed.words].filter((id) => pendingIds.has(id)).length
         // Voci della canzone tolte dal ripasso con Sospendi: le dice quando non resta altro.
         const suspended = [...chunks, ...words].filter((x) => x.suspended && x.contexts.some((c) => c.songId === song.id)).length
-        return { song, total: ids.length, done, toTriage, suspended }
-      })
+        return { song, total: ids.length, done, toTriage: await toTriageIn(song.id), suspended }
+      }))
     // Canzoni completate con parole mai smistate: non contano fra le aperte, ma Oggi le nomina (lo sblocco e la Sessione vuota ne parlano).
-    const doneLeft = (await db.songs.where('status').equals('done').toArray())
-      .map((song) => ({ song, toTriage: [...itemsInSong(song, chunks, words).words].filter((id) => pendingIds.has(id)).length }))
+    const doneLeft = (await Promise.all((await db.songs.where('status').equals('done').toArray())
+      .map(async (song) => ({ song, toTriage: await toTriageIn(song.id) }))))
       .filter((x) => x.toTriage > 0)
     return { queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
@@ -166,6 +170,7 @@ export function Today() {
           timerMinutes={minutes}
           label={ringLabel(ring, toCorrect)}
           why={ringWhy(ring, { blocked: queue.newBlockedByLoad, minutes, toCorrect })}
+          dayKey={localDayKey(now())}
         />
         <div class="stats">
           <div class="stat"><span class="stat-num mono">{queue.dueCount}</span><span class="note">in scadenza</span></div>
