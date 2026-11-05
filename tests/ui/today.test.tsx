@@ -5,7 +5,8 @@ import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Today } from '../../src/ui/screens/Today'
 import { newCardPair, newFsrsCard } from '../../src/domain/scheduler'
-import { saveSettings } from '../../src/domain/settings'
+import { getSettings, saveSettings } from '../../src/domain/settings'
+import { resetRhythmPulse } from '../../src/ui/components/WeekRhythm'
 import { LIMIT_NOTE } from '../../src/domain/ingest'
 import type { CardRow, Chunk, Review, Song, Word } from '../../src/db/types'
 
@@ -62,6 +63,7 @@ async function seedPendingSentence(when: Date) {
 }
 
 beforeEach(() => {
+  resetRhythmPulse()
   db = createDb('t-' + crypto.randomUUID())
   window.location.hash = '#/'
 })
@@ -360,5 +362,93 @@ describe('carosello delle canzoni aperte', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Aggiungi' }))
     expect(await screen.findByRole('dialog', { name: 'La prossima canzone non è ancora pronta' })).toBeTruthy()
     await waitFor(() => expect(window.location.hash).toBe('#/'))
+  })
+})
+
+describe('ritmo della settimana in Oggi', () => {
+  const freeDays = async () => (await getSettings(db)).freeDays ?? []
+  const dots = (c: Element) => [...c.querySelectorAll('.week-dot')]
+
+  test('shows the rhythm under the ring with the days of the reviews', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedReviewedToday(1) // oggi (giovedì)
+    await db.reviews.add(review('old', 'rk0', at(-2, 9))) // martedì
+    const { container } = mount()
+    expect(await screen.findByRole('link', { name: 'Ritmo della settimana: 2 giorni su 5. Apri il Diario' })).toBeTruthy()
+    expect(dots(container).map((d) => d.classList.contains('on'))).toEqual([false, true, false, true, false, false, false])
+  })
+
+  test('empty queue and no review today: today becomes a free day and its dot is active', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    const { container } = mount()
+    await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
+    await waitFor(() => expect(dots(container)[3].classList.contains('on')).toBe(true))
+  })
+
+  test('empty queue because the day is already done: no free day', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedReviewedToday(2)
+    mount()
+    await screen.findByText('Fatto per oggi')
+    await new Promise((r) => setTimeout(r, 50))
+    expect(await freeDays()).toEqual([])
+  })
+
+  test('cards waiting: no free day', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedDue(2)
+    mount()
+    await screen.findByRole('link', { name: 'Inizia il giro' })
+    await new Promise((r) => setTimeout(r, 50))
+    expect(await freeDays()).toEqual([])
+  })
+
+  test('remounting Today does not rewrite the settings', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    mount()
+    await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
+    cleanup()
+    const writes: unknown[] = []
+    db.settings.hook('updating', (m) => { writes.push(m) })
+    db.settings.hook('creating', (_k, o) => { writes.push(o) })
+    mount()
+    await loaded()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(writes).toEqual([])
+    expect(await freeDays()).toEqual(['2026-11-05'])
+  })
+
+  test('re-renders on the same day do not write again', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    mount()
+    await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
+    const writes: unknown[] = []
+    db.settings.hook('updating', (m) => { writes.push(m) })
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(writes).toEqual([])
+  })
+
+  test('after midnight the free day is the new day, not yesterday', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    let t = at(0, 23)
+    const { container } = mount(() => t)
+    await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05']))
+    t = at(1, 8)
+    window.dispatchEvent(new Event('focus'))
+    await waitFor(async () => expect(await freeDays()).toEqual(['2026-11-05', '2026-11-06']))
+    await waitFor(() => expect(dots(container)[4].classList.contains('today')).toBe(true))
+    expect(dots(container)[4].classList.contains('on')).toBe(true)
+  })
+
+  test('goal lowered mid-week: "Obiettivo della settimana raggiunto · 4 giorni", seven dots', async () => {
+    await saveSettings(db, { rhythmGoal: 3 })
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await seedReviewedToday(1)
+    for (const [i, d] of [-3, -2, -1].entries()) await db.reviews.add(review('p' + i, 'rk0', at(d, 9)))
+    const { container } = mount()
+    expect(await screen.findByRole('link', { name: 'Ritmo della settimana: Obiettivo della settimana raggiunto · 4 giorni. Apri il Diario' })).toBeTruthy()
+    expect(dots(container)).toHaveLength(7)
+    expect(container.querySelectorAll('.week-dot.on')).toHaveLength(4)
   })
 })

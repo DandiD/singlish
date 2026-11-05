@@ -168,3 +168,14 @@ test('a new session saves unlockedAtStart', async () => {
   const sess = (await db.sessions.toArray())[0]
   expect(sess.unlockedAtStart).toEqual(['s1:1'])
 })
+
+test('the end of the session shows the week rhythm with today active', async () => {
+  await db.songs.add(mkSong(2))
+  await setNow(await seedItem('c0', 0, true))
+  renderSession()
+  await rate('Bene')
+  await screen.findByRole('heading', { name: 'Oggi hai sbloccato 1 verso' })
+  const link = await screen.findByRole('link', { name: /^Ritmo della settimana: .* Apri il Diario$/ })
+  expect(link.getAttribute('href')).toBe('#/progress')
+  expect(link.querySelector('.week-dot.today.on')).toBeTruthy()
+})
