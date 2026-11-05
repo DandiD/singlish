@@ -36,6 +36,8 @@ export interface Song {
   finalListenAt?: Date | null
   /** Ritornello a voce: quando l'ha cantato senza testo. */
   chorusDoneAt?: Date | null
+  /** Lettura riga per riga: quando è arrivato in fondo. */
+  readAlongAt?: Date | null
   /** Indici dei versi sbloccati già mostrati nello Studio: quelli nuovi si accendono all'apertura. */
   unlockedSeen?: number[]
 }

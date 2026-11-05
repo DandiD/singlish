@@ -79,7 +79,7 @@ export async function importBackup(db: SinglishDB, file: unknown): Promise<void>
 
   const songs = t.songs.map((s) => ({
     ...s, addedAt: d(s.addedAt), analyzedAt: d(s.analyzedAt),
-    studyStartedAt: d(s.studyStartedAt ?? null), finalListenAt: d(s.finalListenAt ?? null), chorusDoneAt: d(s.chorusDoneAt ?? null),
+    studyStartedAt: d(s.studyStartedAt ?? null), finalListenAt: d(s.finalListenAt ?? null), chorusDoneAt: d(s.chorusDoneAt ?? null), readAlongAt: d(s.readAlongAt ?? null),
   }))
   const cards = t.cards.map((c) => ({
     ...c,

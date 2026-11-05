@@ -152,3 +152,15 @@ test('import ignores freeDays that is not an array', async () => {
   await importBackup(db2, json)
   expect((await getSettings(db2)).freeDays ?? []).toEqual([])
 })
+
+test('readAlongAt survives export and import as a Date', async () => {
+  const when = new Date('2026-11-05T08:30:00Z')
+  await db.songs.update('s1', { readAlongAt: when })
+  const json = JSON.parse(JSON.stringify(await exportBackup(db, now)))
+  expect(typeof json.tables.songs[0].readAlongAt).toBe('string')
+  const db2 = mk()
+  await importBackup(db2, json)
+  const got = (await db2.songs.get('s1'))!.readAlongAt
+  expect(got).toBeInstanceOf(Date)
+  expect(got!.getTime()).toBe(when.getTime())
+})
