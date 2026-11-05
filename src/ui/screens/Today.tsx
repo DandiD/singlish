@@ -14,7 +14,7 @@ import { localDayKey, loadWeekRhythm, markFreeDay, reviewDaysSince } from '../..
 import { INTENSIVE } from '../../domain/readiness'
 import { pendingProductions } from '../../domain/production'
 import { pendingWords } from '../../domain/triage'
-import { dayRing, doneToday, emptyAction, featuredInvite, type EmptyAction, type Invite } from '../../domain/today'
+import { dayRing, doneToday, emptyAction, featuredInvite, todaySong, type EmptyAction, type Invite } from '../../domain/today'
 import { useAddGate } from '../components/UnlockSheet'
 import { MilestoneSheet } from '../components/MilestoneSheet'
 import { MILESTONE_ORDER, markMilestoneSeen, seedMilestonesSeen, unseenReached, type Milestone } from '../../domain/milestones'
@@ -22,10 +22,12 @@ import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { DayRing, ringWillPulse } from '../components/DayRing'
 import { WeekRhythm } from '../components/WeekRhythm'
+import { TodayHero } from '../components/TodayHero'
 import { songPath } from '../../domain/path'
 import { SongCarousel, type CarouselItem } from '../components/SongCarousel'
 import { emptyCta, ringLabel, ringWhy, songDetail, songLabel } from '../todayText'
 import { useInstall } from '../../pwa/install'
+import { songLook } from '../cover'
 import { InstallBanner } from '../components/InstallBanner'
 
 
@@ -36,8 +38,6 @@ export function resetMilestoneSheet() {
 }
 
 const dayFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
-const dateFmt = new Intl.DateTimeFormat('it-IT', { weekday: 'long', day: 'numeric', month: 'long' })
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 const wordCount = (n: number) => (n === 1 ? '1 parola' : `${n} parole`)
 
 /** L'invito coincide con l'azione principale (stesso obiettivo): si mostra solo l'azione. */
@@ -146,7 +146,12 @@ export function Today() {
     const doneLeft = (await Promise.all((await db.songs.where('status').equals('done').toArray())
       .map(async (song) => ({ song, toTriage: await toTriageIn(song.id) }))))
       .filter((x) => x.toTriage > 0)
-    return { asOf: n, hasUnlocked, rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
+    // La canzone di ogni card in coda (il primo verso della voce), per scegliere la canzone del giorno.
+    const itemSong = new Map<string, string>()
+    for (const x of chunks) itemSong.set(`chunk:${x.id}`, x.contexts[0]?.songId ?? x.songId)
+    for (const x of words) itemSong.set(`word:${x.id}`, x.contexts[0]?.songId ?? x.songId)
+    const queueSongIds = queue.items.map((q) => itemSong.get(`${q.card.itemType}:${q.card.itemId}`) ?? '')
+    return { asOf: n, queueSongIds, hasUnlocked, rhythm, reviewedToday, dayKey: localDayKey(n), queue, settings, progress, doneLeft, done, hasSongs, finalDue: finalListenDue(songs, n), toCorrect: (await pendingProductions(db)).length }
   }, [db, day])
 
   // Si decide a dati pronti (anello noto) e senza il foglio dello sblocco aperto: allora un solo foglio, o nessuno.
@@ -169,7 +174,7 @@ export function Today() {
   }, [db, freeKey])
 
   if (!data) return <main class="screen" aria-busy="true" />
-  const { rhythm, queue, settings, progress, doneLeft, done, hasSongs, finalDue, toCorrect } = data
+  const { rhythm, queue, settings, progress, doneLeft, done, hasSongs, finalDue, toCorrect, queueSongIds } = data
   const minutes = settings.timerMinutes.review
   const full = progress.length >= MAX_OPEN_SONGS
   const ring = dayRing({ done, left: queue.items.length, blocked: queue.newBlockedByLoad })
@@ -201,9 +206,13 @@ export function Today() {
     return { song, href: target, label: songLabel(row, finalReady), detail: songDetail(row), progress: lines > 0 ? unlocked / lines : null, stages }
   })
   const leftToTriage = doneLeft.filter((d) => d.song.id !== invitedSong)
+  // L'invito in evidenza conta anche quando coincide con l'azione principale (e quindi non si mostra).
+  const hero = todaySong({ queueSongIds, invite: candidate, songs: progress.map((p) => p.song) })
+  const heroHref = hero && href(hero.status === 'draft' || hero.status === 'queued' ? { name: 'analyzing', songId: hero.id } : { name: 'study', songId: hero.id })
 
   return (
-    <main class="screen today" data-milestones-checked={decided ? 'true' : undefined}>
+    // La tinta della canzone del giorno colora la cima della schermata (sfondo di <main>, sotto la testata).
+    <main class={`screen today${hero ? ` today--tinted song-hue-${songLook(hero.id).hue}` : ''}`} data-milestones-checked={decided ? 'true' : undefined}>
       <header class="today-head">
         <span class="wordmark">Singlish</span>
         <span class="head-actions">
@@ -211,8 +220,6 @@ export function Today() {
           <a class="icon-btn" href={href({ name: 'settings' })} aria-label="Impostazioni"><Icon name="settings" /></a>
         </span>
       </header>
-      <p class="note">{capitalize(dateFmt.format(now()))}</p>
-
       {!settings.installBannerDismissed && (
         <InstallBanner
           state={install.state}
@@ -221,9 +228,9 @@ export function Today() {
         />
       )}
 
-      <section class="card today-card">
-        <h1>Ripasso di oggi</h1>
+      <TodayHero song={hero} href={heroHref} now={now()}>
         <DayRing
+          compact
           ring={ring}
           estMinutes={queue.estMinutes}
           timerMinutes={minutes}
@@ -231,17 +238,19 @@ export function Today() {
           why={ringWhy(ring, { blocked: queue.newBlockedByLoad, minutes, toCorrect })}
           dayKey={localDayKey(now())}
           haptics={settings.haptics}
+          details={
+            <div class="stats">
+              <div class="stat"><span class="stat-num mono">{queue.dueCount}</span><span class="note">in scadenza</span></div>
+              <div class="stat"><span class="stat-num mono">{queue.newCount}</span><span class="note">nuove</span></div>
+              <div class="stat"><span class="stat-num mono">{`~${queue.estMinutes}′`}</span><span class="note">stimati</span></div>
+            </div>
+          }
         />
         <WeekRhythm rhythm={rhythm} weekKey={rhythm.days[0].key} />
-        <div class="stats">
-          <div class="stat"><span class="stat-num mono">{queue.dueCount}</span><span class="note">in scadenza</span></div>
-          <div class="stat"><span class="stat-num mono">{queue.newCount}</span><span class="note">nuove</span></div>
-          <div class="stat"><span class="stat-num mono">{`~${queue.estMinutes}′`}</span><span class="note">stimati</span></div>
-        </div>
         {settings.intensiveUntil && settings.intensiveUntil > now() && (
           <p class="note">{`Modalità intensiva fino al ${dayFmt.format(settings.intensiveUntil)}: fino a ${Math.max(INTENSIVE.newPerDay, settings.newPerDay)} nuove al giorno.`}</p>
         )}
-      </section>
+      </TodayHero>
 
       {invite && <InviteCard invite={invite} />}
 

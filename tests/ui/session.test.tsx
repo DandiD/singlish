@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/preact'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/preact'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
@@ -207,9 +207,11 @@ test('Today: counts, start link, song progress', async () => {
   expect(screen.getByRole('link', { name: /Inizia il giro/ }).getAttribute('href')).toBe('#/session')
   // I minuti del timer (30) li dice l'anello, nel suo testo accessibile.
   expect(screen.getByRole('img', { name: /, circa \d+ minut[oi] su 30$/ })).toBeTruthy()
-  const link = await screen.findByRole('link', { name: /Night Song/ })
+  // La canzone è in testa (canzone del giorno) e nel carosello; l'avanzamento sta nel carosello.
+  const link = within(document.querySelector<HTMLElement>('.song-carousel')!).getByRole('link', { name: /Night Song/ })
   expect(link.getAttribute('href')).toBe('#/songs/s1')
   expect(link.textContent).toContain('1 di 2')
+  expect(within(document.querySelector<HTMLElement>('.today-hero')!).getByRole('link', { name: /Night Song/ }).getAttribute('href')).toBe('#/songs/s1')
   expect(screen.queryByText(/niente card nuove/)).toBeNull()
 })
 

@@ -122,3 +122,46 @@ test('con il banner d\'installazione l\'azione resta visibile sopra la navigazio
   await seed(page, scenario('todo'), { installBanner: true })
   await expectLayout(page, 'Inizia il giro')
 })
+
+/** Tre canzoni aperte con card in coda; con `invite` la seconda ha anche parole da smistare (l'invito in evidenza). */
+function threeSongs({ invite }: { invite: boolean }): Rows {
+  const rows: Rows = { songs: [], chunks: [], words: [], cards: [] }
+  rows.songs.push(
+    song('s1', 'Paper Sky', new Date(2026, 0, 1)),
+    song('s2', 'Salt and Static', new Date(2026, 0, 2)),
+    song('s3', 'Borrowed Rain', new Date(2026, 0, 3)),
+  )
+  for (let i = 0; i < 6; i++) dueChunk(rows, 's1', `c${i}`)
+  for (let i = 0; i < 3; i++) dueChunk(rows, 's3', `d${i}`)
+  if (invite) for (const w of ['gull', 'tide']) pendingWord(rows, 's2', w)
+  return rows
+}
+
+/** La prima copertina del carosello e il suo titolo si vedono interi al caricamento, sopra l'azione principale. */
+async function expectFirstCoverAboveCta(page: Page) {
+  await expect(page.getByRole('link', { name: 'Inizia il giro' })).toBeVisible()
+  const m = await page.evaluate(() => {
+    const first = document.querySelector('.song-carousel > li')!
+    const cover = first.querySelector('.cover')!.getBoundingClientRect()
+    const title = first.querySelector('.song-carousel-title')!.getBoundingClientRect()
+    const cta = document.querySelector('.today-cta')!.getBoundingClientRect()
+    return { scrollY, coverTop: cover.top, coverBottom: cover.bottom, titleBottom: title.bottom, ctaTop: cta.top, scrollWidth: document.documentElement.scrollWidth, innerWidth }
+  })
+  expect(m.scrollY).toBe(0)
+  expect(m.coverTop).toBeGreaterThanOrEqual(0)
+  expect(m.coverBottom).toBeLessThanOrEqual(m.ctaTop)
+  expect(m.titleBottom).toBeLessThanOrEqual(m.ctaTop)
+  expect(m.scrollWidth).toBeLessThanOrEqual(m.innerWidth)
+}
+
+test('tre canzoni, nessun invito: la prima copertina e il suo titolo si vedono sopra «Inizia il giro»', async ({ page }) => {
+  await seed(page, threeSongs({ invite: false }))
+  await expect(page.locator('.today-hero')).toContainText('Paper Sky')
+  await expectFirstCoverAboveCta(page)
+})
+
+test('tre canzoni con l\'invito in evidenza: la prima copertina e il suo titolo restano sopra «Inizia il giro»', async ({ page }) => {
+  await seed(page, threeSongs({ invite: true }))
+  await expect(page.getByRole('link', { name: /2 parole da smistare in «Salt and Static»/ })).toBeVisible()
+  await expectFirstCoverAboveCta(page)
+})
