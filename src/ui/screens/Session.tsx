@@ -23,6 +23,8 @@ import { noAutocorrect } from '../noAutocorrect'
 import { plural } from '../plural'
 import { newId } from '../../domain/id'
 import { Cover } from '../components/Cover'
+import { UnlockedVerses } from '../components/UnlockedVerses'
+import { newlyUnlocked, strongestSince, unlockedKeys, type StrongItem, type UnlockedVerse } from '../../domain/unlocked'
 import { songLook } from '../cover'
 import type { ComponentChildren } from 'preact'
 
@@ -106,7 +108,7 @@ export function Session() {
         await db.sessions.add({
           id: sessionId, kind: 'review', songId: null, startedAt: n, endedAt: null,
           timer: startTimer(settings.timerMinutes.review * 60_000, Date.now()),
-          reviewsDone: 0, newDone: 0,
+          reviewsDone: 0, newDone: 0, unlockedAtStart: await unlockedKeys(db),
         })
       }
       if (!alive) return
@@ -158,6 +160,21 @@ export function Session() {
       .then((q) => setLater(q.items.length))
       .catch(reportError)
   }, [finished, sessionId, timerReady])
+
+  // Fine sessione: versi sbloccati dalla sessione (se c'è l'istantanea) e voci più forti, calcolati una volta.
+  const [endData, setEndData] = useState<{ verses: UnlockedVerse[] | null; strongest: StrongItem[] } | null>(null)
+  useEffect(() => {
+    if (!finished || !sessionId) return
+    let alive = true
+    void (async () => {
+      const sess = await db.sessions.get(sessionId)
+      if (!sess) return
+      const verses = sess.unlockedAtStart ? await newlyUnlocked(db, sess.unlockedAtStart) : null
+      const strongest = verses && verses.length > 0 ? [] : await strongestSince(db, sess.startedAt)
+      if (alive) setEndData({ verses, strongest })
+    })().catch(reportError)
+    return () => { alive = false }
+  }, [finished, sessionId])
 
   // I dialoghi prendono il fuoco sull'azione principale quando si aprono.
   const pausedNow = timer.state.status === 'paused'
@@ -275,6 +292,7 @@ export function Session() {
         <div class="done-mark" aria-hidden="true"><Icon name="check" size={44} /></div>
         {/* «Fatto per oggi» solo se oggi non resta nulla: né card in scadenza né frasi da correggere (confermate, possono tornare oggi). */}
         <h1>{left > 0 || toCorrect > 0 ? 'Sessione finita' : 'Fatto per oggi'}</h1>
+        {endData && <UnlockedVerses verses={endData.verses} strongest={endData.strongest} />}
         {/* Le frasi scritte contano come in «N di M»: diventano nuove o ripassate quando si confermano i voti. */}
         <p class="note">{`${plural(counts.reviews, 'ripassata', 'ripassate')} · ${plural(counts.news, 'nuova', 'nuove')}${loaded.doneWritten + written > 0 ? ` · ${plural(loaded.doneWritten + written, 'frase scritta', 'frasi scritte')}` : ''}`}</p>
         {left > 0 && <p class="note">{left === 1 ? '1 card ancora da fare oggi: la trovi in Oggi.' : `${left} card ancora da fare oggi: le trovi in Oggi.`}</p>}
