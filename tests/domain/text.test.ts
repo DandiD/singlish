@@ -70,4 +70,18 @@ describe('typoSpan', () => {
       expect(t.before + t.diff + t.after).toBe(e)
     }
   })
+  test('given is normalized like gradeAnswer: spaces and curly quotes do not shift the span', () => {
+    expect(typoSpan(' let it slid', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('let  it slid', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('let it slid ', 'let it slide')).toEqual({ before: 'let it slid', diff: 'e', after: '' })
+    expect(typoSpan('don’t let ga', "don't let go")).toEqual({ before: "don't let g", diff: 'o', after: '' })
+    expect(typoSpan('don’t lt go', "don't let go")).toEqual({ before: "don't l", diff: 'e', after: 't go' })
+  })
+  test('curly quote in expected: slices still come from expected', () => {
+    expect(typoSpan("don't let ga", 'Don’t let go')).toEqual({ before: 'Don’t let g', diff: 'o', after: '' })
+  })
+  test('a difference that only contraction expansion explains: no underline', () => {
+    expect(typoSpan('i am ovr it', "I'm over it")).toBeNull()
+    expect(typoSpan('do not let ga', "don't let go")).toBeNull()
+  })
 })

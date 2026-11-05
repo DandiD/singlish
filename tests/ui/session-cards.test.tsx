@@ -94,6 +94,17 @@ test('C typo underlines the differing part of the expected form', async () => {
   expect(container.querySelector('.gap.snap')).toBeNull()
 })
 
+test('C typo with a curly apostrophe and extra spaces underlines only the wrong letter', async () => {
+  await db.songs.put({ ...song, lines: [...song.lines, "Don't let go of the paper boat"] })
+  await db.chunks.add(chunk('c4', "don't let go", 2))
+  await db.cards.add(reviewCard('k4', 'c4', 'C'))
+  const { container } = renderSession()
+  await typeAndCheck('  don’t  let ga')
+  const fb = container.querySelector('.feedback p')!
+  expect(fb.querySelector('u')!.textContent).toBe('o')
+  expect(fb.textContent).toBe("Risposta attesa: don't let go · voto proposto: Difficile")
+})
+
 test('C wrong answer: no underline and an empty gap', async () => {
   await db.chunks.add(chunk('c2', 'let it slide', 0))
   await db.cards.add(reviewCard('k2', 'c2', 'C'))
