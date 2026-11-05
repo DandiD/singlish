@@ -572,9 +572,24 @@ describe('haptics', () => {
 
   test('no navigator.vibrate: exact answer still works', async () => {
     delete (navigator as unknown as Record<string, unknown>).vibrate
-    await seedCOnly()
-    renderSession()
-    await typeAndCheck('let it slide')
-    await screen.findByText('Esatto')
+    const { errors } = await import('../../src/ui/report')
+    errors.dismiss()
+    const thrown: unknown[] = []
+    const onError = (e: ErrorEvent) => { thrown.push(e.error ?? e.message) }
+    window.addEventListener('error', onError)
+    try {
+      await seedCOnly()
+      renderSession()
+      await typeAndCheck('let it slide')
+      await screen.findByText('Esatto')
+      fireEvent.click(screen.getByRole('button', { name: 'Conferma' }))
+      await waitFor(async () => expect(await db.reviews.count()).toBe(1))
+      expect((await db.reviews.toArray())[0]).toMatchObject({ cardId: 'k2', rating: 3, auto: true })
+      expect(await screen.findByRole('heading', { name: /Fatto per oggi|Sessione finita/ })).toBeTruthy()
+      expect(thrown).toEqual([])
+      expect(errors.get()).toBeNull()
+    } finally {
+      window.removeEventListener('error', onError)
+    }
   })
 })
