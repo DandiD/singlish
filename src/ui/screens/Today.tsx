@@ -20,6 +20,7 @@ import { Icon } from '../components/Icon'
 import { Cover } from '../components/Cover'
 import { DayRing } from '../components/DayRing'
 import { WeekRhythm } from '../components/WeekRhythm'
+import { songPath } from '../../domain/path'
 import { SongCarousel, type CarouselItem } from '../components/SongCarousel'
 import { emptyCta, ringLabel, ringWhy, songDetail, songLabel } from '../todayText'
 import { useInstall } from '../../pwa/install'
@@ -145,13 +146,15 @@ export function Today() {
   const invitedSong = invite && invite.kind !== 'correct' ? invite.song.id : null
 
   const items: CarouselItem[] = progress.map((row) => {
-    const { song, lines, unlocked } = row
+    const { song, lines, unlocked, toTriage: pending } = row
     // Un riascolto pronto che non è l'invito si apre dalla copertina, se no resterebbe irraggiungibile.
     const finalReady = song.id !== invitedSong && finalDue.some((s) => s.id === song.id)
     const target = song.status === 'draft' || song.status === 'queued'
       ? href({ name: 'analyzing', songId: song.id })
       : finalReady ? href({ name: 'finalListen', songId: song.id }) : href({ name: 'study', songId: song.id })
-    return { song, href: target, label: songLabel(row, finalReady), detail: songDetail(row), progress: lines > 0 ? unlocked / lines : null }
+    // Il pallino del riascolto segue `finalListenDue`, anche quando l'invito lo mostra altrove.
+    const stages = songPath({ song, toTriage: pending, unlocked, lines, finalReady: finalDue.some((s) => s.id === song.id), now: now() }).map((s) => s.state)
+    return { song, href: target, label: songLabel(row, finalReady), detail: songDetail(row), progress: lines > 0 ? unlocked / lines : null, stages }
   })
   const leftToTriage = doneLeft.filter((d) => d.song.id !== invitedSong)
 

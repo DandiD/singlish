@@ -481,4 +481,17 @@ describe('ritmo della settimana in Oggi', () => {
     expect(dots(container)).toHaveLength(7)
     expect(container.querySelectorAll('.week-dot.on')).toHaveLength(4)
   })
+
+  test('the carousel shows the song path: a studying song with words to triage has a partial 4th dot', async () => {
+    await db.songs.add(song('s1', 'Paper Sea', 'studying'))
+    await db.words.add(pendingWord('w1'))
+    const { container } = mount()
+    await loaded()
+    const dots = [...container.querySelectorAll('.song-carousel .carousel-dot')]
+    expect(dots).toHaveLength(6)
+    expect(dots[3].classList.contains('dot-partial')).toBe(true)
+    expect(dots[2].classList.contains('dot-done')).toBe(true)
+    const a = container.querySelector('.song-carousel a')!
+    expect(a.querySelector('.visually-hidden')!.textContent).toMatch(/^Oggi:/)
+  })
 })

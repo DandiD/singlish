@@ -1,4 +1,5 @@
 import type { Song } from '../../db/types'
+import type { StageState } from '../../domain/path'
 import { Cover } from './Cover'
 import { Icon } from './Icon'
 
@@ -8,6 +9,8 @@ export type CarouselItem = {
   label: string
   detail: string
   progress: number | null
+  /** Stato di ogni tappa del percorso: un pallino ciascuna (decorativo; il testo è `detail`). */
+  stages?: StageState[]
 }
 
 export function SongCarousel({
@@ -32,6 +35,11 @@ export function SongCarousel({
             </span>
             <h3 class="song-carousel-title">{it.song.title}</h3>
             <span class="song-carousel-label">{it.label}</span>
+            {it.stages && (
+              <span class="carousel-dots" aria-hidden="true">
+                {it.stages.map((st, i) => <span key={i} class={`carousel-dot dot-${st}`} />)}
+              </span>
+            )}
             <span class="visually-hidden">{it.detail}</span>
           </a>
         </li>
