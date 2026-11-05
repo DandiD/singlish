@@ -1,10 +1,13 @@
-import { useEffect, useRef, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { reportError } from '../report'
 import { href, goBackTo, goReplace, onBack, onBackTo, stillHere } from '../../router'
 import { deleteSong } from '../../domain/ingest'
-import { startStudying } from '../../domain/finalListen'
+import { finalListenDue, startStudying } from '../../domain/finalListen'
+import { songPath } from '../../domain/path'
+import { SongPath } from '../components/SongPath'
+import { MoreMenu } from '../components/MoreMenu'
 import { askGemini, groupSelection, tokenize } from '../../domain/ask'
 import { chorusLines } from '../../domain/chorus'
 import { geminiProblem } from '../errors'
@@ -27,10 +30,8 @@ import { newId } from '../../domain/id'
 import { ensureCover } from '../../domain/cover'
 import { Cover } from '../components/Cover'
 import { songLook } from '../cover'
+import { LEGEND } from '../../domain/legend'
 
-const LEGEND: [string, string][] = [
-  ['pv', 'phrasal verb'], ['id', 'idioma'], ['co', 'collocazione'], ['fp', 'espressione fissa'], ['sl', 'slang'], ['w', 'parola'], ['cs', 'pronuncia'],
-]
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const { db, now, fetch, sleep } = useDeps()
@@ -43,6 +44,15 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const [askBusy, setAskBusy] = useState(false)
   const [askMsg, setAskMsg] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null)
   const online = useOnline()
+  const confirmRef = useRef<HTMLDivElement>(null)
+  // Scelta dal menu «⋯»: il fuoco va su «Annulla» della conferma (che compare sotto la testata), mai sull'azione.
+  useLayoutEffect(() => {
+    if (confirming) confirmRef.current?.querySelector<HTMLButtonElement>('[data-cancel]')?.focus()
+  }, [confirming])
+  const cancelConfirm = () => {
+    setConfirming(false)
+    document.querySelector<HTMLElement>('.study-head [aria-haspopup="menu"]')?.focus()
+  }
 
   useEffect(() => {
     let alive = true
@@ -171,6 +181,16 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const chunkCount = placed.chunks.size
   const wordCount = placed.words.size
   const gp = song.grammarPoint
+  const isText = song.kind === 'text'
+  const hasChorus = !isText && chorusLines(song.lines).length > 0
+  const stages = songPath({
+    song, toTriage: pending, unlocked: unlock?.unlocked ?? 0, lines: unlock?.total ?? 0,
+    finalReady: finalListenDue([song], now()).length > 0, now: now(),
+  })
+  const menuItems = [
+    ...(song.status !== 'done' ? [{ text: isText ? 'Segna come completato' : 'Segna come completata', onSelect: () => setConfirming('done') }] : []),
+    { text: isText ? 'Elimina testo' : 'Elimina canzone', onSelect: () => setConfirming('delete'), danger: true },
+  ]
 
   return (
     <main class="screen study">
@@ -179,18 +199,82 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         <Cover song={song} size="lg" />
         <div class="grow">
           <h1>{song.title}</h1>
+          {song.artist && <p class="study-artist">{song.artist}</p>}
           <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}${unlock && unlock.total > 0 ? ` · ${unlockedText(unlock.unlocked, unlock.total)}` : ''}`}</p>
+          {!isText && song.spotifyUrl && (
+            <a class="btn outline pill study-spotify" href={song.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
+          )}
         </div>
-        {sessionId && (
-          <TimerPill
-            state={timer.state}
-            remaining={timer.remaining}
-            expired={timer.expired}
-            onPause={timer.pause}
-            onResume={timer.resume}
-          />
-        )}
+        <div class="study-tools">
+          {sessionId && (
+            <TimerPill
+              state={timer.state}
+              remaining={timer.remaining}
+              expired={timer.expired}
+              onPause={timer.pause}
+              onResume={timer.resume}
+            />
+          )}
+          <MoreMenu label="Altre azioni" items={menuItems} />
+        </div>
       </header>
+
+      {/* Le conferme di completamento ed eliminazione (scelte dal menu «⋯»), subito sotto la testata. */}
+      {confirming === 'done' ? (
+        <div ref={confirmRef} class="confirm" role="alertdialog" aria-label="Conferma completamento">
+          <p>{song.kind === 'text' ? 'Segnare questo testo come completato? Libera un posto tra le canzoni e i testi aperti.' : 'Segnare questa canzone come completata? Libera un posto tra le canzoni e i testi aperti.'}</p>
+          <div class="grid2">
+            <button type="button" class="btn outline" data-cancel onClick={cancelConfirm}>Annulla</button>
+            <button
+              type="button"
+              class="btn primary"
+              onClick={async () => {
+                if (acting.current) return // doppio tocco: una volta sola
+                acting.current = true
+                const here = stillHere()
+                try {
+                  await db.songs.update(songId, { status: 'done' })
+                  if (here()) goBackTo({ name: 'songs' })
+                } catch (e) {
+                  acting.current = false
+                  reportError(e)
+                  setConfirming(false)
+                }
+              }}
+            >
+              Conferma
+            </button>
+          </div>
+        </div>
+      ) : confirming === 'delete' ? (
+        <div ref={confirmRef} class="confirm" role="alertdialog" aria-label="Conferma eliminazione">
+          <p>{`Eliminare «${song.title}»? ${DELETE_NOTE}`}</p>
+          <div class="grid2">
+            <button
+              type="button"
+              class="btn outline danger"
+              onClick={async () => {
+                if (acting.current) return
+                acting.current = true
+                const here = stillHere()
+                try {
+                  await deleteSong(db, songId)
+                  if (here()) goReplace({ name: 'songs' })
+                } catch (e) {
+                  acting.current = false
+                  reportError(e)
+                  setConfirming(false)
+                }
+              }}
+            >
+              Sì, elimina
+            </button>
+            <button type="button" class="btn outline" data-cancel onClick={cancelConfirm}>Annulla</button>
+          </div>
+        </div>
+      ) : null}
+
+      <SongPath stages={stages} songId={songId} chorus={hasChorus} />
 
       {pending > 0 && (
         <a class="banner" href={href({ name: 'triage', songId })}>
@@ -213,15 +297,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       </ul>
 
       {!asking ? (
-        <div class="ask-start">
-          <div class="row-actions">
-            <button type="button" class="btn outline" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
-            {song.kind !== 'text' && chorusLines(song.lines).length > 0 && (
-              <a class="btn outline" href={href({ name: 'chorus', songId })}>Ritornello a voce</a>
-            )}
-          </div>
-          {askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>}
-        </div>
+        askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>
       ) : (
         <p class="note info-box">Leggi tutto il testo e tocca ogni parola o espressione che non ti è chiara: le chiedi tutte insieme, con una sola chiamata. Parole vicine diventano un'espressione.</p>
       )}
@@ -272,72 +348,11 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         </section>
       )}
 
-      {song.spotifyUrl && (
-        <footer class="study-foot">
-          <a class="btn outline" href={song.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
-        </footer>
+      {!asking && (
+        <div class="study-ask">
+          <button type="button" class="btn primary pill" onClick={() => { setAsking(true); setAskMsg(null) }}>Chiedi a Gemini</button>
+        </div>
       )}
-
-      <footer class="study-foot">
-        {confirming === 'done' ? (
-          <div class="confirm" role="alertdialog" aria-label="Conferma completamento">
-            <p>{song.kind === 'text' ? 'Segnare questo testo come completato? Libera un posto tra le canzoni e i testi aperti.' : 'Segnare questa canzone come completata? Libera un posto tra le canzoni e i testi aperti.'}</p>
-            <div class="grid2">
-              <button type="button" class="btn outline" onClick={() => setConfirming(false)}>Annulla</button>
-              <button
-                type="button"
-                class="btn primary"
-                onClick={async () => {
-                  if (acting.current) return // doppio tocco: una volta sola
-                  acting.current = true
-                  const here = stillHere()
-                  try {
-                    await db.songs.update(songId, { status: 'done' })
-                    if (here()) goBackTo({ name: 'songs' })
-                  } catch (e) {
-                    acting.current = false
-                    reportError(e)
-                    setConfirming(false)
-                  }
-                }}
-              >
-                Conferma
-              </button>
-            </div>
-          </div>
-        ) : confirming === 'delete' ? (
-          <div class="confirm" role="alertdialog" aria-label="Conferma eliminazione">
-            <p>{`Eliminare «${song.title}»? ${DELETE_NOTE}`}</p>
-            <div class="grid2">
-              <button
-                type="button"
-                class="btn outline danger"
-                onClick={async () => {
-                  if (acting.current) return
-                  acting.current = true
-                  const here = stillHere()
-                  try {
-                    await deleteSong(db, songId)
-                    if (here()) goReplace({ name: 'songs' })
-                  } catch (e) {
-                    acting.current = false
-                    reportError(e)
-                    setConfirming(false)
-                  }
-                }}
-              >
-                Sì, elimina
-              </button>
-              <button type="button" class="btn outline" onClick={() => setConfirming(false)}>Annulla</button>
-            </div>
-          </div>
-        ) : (
-          <div class="grid2">
-            {song.status !== 'done' && <button type="button" class="btn outline" onClick={() => setConfirming('done')}>{song.kind === 'text' ? 'Segna come completato' : 'Segna come completata'}</button>}
-            <button type="button" class="btn outline danger" onClick={() => setConfirming('delete')}>{song.kind === 'text' ? 'Elimina testo' : 'Elimina canzone'}</button>
-          </div>
-        )}
-      </footer>
 
       {/* Una scheda nuova per ogni voce: lo stato di chiusura di quella prima non deve bloccare questa. */}
       {itemId && (itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}

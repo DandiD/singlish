@@ -138,7 +138,9 @@ test('lo Studio di una canzone già completata non offre di nuovo «Segna come c
   window.location.hash = '#/songs/s1'
   mount(<Study songId="s1" />)
   await screen.findByText('running on empty', { exact: false })
-  expect(screen.queryByRole('button', { name: 'Segna come completata' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Altre azioni' }))
+  expect(screen.getByRole('menuitem', { name: 'Elimina canzone' })).toBeTruthy()
+  expect(screen.queryByRole('menuitem', { name: 'Segna come completata' })).toBeNull()
 })
 
 test('nella scheda di un testo libero il verso si chiama «nel testo»', async () => {

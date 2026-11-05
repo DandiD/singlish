@@ -141,11 +141,31 @@ main[tabindex="-1"]:focus, main h1[tabindex="-1"]:focus { outline: none; }
 .song-card { display: flex; flex-direction: column; gap: 8px; padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
 .song-card h2 { margin: 0; font-size: 17px; }
 .song-card p { margin: 0; }
-.song-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .badge { font-size: 12px; font-weight: 600; color: var(--accent-text-2); text-transform: uppercase; letter-spacing: .4px; }
-.song-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .song-edit { display: flex; flex-direction: column; gap: 12px; }
-.song-actions .btn, .analyzing .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+/* Canzoni come scaffale: griglia a 2 colonne di copertine; modulo e conferma a tutta riga. */
+.shelf { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 12px; }
+.shelf-head { margin: 28px 0 0; font-size: 20px; }
+.shelf-item { min-width: 0; }
+.shelf-wide { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.shelf-wide > .song-edit, .shelf-wide > .confirm { grid-column: 1 / -1; }
+.shelf-wide > .song-edit { padding: 16px; border-radius: 20px; background: var(--surface); border: 1px solid var(--line); }
+.shelf-body { position: relative; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.shelf-body p { margin: 0; }
+.shelf-body .note { font-size: 13px; overflow-wrap: anywhere; }
+.shelf-link { display: flex; flex-direction: column; gap: 8px; min-width: 0; min-height: 44px; color: inherit; text-decoration: none; border-radius: 22px; }
+.shelf-link:focus-visible { outline-offset: 2px; }
+.shelf-frame { display: block; padding: 3px; border-radius: 23px; }
+.shelf-frame .cover { width: 100%; height: auto; aspect-ratio: 1 / 1; }
+.shelf-link h2, .shelf-link h3 { margin: 0; font-size: 16px; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.shelf-more { position: absolute; top: 8px; right: 8px; }
+.shelf-more .icon-btn { background: color-mix(in srgb, var(--surface) 88%, transparent); border-radius: 50%; }
+.shelf-more .more-menu-list { min-width: 0; width: max-content; }
+.shelf-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.shelf-status .mono { font-size: 13px; }
+.shelf-gain { padding: 1px 8px; border-radius: 10px; background: var(--accent-tint); color: var(--accent-text); font-weight: 600; font-size: 13px; }
+.shelf-body > .btn { align-self: flex-start; }
+.analyzing .btn { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
 .add-song { display: flex; flex-direction: column; gap: 14px; }
 .add-form { display: flex; flex-direction: column; gap: 16px; }
 .add-form section { display: flex; flex-direction: column; gap: 10px; }
@@ -187,8 +207,6 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 .hl.cs { border-bottom: 2px dotted var(--muted); }
 .other-items ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; }
 .other-items a { display: inline-flex; align-items: center; min-height: 44px; font-size: 17px; color: inherit; text-decoration: none; }
-.study-foot { padding-top: 12px; border-top: 1px solid var(--line); }
-.study-foot .btn { display: flex; align-items: center; justify-content: center; text-decoration: none; }
 
 .sheet-scrim { position: fixed; inset: 0; z-index: 20; display: flex; align-items: flex-end; justify-content: center; background: var(--overlay); }
 .sheet { position: relative; width: 100%; max-width: 640px; max-height: 90dvh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding: 12px 20px 28px; background: var(--surface); border-top: 1px solid var(--line-strong); border-radius: 24px 24px 0 0; outline: none; box-shadow: 0 8px 24px color-mix(in srgb, var(--scrim) 40%, transparent); }
@@ -323,6 +341,23 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .filter-chip select { min-height: 42px; border: 0; background: transparent; color: inherit; font: inherit; }
 .coverage { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
 .coverage-title { font-size: 14px; font-weight: 600; }
+.comp { display: flex; flex-direction: column; gap: 8px; }
+.comp-strip { display: flex; gap: 2px; }
+.comp-seg { flex-basis: 0; min-width: 24px; min-height: 44px; padding: 0; border: 0; background: transparent; cursor: pointer; display: flex; align-items: center; }
+.comp-fill { display: block; width: 100%; height: 12px; border-radius: 3px; background: var(--text-2); }
+.comp-seg.pv .comp-fill { background: var(--blue); }
+.comp-seg.id .comp-fill { background: var(--accent); }
+.comp-seg.co .comp-fill { background: var(--green); }
+/* Frasi fisse e collocazioni condividono il verde: le frasi fisse hanno anche le righe diagonali (non solo il colore). */
+.comp-seg.fp .comp-fill, .comp .legend .swatch.fp { background: repeating-linear-gradient(135deg, var(--green) 0 3px, var(--bg) 3px 5px); }
+.comp .legend .swatch { height: 8px; }
+.comp .legend .swatch.fp { border-bottom-color: var(--green); }
+.comp-seg.sl .comp-fill { background: var(--violet); }
+.comp-seg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.comp-seg[aria-pressed="true"] .comp-fill { height: 20px; outline: 2px solid var(--text); outline-offset: 1px; }
+.lex-ticks { display: inline-flex; gap: 2px; }
+.lex-ticks span { width: 4px; height: 12px; border-radius: 2px; background: var(--line-strong); }
+.lex-ticks span.on { background: var(--green); }
 .lex-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .lex-row { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0; border-bottom: 1px solid var(--divider); color: var(--text); text-decoration: none; }
 .lex-bar { width: 4px; align-self: stretch; min-height: 36px; border-radius: 2px; background: var(--text-2); }
@@ -378,7 +413,6 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .info-box { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); margin: 0; }
 
 /* Chiedere a Gemini dal testo */
-.ask-start { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .lyrics.picking p { line-height: 1.9; }
 .tok { font: inherit; color: inherit; background: transparent; border: 1px dashed var(--line-strong); border-radius: 6px; padding: 2px 4px; margin: 0 1px; min-height: 32px; cursor: pointer; }
 .tok[aria-pressed="true"] { background: var(--accent-tint); border: 1px solid var(--accent); color: var(--accent-text-2); }
@@ -443,8 +477,6 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .vt-tile { color: var(--text); text-decoration: none; }
 
 /* Ritornello a voce */
-.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.row-actions .btn { display: inline-flex; align-items: center; text-decoration: none; }
 .chorus { display: flex; flex-direction: column; gap: 14px; min-height: 100dvh; }
 .chorus-lines { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
 .chorus-line { display: block; width: 100%; text-align: left; padding: 12px 14px; min-height: 52px; border-radius: 12px; border: 1px solid transparent; background: transparent; color: var(--text); font-family: 'Bricolage Grotesque', 'Inter Tight', system-ui, sans-serif; font-size: 24px; line-height: 1.3; cursor: pointer; }
@@ -490,11 +522,12 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .cover-art * { fill: none; stroke: var(--song); stroke-opacity: .35; }
 .cover-art { position: absolute; inset: 0; width: 100%; height: 100%; }
 .cover-initials { position: relative; font-family: 'Bricolage Grotesque', system-ui, sans-serif; font-weight: 700; line-height: 1; color: var(--song); }
+.cover-source { position: absolute; left: 0; right: 0; bottom: 10%; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; line-height: 1; color: var(--song); }
+.cover-md .cover-source { bottom: 5px; font-size: 8px; letter-spacing: .3px; }
 
 /* Copertine e tinte per canzone (le variabili --song e --song-tint vengono da .song-hue-N). */
 .song-card-top { display: flex; align-items: center; gap: 12px; }
 .song-card-top h3 { min-width: 0; overflow-wrap: anywhere; }
-.song-top h2 { flex: 1; min-width: 0; }
 .session-card[class*="song-hue-"] { border-left: 4px solid var(--song); }
 .session-song { display: flex; align-items: center; gap: 12px; }
 .session-song .note { margin: 0; }
@@ -503,8 +536,41 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .study-head > .icon-btn { grid-column: 1; grid-row: 1; }
 .study-head > .cover { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 .study-head > .grow { grid-column: 1 / -1; grid-row: 3; }
-.study-head > :last-child:not(.grow):not(.cover) { grid-column: 3; grid-row: 1; }
-.study-head h1 { overflow-wrap: anywhere; line-height: 1.15; }
+.study-head > .study-tools { grid-column: 3; grid-row: 1; display: flex; align-items: center; gap: 8px; }
+.study-head h1 { overflow-wrap: anywhere; line-height: 1.1; font-size: clamp(30px, 9vw, 40px); letter-spacing: -.5px; }
+.study-head .grow { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.study-head .grow > p { margin: 0; }
+.study-artist { font-size: 17px; font-weight: 500; color: var(--text-2); overflow-wrap: anywhere; }
+.study-spotify { align-self: flex-start; margin-top: 8px; }
+
+/* Percorso della canzone: un pallino per tappa, la forma dice lo stato (pieno, metà, anello, vuoto). */
+.song-path { list-style: none; margin: 0; padding: 0; display: flex; gap: 2px; }
+.path-stage { flex: 1 1 0; min-width: 0; position: relative; }
+/* La linea che unisce i pallini, dietro di loro. */
+.path-stage + .path-stage::before { content: ''; position: absolute; top: 21px; right: 50%; width: 100%; height: 2px; background: var(--line-strong); }
+.path-stage.stage-done + .path-stage::before, .path-stage.stage-partial + .path-stage::before { background: var(--accent); }
+.path-link { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 44px; padding: 14px 0 4px; border-radius: 10px; color: var(--text); text-decoration: none; text-align: center; }
+a.path-link .path-name { color: var(--accent-text); text-decoration: underline; text-underline-offset: 2px; }
+.path-dot { width: 16px; height: 16px; border-radius: 50%; box-sizing: border-box; background: var(--bg); border: 2px solid var(--muted); }
+.dot-done { background: var(--accent); border-color: var(--accent); }
+.dot-partial { background: linear-gradient(90deg, var(--accent) 50%, var(--bg) 50%); border-color: var(--accent); }
+.dot-current { border-color: var(--accent); box-shadow: 0 0 0 3px var(--bg), 0 0 0 5px var(--accent); }
+.path-name { font-size: 12px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.path-detail { font-size: 11px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+
+/* «Chiedi a Gemini» fluttua in basso (lo Studio non ha la navigazione), finché non si scelgono le parole. */
+.study-ask { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 5; display: flex; justify-content: flex-end; pointer-events: none; }
+/* Il fuoco da tastiera non finisce sotto il pulsante: margine in basso + pulsante (.btn.pill, 44 px) + respiro. */
+html:has(.study-ask) { scroll-padding-bottom: calc(12px + 44px + 12px + env(safe-area-inset-bottom)); }
+.study-ask .btn { pointer-events: auto; box-shadow: 0 8px 24px color-mix(in srgb, var(--scrim) 40%, transparent); }
+
+/* Menu «⋯»: una lista di pulsanti sotto il suo pulsante. */
+.more-menu { position: relative; }
+.more-menu > .icon-btn { font-size: 20px; line-height: 1; }
+.more-menu-list { position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; list-style: none; margin: 0; padding: 6px; min-width: 220px; max-width: calc(100vw - 40px); display: flex; flex-direction: column; border-radius: 14px; background: var(--surface); border: 1px solid var(--line-strong); box-shadow: 0 8px 24px color-mix(in srgb, var(--scrim) 40%, transparent); }
+.more-menu-list button { width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: transparent; color: var(--text); font-size: 15px; text-align: left; cursor: pointer; }
+.more-menu-list button:hover, .more-menu-list button:focus-visible { background: var(--surface-2); }
+.more-menu-list button.danger { color: var(--danger-text); }
 
 /* ---------- Anello del giorno ---------- */
 .day-ring { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
@@ -530,6 +596,11 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .song-carousel-ring { background: conic-gradient(var(--accent) var(--p), var(--line) 0); }
 .song-carousel-title { margin: 0; font-size: 14px; font-weight: 600; font-family: inherit; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .song-carousel-label { font-size: 12px; color: var(--muted); }
+.carousel-dots { display: flex; gap: 5px; align-items: center; justify-content: center; }
+.carousel-dot { width: 9px; height: 9px; border-radius: 50%; box-sizing: border-box; background: var(--bg); border: 1.5px solid var(--muted); }
+.carousel-dot.dot-done { background: var(--accent); border-color: var(--accent); }
+.carousel-dot.dot-partial { background: linear-gradient(90deg, var(--accent) 50%, var(--bg) 50%); border-color: var(--accent); }
+.carousel-dot.dot-current { border-color: var(--accent); box-shadow: 0 0 0 1.5px var(--bg), 0 0 0 3px var(--accent); }
 .song-carousel-add { display: inline-flex; margin: 3px; align-items: center; justify-content: center; width: 56px; height: 56px; border-radius: 14px; border: 2px dashed var(--line-strong); color: var(--muted); }
 
 /* Fine sessione: versi sbloccati oggi */
@@ -553,3 +624,8 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .verse-it { margin: 0; font-size: 14px; font-style: italic; color: var(--text-2); }
 .gap.snap { border-bottom-style: solid; color: var(--accent); font-weight: 600; }
 .feedback u { text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+.view-switch { grid-template-columns: repeat(2, 1fr); margin: 12px 0; }
+.lex-group { margin-top: 16px; }
+.lex-group-head { display: flex; align-items: center; gap: 10px; margin: 0; font-size: 16px; line-height: 1.25; }
+.lex-group-title { min-width: 0; overflow-wrap: anywhere; }

@@ -1,3 +1,8 @@
+import type { TextSource } from '../db/types'
+
+/** Nome della fonte di un testo libero (in Canzoni e sulla copertina generata). */
+export const SOURCE_LABEL: Record<TextSource, string> = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo', altro: 'Testo' }
+
 export type Motif = 'waves' | 'circles' | 'lines'
 
 const MOTIFS: Motif[] = ['waves', 'circles', 'lines']

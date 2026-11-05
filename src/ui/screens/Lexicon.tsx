@@ -1,16 +1,36 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import { useLive } from '../useLive'
 import { useDeps } from '../deps'
 import { href } from '../../router'
-import { coverage, lexicon, TOPICS, type LexChip, type LexEntry } from '../../domain/lexicon'
+import { composition, coverage, lexicon, strength, TOPICS, type LexChip, type LexEntry } from '../../domain/lexicon'
+import { TYPE_ORDER } from '../../domain/legend'
 import { CHUNK_CLASS } from '../../domain/songItems'
 import { Icon } from '../components/Icon'
+import { Cover } from '../components/Cover'
 import { useAddGate } from '../components/UnlockSheet'
 import { plural } from '../plural'
 
 const CHIPS: [LexChip, string][] = [
   ['tutti', 'Tutti'], ['B1', 'B1'], ['B2', 'B2'], ['C1', 'C1'], ['attivi', 'Attivi'], ['solo canzone', 'Solo canzone'], ['parole', 'Parole'],
 ]
+
+function LexRow({ e }: { e: LexEntry }) {
+  return (
+    <li>
+      <a class="lex-row" href={href({ name: 'study', songId: e.songId, itemId: e.id })}>
+        <span class={`lex-bar ${barClass(e)}`} aria-hidden="true" />
+        <span class="lex-main">
+          <span class="lex-title" lang="en">{e.title}</span>
+          <span class="note">{`${e.meaning}${e.where ? ` · ${e.where}` : ''}`}</span>
+        </span>
+        <span class="lex-ticks" aria-hidden="true">
+          {[1, 2, 3].map((n) => <span key={n} class={n <= strength(e.status) ? 'on' : ''} />)}
+        </span>
+        <span class={e.status === 'attivo' ? 'lex-status on' : 'lex-status'}>{`${e.cefr} · ${e.status}`}</span>
+      </a>
+    </li>
+  )
+}
 
 const barClass = (e: LexEntry) => (e.type === 'word' ? 'w' : CHUNK_CLASS[e.type])
 
@@ -23,13 +43,33 @@ export function Lexicon() {
   const [q, setQ] = useState('')
   const [chip, setChip] = useState<LexChip>('tutti')
   const [topic, setTopic] = useState('')
+  const [type, setType] = useState<LexEntry['type'] | null>(null)
+  const [view, setView] = useState<'all' | 'songs'>('all')
   const gate = useAddGate()
+  // Il tipo filtrato non c'è più (voci eliminate): il suo tratto sparisce dalla striscia, quindi il filtro si toglie.
+  const all = data ? lexicon(data, {}) : []
+  const typeGone = type !== null && !all.some((e) => e.type === type)
+  useEffect(() => {
+    if (data && typeGone) setType(null)
+  }, [data, typeGone])
 
   if (!data) return <main class="screen lexicon" aria-busy="true" />
-  const all = lexicon(data, {})
-  const shown = lexicon(data, { q, chip, topic: topic || undefined })
+  const shown = lexicon(data, { q, chip, topic: topic || undefined, type: typeGone ? undefined : type ?? undefined })
   const nChunks = all.filter((e) => e.kind === 'chunk').length
   const nWords = all.length - nChunks
+  const comp = composition(all).filter((c) => c.count > 0)
+  const clsOf = (t: LexEntry['type']) => TYPE_ORDER.find((x) => x.type === t)!.cls
+  // Per canzone: la voce sta sotto la sua canzone di casa (`songId`). Va in «Altre voci» se è nata da Espandi
+  // (origin 'expand' e nessun contesto in un testo) o se la canzone di casa non c'è più.
+  const orphan = new Set([...data.chunks, ...data.words].filter((i) => i.origin === 'expand' && i.contexts.length === 0).map((i) => i.id))
+  const bySong = new Map(data.songs.map((s) => [s.id, s]))
+  const groups: { key: string; song: (typeof data.songs)[number] | null; items: LexEntry[] }[] = []
+  for (const s of [...data.songs].sort((a, b) => a.addedAt.getTime() - b.addedAt.getTime())) {
+    const items = shown.filter((e) => !orphan.has(e.id) && e.songId === s.id)
+    if (items.length) groups.push({ key: s.id, song: s, items })
+  }
+  const others = shown.filter((e) => orphan.has(e.id) || !bySong.has(e.songId))
+  if (others.length) groups.push({ key: '_altre', song: null, items: others })
   const cov = coverage(all)
   const least = cov.slice(0, 3)
   const most = cov.slice(-2).reverse().filter((t) => t.count > 0)
@@ -65,6 +105,24 @@ export function Lexicon() {
                 </select>
               </label>
             </div>
+            <div class="comp" role="group" aria-label="Composizione">
+              <div class="comp-strip">
+                {comp.map((c) => (
+                  <button
+                    key={c.type}
+                    type="button"
+                    class={`comp-seg ${clsOf(c.type)}`}
+                    style={{ flexGrow: c.count }}
+                    aria-label={`${c.label}: ${c.count}`}
+                    aria-pressed={type === c.type}
+                    onClick={() => setType(type === c.type ? null : c.type)}
+                  ><span class="comp-fill" aria-hidden="true" /></button>
+                ))}
+              </div>
+              <ul class="legend" aria-label="Legenda dei tipi">
+                {comp.map((c) => <li key={c.type}><span class={`swatch hl ${clsOf(c.type)}`} aria-hidden="true" />{`${c.label} ${c.count}`}</li>)}
+              </ul>
+            </div>
             <div class="coverage">
               <span class="coverage-title">Aree scoperte</span>
               <span class="note">
@@ -83,21 +141,29 @@ export function Lexicon() {
         </div>
       ) : (
         <>
+          <div class="segmented view-switch" role="radiogroup" aria-label="Vista">
+            {([['all', 'Tutte'], ['songs', 'Per canzone']] as const).map(([v, label]) => (
+              <button key={v} type="button" role="radio" aria-checked={view === v} class={view === v ? 'on' : ''} onClick={() => setView(v)}>{label}</button>
+            ))}
+          </div>
           {shown.length === 0 && <p class="note">Nessuna voce con questi filtri.</p>}
+          {view === 'songs' ? groups.map((g) => (
+            <section key={g.key} class="lex-group">
+              <h2 class="lex-group-head">
+                {g.song && <Cover song={g.song} size="sm" />}
+                <span class="lex-group-title">{g.song ? g.song.title : 'Altre voci'}</span>
+              </h2>
+              <ul class="lex-list" aria-label={`Voci: ${g.song ? g.song.title : 'Altre voci'}`}>
+                {g.items.map((e) => <LexRow key={e.id} e={e} />)}
+              </ul>
+            </section>
+          )) : (
           <ul class="lex-list" aria-label="Voci del lessico">
             {shown.map((e) => (
-              <li key={e.id}>
-                <a class="lex-row" href={href({ name: 'study', songId: e.songId, itemId: e.id })}>
-                  <span class={`lex-bar ${barClass(e)}`} aria-hidden="true" />
-                  <span class="lex-main">
-                    <span class="lex-title" lang="en">{e.title}</span>
-                    <span class="note">{`${e.meaning}${e.where ? ` · ${e.where}` : ''}`}</span>
-                  </span>
-                  <span class={e.status === 'attivo' ? 'lex-status on' : 'lex-status'}>{`${e.cefr} · ${e.status}`}</span>
-                </a>
-              </li>
+              <LexRow key={e.id} e={e} />
             ))}
           </ul>
+          )}
         </>
       )}
       {gate.sheet}

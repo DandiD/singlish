@@ -13,6 +13,9 @@ import { Cover } from '../components/Cover'
 import { ensureCover } from '../../domain/cover'
 import { rCardStates, unlockedBySong } from '../../domain/unlocked'
 import { unlockedText } from '../todayText'
+import { MoreMenu, type MoreMenuItem } from '../components/MoreMenu'
+import { SOURCE_LABEL } from '../cover'
+import { gainText } from '../../domain/path'
 
 
 export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song'): string {
@@ -32,8 +35,6 @@ export function statusLabel(status: Song['status'], kind: Song['kind'] = 'song')
 /** Cosa succede alle voci di una canzone eliminata. */
 export const DELETE_NOTE = 'Le sue espressioni e parole escono dal ripasso; quelle che compaiono anche in altre canzoni o testi restano, e le parole che sai, o che hai già ripassato, restano nel tuo profilo come note.'
 
-const SOURCE_LABEL = { serie: 'Serie', podcast: 'Podcast', articolo: 'Articolo', altro: 'Testo' } as const
-
 const dateFmt = new Intl.DateTimeFormat('it-IT', { day: 'numeric', month: 'long' })
 
 export function Songs() {
@@ -49,56 +50,60 @@ export function Songs() {
   const [editing, setEditing] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const gate = useAddGate()
+  // Chiusi modulo o conferma senza eliminare, il fuoco torna al «⋯» della stessa canzone.
+  const refocus = useRef<string | null>(null)
+  useEffect(() => {
+    const id = refocus.current
+    if (id === null || editing === id || deleting === id) return
+    refocus.current = null
+    document.querySelector<HTMLElement>(`[data-song-id="${CSS.escape(id)}"] .more-menu > button`)?.focus()
+  })
+  const closeEdit = (id: string) => { refocus.current = id; setEditing(null) }
 
   if (!songs || open === undefined) return <main class="screen" aria-busy="true" />
   const full = open >= MAX_OPEN_SONGS
+  const openSongs = songs.filter((s) => s.status !== 'done')
+  const doneSongs = songs.filter((s) => s.status === 'done')
 
-  return (
-    <main class="screen songs">
-      <header class="songs-head">
-        <h1>Canzoni</h1>
-        <button
-          type="button"
-          class="btn primary pill"
-          disabled={full}
-          onClick={() => gate.request()}
-        >
-          <Icon name="plus" size={18} />Aggiungi
-        </button>
-      </header>
-      {full ? <p class="note">{LIMIT_NOTE}</p> : (
-        <a class="link-add" href={href({ name: 'addText' })} onClick={(e) => { e.preventDefault(); gate.request('addText') }}><Icon name="plus" size={18} />Aggiungi testo</a>
-      )}
-      {songs.length === 0 && <p class="note">Nessuna canzone. Aggiungine una per cominciare.</p>}
-      <ul class="song-list">
-        {songs.map((s) => editing === s.id ? (
-          <li class="song-card" key={s.id}>
-            <SongEdit song={s} onDone={() => setEditing(null)} />
-          </li>
+  // Titoli: h2 per le aperte (sotto h1 «Canzoni»), h3 per le completate (sotto h2 «Completate»).
+  const item = (s: Song) => {
+    const u = unlocked?.get(s.id)
+    const ring = u && u.total > 0 ? u.unlocked / u.total : null
+    const toAnalyze = s.status === 'queued' || s.status === 'draft'
+    const gain = s.status === 'done' ? gainText(s) : null
+    const actions: MoreMenuItem[] = [
+      ...(s.spotifyUrl ? [{ text: 'Apri in Spotify ↗', onSelect: () => { window.open(s.spotifyUrl!, '_blank', 'noopener,noreferrer') } }] : []),
+      { text: 'Modifica', onSelect: () => { setDeleting(null); setEditing(s.id) } },
+      { text: 'Elimina', danger: true, onSelect: () => { setEditing(null); setDeleting(s.id) } },
+    ]
+    // Modulo di modifica e conferma di eliminazione occupano tutta la riga della griglia.
+    const wide = editing === s.id || deleting === s.id
+    return (
+      <li class={wide ? 'shelf-item shelf-wide' : 'shelf-item'} key={s.id} data-song-id={s.id}>
+        {editing === s.id ? (
+          <SongEdit song={s} onDone={() => closeEdit(s.id)} />
         ) : (
-          <li class="song-card" key={s.id}>
-            <div class="song-top">
-              <Cover song={s} size="md" />
-              <h2>{s.title}</h2>
-              <span class="badge">{statusLabel(s.status, s.kind)}</span>
-            </div>
-            <p class="note">
-              {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}{s.kind === 'text' ? 'aggiunto il' : 'aggiunta il'} {dateFmt.format(s.addedAt)}
-            </p>
-            {(() => { const u = unlocked?.get(s.id); return u && u.total > 0 ? <p class="note">{unlockedText(u.unlocked, u.total)}</p> : null })()}
-            {s.comprehensionBefore !== null && <p class="mono">{s.comprehensionBefore}% prima</p>}
-            <div class="song-actions">
-              {(s.status === 'queued' || s.status === 'draft') && (
-                <a class="btn outline" href={href({ name: 'analyzing', songId: s.id })}>Analizza ora</a>
-              )}
-              {(s.status === 'analyzed' || s.status === 'studying' || s.status === 'done') && (
-                <a class="btn outline" href={href({ name: 'study', songId: s.id })}>Apri</a>
-              )}
-              {s.spotifyUrl && (
-                <a class="btn outline" href={s.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
-              )}
-              <button type="button" class="btn outline" onClick={() => setEditing(s.id)}>Modifica</button>
-              <button type="button" class="btn outline danger" onClick={() => setDeleting(s.id)}>Elimina</button>
+          <>
+            <div class="shelf-body">
+              <a class="shelf-link" href={href(toAnalyze ? { name: 'analyzing', songId: s.id } : { name: 'study', songId: s.id })}>
+                <span class={ring === null ? 'shelf-frame' : 'shelf-frame song-carousel-ring'} style={ring === null ? undefined : { '--p': `${ring}turn` }}>
+                  <Cover song={s} size="lg" />
+                </span>
+                {s.status === 'done' ? <h3>{s.title}</h3> : <h2>{s.title}</h2>}
+              </a>
+              <div class="shelf-more">
+                <MoreMenu label={`Azioni per «${s.title}»`} items={actions} />
+              </div>
+              <p class="shelf-status">
+                <span class="badge">{statusLabel(s.status, s.kind)}</span>
+                {gain !== null && <span class="shelf-gain mono">{gain}</span>}
+                {s.comprehensionBefore !== null && <span class="mono">{s.comprehensionBefore}% prima</span>}
+              </p>
+              {u && u.total > 0 && <p class="note">{unlockedText(u.unlocked, u.total)}</p>}
+              <p class="note">
+                {s.kind === 'text' ? `${SOURCE_LABEL[s.source ?? 'altro']} · ` : s.artist ? `${s.artist} · ` : ''}{s.kind === 'text' ? 'aggiunto il' : 'aggiunta il'} {dateFmt.format(s.addedAt)}
+              </p>
+              {toAnalyze && <a class="btn outline" href={href({ name: 'analyzing', songId: s.id })}>Analizza ora</a>}
             </div>
             {deleting === s.id && (
               <div class="confirm" role="alertdialog" aria-label="Conferma eliminazione">
@@ -121,16 +126,48 @@ export function Songs() {
                   >
                     Sì, elimina
                   </button>
-                  <button type="button" class="btn outline" onClick={() => setDeleting(null)}>Annulla</button>
+                  <button type="button" class="btn outline" ref={focusOnMount} onClick={() => { refocus.current = s.id; setDeleting(null) }}>Annulla</button>
                 </div>
               </div>
             )}
-          </li>
-        ))}
-      </ul>
+          </>
+        )}
+      </li>
+    )
+  }
+
+  return (
+    <main class="screen songs">
+      <header class="songs-head">
+        <h1>Canzoni</h1>
+        <button
+          type="button"
+          class="btn primary pill"
+          disabled={full}
+          onClick={() => gate.request()}
+        >
+          <Icon name="plus" size={18} />Aggiungi
+        </button>
+      </header>
+      {full ? <p class="note">{LIMIT_NOTE}</p> : (
+        <a class="link-add" href={href({ name: 'addText' })} onClick={(e) => { e.preventDefault(); gate.request('addText') }}><Icon name="plus" size={18} />Aggiungi testo</a>
+      )}
+      {songs.length === 0 && <p class="note">Nessuna canzone. Aggiungine una per cominciare.</p>}
+      {openSongs.length > 0 && <ul class="shelf">{openSongs.map(item)}</ul>}
+      {doneSongs.length > 0 && (
+        <>
+          <h2 class="shelf-head">Completate</h2>
+          <ul class="shelf">{doneSongs.map(item)}</ul>
+        </>
+      )}
       {gate.sheet}
     </main>
   )
+}
+
+/** La conferma di eliminazione prende il fuoco su «Annulla», la scelta che non perde niente. */
+function focusOnMount(el: HTMLButtonElement | null) {
+  el?.focus()
 }
 
 /** Un link diverso rende vecchia la copertina salvata: si azzera, la nuova arriva con ensureCover. */
@@ -215,8 +252,11 @@ function SongEdit({ song, onDone }: { song: Song; onDone(): void }) {
       setBusy(false)
     }
   }
+  // Aperto dal menu «⋯»: il fuoco va sul primo campo.
+  const form = useRef<HTMLFormElement>(null)
+  useEffect(() => { form.current?.querySelector('input')?.focus() }, [])
   return (
-    <form class="song-edit" onSubmit={(e) => { e.preventDefault(); void save() }}>
+    <form class="song-edit" ref={form} onSubmit={(e) => { e.preventDefault(); void save() }}>
       {/* Un testo libero non ha link Spotify né artista: si corregge solo il titolo. */}
       {song.kind !== 'text' && <label class="field">
         <span>Link Spotify</span>

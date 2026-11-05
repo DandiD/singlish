@@ -30,6 +30,12 @@ function mount(ui: ComponentChild, fakeFetch: typeof fetch = vi.fn() as unknown 
   )
 }
 
+/** Un'azione dal menu «⋯» di una canzone in Canzoni. */
+const fromMenu = (card: HTMLElement, text: string) => {
+  fireEvent.click(within(card).getByRole('button', { name: /^Azioni per/ }))
+  fireEvent.click(within(card).getByRole('menuitem', { name: text }))
+}
+
 const oembed = (title: string) =>
   vi.fn(async () => new Response(JSON.stringify({ title }), { status: 200 })) as unknown as typeof fetch
 
@@ -314,7 +320,7 @@ describe('modifica titolo e artista in Canzoni', () => {
     const s = await add()
     mount(<Songs />)
     const card = (await screen.findByRole('heading', { name: 'Senza titolo' })).closest('li')!
-    fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+    fromMenu(card, 'Modifica')
     const title = within(card).getByLabelText('Titolo') as HTMLInputElement
     expect(title.value).toBe('Senza titolo')
     fireEvent.input(title, { target: { value: '  Paper Lanterns ' } })
@@ -327,7 +333,7 @@ describe('modifica titolo e artista in Canzoni', () => {
     const s = await add({ title: 'Vecchio' })
     mount(<Songs />)
     const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
-    fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+    fromMenu(card, 'Modifica')
     fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: '   ' } })
     expect((within(card).getByRole('button', { name: 'Salva' }) as HTMLButtonElement).disabled).toBe(true)
     fireEvent.click(within(card).getByRole('button', { name: 'Annulla' }))
@@ -339,7 +345,8 @@ describe('modifica titolo e artista in Canzoni', () => {
     await db.songs.update(s.id, { status: 'done' })
     mount(<Songs />)
     const card = (await screen.findByRole('heading', { name: 'Finita' })).closest('li')!
-    expect(within(card).getByRole('button', { name: 'Modifica' })).toBeTruthy()
+    fireEvent.click(within(card).getByRole('button', { name: /^Azioni per/ }))
+    expect(within(card).getByRole('menuitem', { name: 'Modifica' })).toBeTruthy()
   })
 })
 
@@ -348,7 +355,7 @@ describe('link Spotify di una canzone già inserita', () => {
   const openEdit = async (title: string, f?: typeof fetch) => {
     mount(<Songs />, f)
     const card = (await screen.findByRole('heading', { name: title })).closest('li')!
-    fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+    fromMenu(card, 'Modifica')
     return card
   }
   test('si aggiunge il link, salvato nella forma pulita, e se manca il titolo arriva da Spotify', async () => {
@@ -394,14 +401,16 @@ describe('link Spotify di una canzone già inserita', () => {
 test('in Canzoni il link Spotify di una canzone si apre con un tocco', async () => {
   await createSong(db, { title: 'Con link', artist: '', spotifyUrl: URL_OK, rawText: 'x', comprehensionBefore: null }, now)
   await createSong(db, { title: 'Senza link', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
+  const open = vi.spyOn(window, 'open').mockImplementation(() => null)
   mount(<Songs />)
   const withLink = (await screen.findByRole('heading', { name: 'Con link' })).closest('li')!
-  const a = within(withLink).getByRole('link', { name: /Apri in Spotify/ })
-  expect(a.getAttribute('href')).toBe(URL_OK)
-  expect(a.getAttribute('target')).toBe('_blank')
-  expect(a.getAttribute('rel')).toContain('noopener')
+  // Dal menu «⋯» della canzone: Spotify in una scheda nuova, senza accesso alla pagina.
+  fromMenu(withLink, 'Apri in Spotify ↗')
+  expect(open).toHaveBeenCalledWith(URL_OK, '_blank', 'noopener,noreferrer')
+  open.mockRestore()
   const noLink = screen.getByRole('heading', { name: 'Senza link' }).closest('li')!
-  expect(within(noLink).queryByRole('link', { name: /Apri in Spotify/ })).toBeNull()
+  fireEvent.click(within(noLink).getByRole('button', { name: /^Azioni per/ }))
+  expect(within(noLink).queryByRole('menuitem', { name: /Apri in Spotify/ })).toBeNull()
 })
 
 describe('elimina canzone', () => {
@@ -409,11 +418,11 @@ describe('elimina canzone', () => {
     const s = await createSong(db, { title: 'Da togliere', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
     mount(<Songs />)
     const card = (await screen.findByRole('heading', { name: 'Da togliere' })).closest('li')!
-    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    fromMenu(card, 'Elimina')
     expect(within(card).getByText(/Eliminare «Da togliere»\?/)).toBeTruthy()
     fireEvent.click(within(card).getByRole('button', { name: 'Annulla' }))
     expect(await db.songs.get(s.id)).toBeTruthy()
-    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    fromMenu(card, 'Elimina')
     fireEvent.click(within(card).getByRole('button', { name: 'Sì, elimina' }))
     await waitFor(async () => expect(await db.songs.get(s.id)).toBeUndefined())
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Da togliere' })).toBeNull())
@@ -423,7 +432,7 @@ describe('elimina canzone', () => {
     mount(<Songs />)
     expect(((await screen.findByRole('button', { name: 'Aggiungi' })) as HTMLButtonElement).disabled).toBe(true)
     const card = screen.getByRole('heading', { name: 'C0' }).closest('li')!
-    fireEvent.click(within(card).getByRole('button', { name: 'Elimina' }))
+    fromMenu(card, 'Elimina')
     fireEvent.click(within(card).getByRole('button', { name: 'Sì, elimina' }))
     await waitFor(() => expect((screen.getByRole('button', { name: 'Aggiungi' }) as HTMLButtonElement).disabled).toBe(false))
   })
@@ -433,7 +442,7 @@ test('Modifica di un testo libero: solo il titolo, niente link Spotify né artis
   await createSong(db, { title: 'Episodio 3', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null, kind: 'text', source: 'serie' }, now)
   mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Episodio 3' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   expect(within(card).getByLabelText('Titolo')).toBeTruthy()
   expect(within(card).queryByLabelText('Link Spotify')).toBeNull()
   expect(within(card).queryByLabelText('Artista')).toBeNull()
@@ -444,14 +453,14 @@ test('una canzone completata si può ancora aprire da Canzoni (per smistare o ri
   await db.songs.update(s.id, { status: 'done' })
   mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Done Song' })).closest('li')!
-  expect(within(card).getByRole('link', { name: 'Apri' }).getAttribute('href')).toBe(`#/songs/${s.id}`)
+  expect(within(card).getByRole('link', { name: 'Done Song' }).getAttribute('href')).toBe(`#/songs/${s.id}`)
 })
 
 test('Modifica: link incollato e Salva subito, la canzone «Senza titolo» prende comunque il titolo da Spotify', async () => {
   const s = await createSong(db, { title: 'Senza titolo', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   mount(<Songs />, oembed('Midnight Harbor'))
   const card = (await screen.findByRole('heading', { name: 'Senza titolo' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
   fireEvent.click(within(card).getByRole('button', { name: 'Salva' }))
   await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Midnight Harbor'))
@@ -461,7 +470,7 @@ test('Modifica: uscendo dalla pagina a metà, titolo e artista scritti non si pe
   const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   const { unmount } = mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
   unmount() // un tocco sulla barra in basso
   await waitFor(async () => expect((await db.songs.get(s.id))!.title).toBe('Nuovo'))
@@ -471,7 +480,7 @@ test('Modifica: Annulla non salva nemmeno uscendo dopo', async () => {
   const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   const { unmount } = mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
   fireEvent.click(within(card).getByRole('button', { name: 'Annulla' }))
   unmount()
@@ -483,7 +492,7 @@ test('Modifica: uscendo subito dopo aver incollato il link, la canzone «Senza t
   const s = await createSong(db, { title: 'Senza titolo', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   const { unmount } = mount(<Songs />, oembed('Midnight Harbor'))
   const card = (await screen.findByRole('heading', { name: 'Senza titolo' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
   unmount()
   await waitFor(async () => expect((await db.songs.get(s.id))!).toMatchObject({ title: 'Midnight Harbor' }))
@@ -493,7 +502,7 @@ test('Modifica: uscendo con un link non valido, il titolo nuovo si salva e il li
   const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   const { unmount } = mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: 'Nuovo' } })
   fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: 'https://open.spotify.com/album/x' } })
   unmount()
@@ -504,7 +513,7 @@ test('Canzoni: «Sì, elimina» toccato due volte elimina una volta sola', async
   await createSong(db, { title: 'Doppia', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Doppia' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: /Elimina/ }))
+  fromMenu(card, 'Elimina')
   const yes = await within(card).findByRole('button', { name: 'Sì, elimina' })
   const spy = vi.spyOn(db, 'transaction')
   fireEvent.click(yes)
@@ -525,7 +534,7 @@ test('Modifica: titolo svuotato e link valido, uscendo il link si salva e il tit
   const s = await createSong(db, { title: 'Vecchio', artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: null }, now)
   const { unmount } = mount(<Songs />)
   const card = (await screen.findByRole('heading', { name: 'Vecchio' })).closest('li')!
-  fireEvent.click(within(card).getByRole('button', { name: 'Modifica' }))
+  fromMenu(card, 'Modifica')
   fireEvent.input(within(card).getByLabelText('Titolo'), { target: { value: '' } })
   fireEvent.input(within(card).getByLabelText('Link Spotify'), { target: { value: URL_OK } })
   unmount()
@@ -570,7 +579,7 @@ describe('Songs covers', () => {
     for (const t of ['A1', 'B2', 'C3']) await createSong(db, { title: t, artist: '', spotifyUrl: null, rawText: 'x', comprehensionBefore: 40 }, now)
     const { container } = mount(<Songs />)
     await screen.findByText('C3')
-    expect(container.querySelectorAll('li.song-card')).toHaveLength(3)
-    expect(container.querySelectorAll('li.song-card .cover.cover-md')).toHaveLength(3)
+    expect(container.querySelectorAll('li.shelf-item')).toHaveLength(3)
+    expect(container.querySelectorAll('li.shelf-item .cover.cover-lg')).toHaveLength(3)
   })
 })
