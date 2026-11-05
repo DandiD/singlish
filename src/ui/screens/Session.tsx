@@ -27,6 +27,8 @@ import { UnlockedVerses } from '../components/UnlockedVerses'
 import { newlyUnlocked, strongestSince, unlockedKeys, type StrongItem, type UnlockedVerse } from '../../domain/unlocked'
 import { loadWeekRhythm, type WeekRhythm as Rhythm } from '../../domain/rhythm'
 import { WeekRhythm } from '../components/WeekRhythm'
+import { RatingSegments } from '../components/RatingSegments'
+import { segmentsLabel, sessionSegments, streakGlowAt, type Outcome } from '../../domain/sessionRhythm'
 import { songLook } from '../cover'
 import type { ComponentChildren } from 'preact'
 
@@ -61,6 +63,8 @@ export function Session() {
   const [idx, setIdx] = useState(0)
   const [counts, setCounts] = useState({ reviews: 0, news: 0 })
   const [written, setWritten] = useState(0)
+  // Esiti di questa visita, per posizione nella coda (`at` = idx): salvati solo se il voto o la frase sono stati registrati.
+  const [outcomes, setOutcomes] = useState<{ at: number; outcome: Outcome }[]>([])
   // Card che tornano più tardi oggi (passi di apprendimento di FSRS): con queste la giornata non è finita.
   const [later, setLater] = useState<number | null>(null)
   // Le frasi da correggere sono tutte quelle in attesa, come in Oggi e in «Le tue frasi» (anche di una sessione ripresa).
@@ -196,8 +200,17 @@ export function Session() {
   if (!loaded) return <main class="screen session" aria-busy="true" />
 
   // Anche le frasi già scritte nella sessione ripresa contano come card fatte: «N di M» non cala riprendendo.
-  const total = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + items.length
-  const position = loaded.doneReviews + loaded.doneNew + loaded.doneWritten + idx
+  const doneBefore = loaded.doneReviews + loaded.doneNew + loaded.doneWritten
+  const total = doneBefore + items.length
+  const position = doneBefore + idx
+
+  // Una card saltata (voce eliminata) o senza voto registrato non ha esito: il suo segmento è «fatto»,
+  // così i segmenti restano allineati a `position` e «N di M» non cambia.
+  const segments = sessionSegments({ doneBefore: doneBefore, outcomes: [], total })
+  for (const { at, outcome } of outcomes) segments[doneBefore + at] = sessionSegments({ doneBefore: 0, outcomes: [outcome], total: 1 })[0]
+  for (let i = 0; i < idx; i++) if (!outcomes.some((o) => o.at === i)) segments[doneBefore + i] = 'done'
+  const outcomeList = outcomes.map((o) => o.outcome)
+  const glow = streakGlowAt(outcomeList).map((k) => doneBefore + outcomes[k].at)
 
   const closeSession = async () => {
     timerRef.current.stop()
@@ -228,7 +241,10 @@ export function Session() {
         await db.sessions.update(sessionId, { reviewsDone: next.reviews, newDone: next.news })
         return true
       })
-      if (recorded) setCounts(next)
+      if (recorded) {
+        setCounts(next)
+        setOutcomes((o) => [...o, { at: idx, outcome: { kind: 'rated', rating } }])
+      }
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
     } catch (e) {
@@ -248,6 +264,7 @@ export function Session() {
       const elapsed = Math.min(MAX_CARD_MS, Math.max(0, elapsedMs(timerRef.current.state, Date.now()) - cardStart.current))
       await saveProduction(db, sessionId, { cardId: current.card.id, itemId: current.card.itemId, sentence, elapsedMs: elapsed, wasNew: current.isNew, at: now() })
       setWritten((n) => n + 1)
+      setOutcomes((o) => [...o, { at: idx, outcome: { kind: 'written' } }])
       setIdx(idx + 1)
       if (idx + 1 < items.length && isExpired(timerRef.current.state, Date.now())) setSheet(true)
     } catch (e) {
@@ -329,7 +346,7 @@ export function Session() {
         <a class="icon-btn" href={href({ name: 'today' })} onClick={onBack({ name: 'today' })} aria-label="Esci dalla sessione"><Icon name="close" /></a>
         <div class="grow">
           <span class="note">{`${position + 1} di ${total}`}</span>
-          <div class="bar" aria-hidden="true"><div class="bar-fill" style={{ transform: `scaleX(${position / total})` }} /></div>
+          <RatingSegments segments={segments} current={position} glow={glow} label={segmentsLabel(outcomeList)} />
         </div>
         {timerReady && (
           <TimerPill

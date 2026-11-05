@@ -245,6 +245,14 @@ html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 
 .link-add { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; color: var(--accent-text); text-decoration: none; }
 .today .song-card { text-decoration: none; color: var(--text); }
 .today .song-card h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }
+.segs { display: flex; gap: 2px; margin-top: 6px; }
+.seg { flex: 1 1 0; min-width: 2px; height: 8px; border-radius: 2px; box-sizing: border-box; background: var(--surface-2); }
+.seg-done { background: var(--line-strong); }
+.seg-full { background: var(--accent); }
+.seg-half { background: linear-gradient(90deg, var(--accent) 50%, var(--surface-2) 50%); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.seg-empty { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+.seg-written { background: transparent; border: 1px dotted var(--accent); }
+.seg-current { box-shadow: 0 0 0 2px var(--accent); }
 .bar { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .bar-fill { width: 100%; height: 100%; background: var(--accent); transform-origin: left center; }
 
