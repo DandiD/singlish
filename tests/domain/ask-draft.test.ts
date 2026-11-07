@@ -113,6 +113,29 @@ describe('askGemini', () => {
     expect(saved!.lineNotes).toHaveLength(1)
   })
 
+  it('renumbers merged unanswered requests so ids are unique', async () => {
+    await saveSettings(db, { apiKey: 'k' })
+    await saveAnswers(db, 's1', { answers: [], unanswered: [{ id: 'w1', lineIndex: 0, text: 'gave up' }] })
+    const draft = await saveAnswers(db, 's1', { answers: [], unanswered: [{ id: 'w1', lineIndex: 2, text: 'lanterns' }] })
+    expect(draft.unanswered.map((r) => r.id)).toEqual(['w1', 'w1'])
+    const bodies: string[] = []
+    const f = vi.fn(async (_u: unknown, init?: RequestInit) => {
+      const body = String(init?.body)
+      bodies.push(body)
+      const item = (s: string) => ({ item_type: 'word', surface_form: s, widened: false, ...fields, type: 'noun', base_form: s })
+      return ok({
+        answers: [
+          { id: 'w1', translation_it: 'TR riga 0', item: item('gave up'), verse: null },
+          { id: 'w2', translation_it: 'TR riga 2', item: item('lanterns'), verse: null },
+        ],
+      })
+    })
+    const out = await askGemini(db, 's1', draft.unanswered, { fetch: f as unknown as typeof fetch, sleep: async () => {} })
+    expect(bodies[0].match(/w1 · riga/g)).toHaveLength(1)
+    expect(bodies[0].match(/w2 · riga/g)).toHaveLength(1)
+    expect(out.answers.map((a) => [a.lineIndex, a.translationIt])).toEqual([[0, 'TR riga 0'], [2, 'TR riga 2']])
+  })
+
   it('without a key rejects with no_key', async () => {
     const f = vi.fn()
     await expect(askGemini(db, 's1', requests, { fetch: f as unknown as typeof fetch, sleep: async () => {} })).rejects.toMatchObject({ code: 'no_key' })

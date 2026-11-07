@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/pr
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { AppDepsProvider } from '../../src/ui/deps'
 import { Study } from '../../src/ui/screens/Study'
+import { AnswersSheet } from '../../src/ui/screens/AnswersSheet'
 import { saveSettings } from '../../src/domain/settings'
 import type { AskDraft, Song } from '../../src/db/types'
 
@@ -117,4 +118,18 @@ test('Chiudi con n = 0: le voci spuntate già nel lessico ricevono il verso e la
   await waitFor(async () => expect((await db.songs.get('s1'))!.askDraft).toBeUndefined())
   const c = (await db.chunks.get('c1'))!
   expect(c.contexts.some((x) => x.songId === 's1' && x.lineIndex === 0)).toBe(true)
+})
+
+test('se il foglio si monta prima che la bozza arrivi nel dato vivo, aspetta invece di chiudersi', async () => {
+  const withDraft = { ...base, askDraft: draft() }
+  await db.songs.add(withDraft)
+  const tree = (song: Song) => <AppDepsProvider value={{ db, fetch: f as unknown as typeof fetch, sleep: async () => {}, now: () => now }}><AnswersSheet song={song} /></AppDepsProvider>
+  window.location.hash = '#/songs/s1?item=ask'
+  const view = render(tree(base))
+  await new Promise((r) => setTimeout(r, 50))
+  view.rerender(tree(withDraft))
+  const sheet = await screen.findByRole('dialog')
+  expect(sheet.parentElement!.classList.contains('closing')).toBe(false)
+  await new Promise((r) => setTimeout(r, 300))
+  expect(window.location.hash).toBe('#/songs/s1?item=ask')
 })

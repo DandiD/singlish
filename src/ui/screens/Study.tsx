@@ -8,7 +8,7 @@ import { finalListenDue, startStudying } from '../../domain/finalListen'
 import { songPath } from '../../domain/path'
 import { SongPath } from '../components/SongPath'
 import { MoreMenu } from '../components/MoreMenu'
-import { emptySelection, requestsOf, toggleJoin, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
+import { MAX_REQUESTS, emptySelection, requestsOf, toggleJoin, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
 import { askGemini } from '../../domain/askDraft'
 import { PickLine } from '../components/PickLine'
 import { geminiProblem } from '../errors'
@@ -41,6 +41,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const [sessionId, setSessionId] = useState('')
   const [confirming, setConfirming] = useState<false | 'done' | 'delete'>(false)
   const acting = useRef(false)
+  const askLock = useRef(false)
   // Chiedere a Gemini le parole segnate nel testo, tutte insieme.
   const [asking, setAsking] = useState(false)
   const [sel, setSel] = useState<Selection>(emptySelection)
@@ -166,18 +167,22 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     setSel(next)
   }
   const ask = async () => {
+    if (askLock.current) return
+    askLock.current = true
+    const here = stillHere()
     setAskBusy(true)
     setAskMsg(null)
     try {
       await askGemini(db, songId, requests, { fetch, sleep })
       setAsking(false)
       setSel(emptySelection())
-      window.location.hash = href({ name: 'study', songId, itemId: 'ask' })
+      if (here()) window.location.hash = href({ name: 'study', songId, itemId: 'ask' })
     } catch (e) {
       const model = await getSettings(db).then((x) => x.model, () => '')
       const p = geminiProblem(e, model)
       setAskMsg({ tone: 'error', text: `${p.title}. ${p.text}` })
     } finally {
+      askLock.current = false
       setAskBusy(false)
     }
   }
@@ -328,7 +333,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
               <>
                 <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
                 {noted.has(i) && (
-                  <a class="verse-note" href={href({ name: 'study', songId, itemId: `ln:${i}` })} aria-label={`Note sul verso ${i + 1}`}><Icon name="lexicon" size={18} /></a>
+                  <a class="verse-note" lang="it" href={href({ name: 'study', songId, itemId: `ln:${i}` })} aria-label={`Note sul verso ${i + 1}`}><Icon name="lexicon" size={18} /></a>
                 )}
               </>
             )}
@@ -340,7 +345,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       {asking && (
         <section class="ask-bar" role="region" aria-label="Da chiedere a Gemini">
           {askMsg?.tone === 'error' && <p class="note danger" role="alert">{askMsg.text}</p>}
-          {limitMsg && <p class="note" role="status">Massimo 12 per volta</p>}
+          {limitMsg && <p class="note" role="status">{`Massimo ${MAX_REQUESTS} per volta`}</p>}
           {!online && <p class="note">Sei offline: per chiedere a Gemini serve la connessione.</p>}
           <div class="ask-row">
             <span class="note">{barText}</span>

@@ -104,3 +104,38 @@ test('errore di Gemini: lo dice com\'è, e la selezione resta per riprovare', as
   expect(await screen.findByText(/La chiave Gemini non funziona/)).toBeTruthy()
   expect(within(lyrics).getByRole('button', { name: 'gave' }).getAttribute('aria-pressed')).toBe('true')
 })
+
+test('due tocchi nello stesso istante fanno una sola chiamata', async () => {
+  const f = ok()
+  mount(f as unknown as typeof fetch)
+  const lyrics = await enter()
+  tap(lyrics, 'gave')
+  const send = within(bar()).getByRole('button', { name: 'Chiedi a Gemini' })
+  fireEvent.click(send)
+  fireEvent.click(send)
+  await waitFor(() => expect(window.location.hash.endsWith('item=ask')).toBe(true))
+  expect(f).toHaveBeenCalledTimes(1)
+})
+
+test('se lo studente è già altrove, la risposta non lo riporta al foglio', async () => {
+  let release!: (r: Response) => void
+  const f = vi.fn().mockReturnValue(new Promise<Response>((res) => { release = res }))
+  mount(f as unknown as typeof fetch)
+  const lyrics = await enter()
+  tap(lyrics, 'gave')
+  fireEvent.click(within(bar()).getByRole('button', { name: 'Chiedi a Gemini' }))
+  await waitFor(() => expect(f).toHaveBeenCalled())
+  window.location.hash = '#/today'
+  release(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] })))
+  await waitFor(async () => expect((await db.songs.get('s1'))!.askDraft).toBeTruthy())
+  await new Promise((r) => setTimeout(r, 20))
+  expect(window.location.hash).toBe('#/today')
+})
+
+test('le etichette italiane dentro i versi inglesi hanno lang="it"', async () => {
+  mount(ok() as unknown as typeof fetch)
+  const lyrics = await enter()
+  tap(lyrics, 'gave'); tap(lyrics, 'up')
+  expect(within(lyrics).getByRole('button', { name: 'Verso intero 1' }).getAttribute('lang')).toBe('it')
+  expect(within(lyrics).getByRole('button', { name: 'Unisci «gave» e «up»' }).getAttribute('lang')).toBe('it')
+})

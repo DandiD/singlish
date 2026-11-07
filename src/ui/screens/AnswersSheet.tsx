@@ -33,7 +33,14 @@ export function AnswersSheet({ song }: { song: Song }) {
   const [msg, setMsg] = useState('')
   const { ref, closing, close } = useSheet(song.id, 'ask', !!draft && !!lex)
 
-  useEffect(() => { if (!draft) void close() }, [draft])
+  // La bozza sparisce (Chiudi, o un'altra scheda): il foglio si chiude. Ma appena arrivate le risposte il dato vivo
+  // può essere ancora indietro di un istante: prima di chiudere si controlla che la bozza manchi davvero nel database.
+  useEffect(() => {
+    if (draft) return
+    let off = false
+    db.songs.get(song.id).then((s) => { if (!off && !s?.askDraft) void close() }, reportError)
+    return () => { off = true }
+  }, [draft])
   if (!draft || !lex) return null
 
   const plan = keepPlan(lex.words, lex.chunks, lex.cards, draft, keep)

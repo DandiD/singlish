@@ -1,7 +1,7 @@
 import type { SinglishDB } from '../db/db'
 import type { AskDraft, Chunk, LineNote, Word } from '../db/types'
 import { answerKey, requestAnswers, type AskAnswer, type AskItem, type AskProposal } from './askRequest'
-import type { AskRequest } from './askSelection'
+import { MAX_REQUESTS, type AskRequest } from './askSelection'
 import { newId } from './id'
 import { addContext, contextOf, graduate } from './ingest'
 import { newCardPair } from './scheduler'
@@ -52,6 +52,17 @@ export async function saveAnswers(
   })
 }
 
+/**
+ * Rinumera le richieste prima dell'invio: le bozze unite da richieste diverse possono avere lo stesso id
+ * (due `w1` su righe diverse) e la risposta andrebbe a entrambe. `w1…` per le parole in ordine di testo, `v1…` per i versi.
+ */
+function renumber(requests: AskRequest[]): AskRequest[] {
+  const byLine = (a: AskRequest, b: AskRequest) => a.lineIndex - b.lineIndex // sort stabile: a parità resta l'ordine originale
+  const words = requests.filter((r) => r.text !== undefined).sort(byLine).map((r, i) => ({ ...r, id: `w${i + 1}` }))
+  const verses = requests.filter((r) => r.text === undefined).sort(byLine).map((r, i) => ({ ...r, id: `v${i + 1}` }))
+  return [...words, ...verses].slice(0, MAX_REQUESTS)
+}
+
 /** Chiede a Gemini le richieste dello studente e salva risposte e bozza. */
 export async function askGemini(
   db: SinglishDB,
@@ -62,7 +73,7 @@ export async function askGemini(
   const [settings, song] = await Promise.all([getSettings(db), db.songs.get(songId)])
   if (!song) throw new Error(`Song not found: ${songId}`)
   const result = await requestAnswers(
-    { kind: song.kind, title: song.title, artist: song.artist, level: settings.level, lines: song.lines, requests },
+    { kind: song.kind, title: song.title, artist: song.artist, level: settings.level, lines: song.lines, requests: renumber(requests) },
     { apiKey: settings.apiKey, model: settings.model },
     deps,
   )

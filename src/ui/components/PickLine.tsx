@@ -33,6 +33,7 @@ export function PickLine({ line, lineIndex, sel, onWord, onJoin, onVerse, disabl
           key={`j${joinKey}`}
           type="button"
           class="joint"
+          lang="it"
           aria-pressed={joined}
           aria-label={joined ? `Separa «${prev.text}» e «${t.text}»` : `Unisci «${prev.text}» e «${t.text}»`}
           disabled={disabled}
@@ -52,6 +53,7 @@ export function PickLine({ line, lineIndex, sel, onWord, onJoin, onVerse, disabl
       <button
         type="button"
         class="verse-no"
+        lang="it"
         aria-pressed={sel.verses.has(lineIndex)}
         aria-label={`Verso intero ${lineIndex + 1}`}
         disabled={disabled}

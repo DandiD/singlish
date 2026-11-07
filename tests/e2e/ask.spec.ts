@@ -74,8 +74,7 @@ test('Chiedi a Gemini: espressione unita e verso intero entrano nello Studio', a
 
   const sheet = page.getByRole('dialog', { name: 'Risposte di Gemini' })
   await expect(sheet).toBeVisible()
-  // Il foglio sale con un'animazione: il clic va dato anche se il pulsante è ancora in movimento.
-  await sheet.getByRole('button', { name: 'Aggiungi 2 card al ripasso' }).click({ force: true })
+  await sheet.getByRole('button', { name: 'Aggiungi 2 card al ripasso' }).click()
   await expect(sheet).toBeHidden()
 
   await expect(page.getByRole('link', { name: 'Note sul verso 9' })).toBeVisible()
