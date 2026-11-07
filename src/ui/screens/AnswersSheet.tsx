@@ -134,7 +134,7 @@ export function AnswersSheet({ song }: { song: Song }) {
               {`Aggiungi ${plural(plan.cards, 'card', 'card')} al ripasso`}
             </button>
           ) : (
-            <button type="button" class="btn primary" disabled={busy} onClick={() => void close()}>Chiudi</button>
+            <button type="button" class="btn primary" disabled={busy} onClick={() => void run(() => keepAnswers(db, song.id, keep, now()), () => void close())}>Chiudi</button>
           )}
           <button type="button" class="btn outline" disabled={busy} onClick={() => void run(() => dropDraft(db, song.id), () => void close())}>Chiudi senza aggiungere</button>
         </div>

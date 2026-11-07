@@ -104,3 +104,17 @@ test('Riprova: offline disabilitato; online una sola chiamata anche con secondo 
   await waitFor(() => expect(f).toHaveBeenCalledTimes(1))
   expect(f).toHaveBeenCalledTimes(1)
 })
+
+test('Chiudi con n = 0: le voci spuntate già nel lessico ricevono il verso e la bozza si toglie', async () => {
+  await db.chunks.add({
+    id: 'c1', songId: 'other', key: 'give up', baseForm: 'give up', surfaceForm: 'give up', lineIndex: 1,
+    contexts: [{ songId: 'other', lineIndex: 1 }], type: 'phrasal_verb', cefr: 'B2', register: 'usable', topic: 'love',
+    meaningIt: 'arrendersi', explanationIt: '', extraExampleEn: '', productionPromptIt: '', pronunciationNoteIt: '', userEdited: false, suspended: false,
+  })
+  await open(draft({ answers: [draft().answers[0]] }))
+  expect(screen.getByText('Già nel tuo lessico')).toBeTruthy()
+  fireEvent.click(document.querySelector('.ex-foot button') as HTMLButtonElement)
+  await waitFor(async () => expect((await db.songs.get('s1'))!.askDraft).toBeUndefined())
+  const c = (await db.chunks.get('c1'))!
+  expect(c.contexts.some((x) => x.songId === 's1' && x.lineIndex === 0)).toBe(true)
+})
