@@ -6,6 +6,7 @@ import { newId } from './id'
 import { addContext, contextOf, graduate } from './ingest'
 import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
+import { findForm } from './songItems'
 import { normalizeKey } from './text'
 
 const byLineThenWord = (a: AskAnswer, b: AskAnswer) =>
@@ -88,20 +89,30 @@ export function defaultKeep(draft: AskDraft): Set<string> {
   return new Set(draft.answers.filter((a) => a.item).map((a) => a.key))
 }
 
-type Kept = { kind: 'chunk' | 'word'; lineIndex: number; surface: string; fields: AskItem | AskProposal }
+/** Le forme candidate, dalla più fedele al verso: quella di Gemini, il testo segnato, la forma base. */
+type Kept = { kind: 'chunk' | 'word'; lineIndex: number; forms: (string | undefined)[]; fields: AskItem | AskProposal }
 
 /** Le voci spuntate, nell'ordine della bozza: item `w*` e proposte dei versi. */
 function keptEntries(draft: AskDraft, keep: ReadonlySet<string>): Kept[] {
   const out: Kept[] = []
   for (const a of draft.answers) {
     if (a.item && keep.has(a.key)) {
-      out.push({ kind: a.item.item_type, lineIndex: a.lineIndex, surface: a.item.surface_form, fields: a.item })
+      out.push({ kind: a.item.item_type, lineIndex: a.lineIndex, forms: [a.item.surface_form, a.text, a.item.base_form], fields: a.item })
     }
     for (const p of a.verse?.proposals ?? []) {
-      if (keep.has(proposalKey(a, p))) out.push({ kind: 'chunk', lineIndex: a.lineIndex, surface: p.base_form, fields: p })
+      if (keep.has(proposalKey(a, p))) out.push({ kind: 'chunk', lineIndex: a.lineIndex, forms: [p.surface_form, p.base_form], fields: p })
     }
   }
   return out
+}
+
+/**
+ * La forma da salvare: la prima che compare davvero nel verso, perché il testo la evidenzi
+ * (Gemini a volte restituisce la forma base, «pick up» per «picked up»). Se nessuna compare, quella di Gemini.
+ */
+const surfaceIn = (line: string, forms: (string | undefined)[]): string => {
+  const list = forms.filter((f): f is string => !!f?.trim())
+  return list.find((f) => findForm(line, f)) ?? list[0]
 }
 
 const lemmaOf = (k: Kept) => k.fields.base_form.trim().toLowerCase()
@@ -165,11 +176,12 @@ export async function keepAnswers(
     }
     for (const k of keptEntries(song.askDraft ?? { answers: [], unanswered: [] }, keep)) {
       const f = k.fields
+      const surface = surfaceIn(song.lines[k.lineIndex] ?? '', k.forms)
       if (k.kind === 'chunk') {
         const key = normalizeKey(f.base_form)
         const found = await db.chunks.where('key').equals(key).first()
         if (found) {
-          addContext(found.contexts, contextOf(songId, k.lineIndex, k.surface, found.surfaceForm))
+          addContext(found.contexts, contextOf(songId, k.lineIndex, surface, found.surfaceForm))
           graduate(found)
           found.suspended = false // chiesta dallo studente: torna nel ripasso
           await db.chunks.put(found)
@@ -177,7 +189,7 @@ export async function keepAnswers(
           continue
         }
         const chunk: Chunk = {
-          id: newId(), songId, key, baseForm: f.base_form, surfaceForm: k.surface, lineIndex: k.lineIndex,
+          id: newId(), songId, key, baseForm: f.base_form, surfaceForm: surface, lineIndex: k.lineIndex,
           contexts: [{ songId, lineIndex: k.lineIndex }], type: f.type as Chunk['type'], cefr: f.cefr, register: f.register, topic: f.topic,
           meaningIt: f.meaning_it, explanationIt: f.explanation_it, extraExampleEn: f.extra_example_en,
           productionPromptIt: f.production_prompt_it, pronunciationNoteIt: '', userEdited: false, suspended: false,
@@ -191,7 +203,7 @@ export async function keepAnswers(
       const lemma = lemmaOf(k)
       const found = await db.words.where('lemma').equals(lemma).first()
       if (found) {
-        if (addContext(found.contexts, contextOf(songId, k.lineIndex, k.surface, found.surfaceForm))) graduate(found)
+        if (addContext(found.contexts, contextOf(songId, k.lineIndex, surface, found.surfaceForm))) graduate(found)
         found.suspended = false // chiesta dallo studente: torna nel ripasso
         if (found.triage !== 'learn') {
           if (found.triage === 'known') found.wasKnown = true
@@ -204,7 +216,7 @@ export async function keepAnswers(
         continue
       }
       const word: Word = {
-        id: newId(), lemma, surfaceForm: k.surface, pos: f.type as Word['pos'], freqRank: 0, songId, lineIndex: k.lineIndex,
+        id: newId(), lemma, surfaceForm: surface, pos: f.type as Word['pos'], freqRank: 0, songId, lineIndex: k.lineIndex,
         contexts: [{ songId, lineIndex: k.lineIndex }], cefr: f.cefr, register: f.register, topic: f.topic,
         meaningIt: f.meaning_it, explanationIt: f.explanation_it, extraExampleEn: f.extra_example_en,
         triage: 'learn', userEdited: false, suspended: false,
