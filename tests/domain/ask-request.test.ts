@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { ASK_SCHEMA, ASK_SYSTEM_PROMPT, buildAskMessage, checkAnswers } from '../../src/domain/askRequest'
+import { describe, expect, it, vi } from 'vitest'
+import { ASK_SCHEMA, ASK_SYSTEM_PROMPT, buildAskMessage, checkAnswers, requestAnswers } from '../../src/domain/askRequest'
 import type { AskRequest } from '../../src/domain/askSelection'
 import { GeminiError } from '../../src/domain/gemini/client'
 
@@ -103,5 +103,50 @@ describe('checkAnswers', () => {
         expect((e as GeminiError).code).toBe('bad_json')
       }
     }
+  })
+})
+
+describe('requestAnswers', () => {
+  const input = { kind: 'song' as const, title: 'Paper Lanterns', artist: 'The Inventions', level: 'B2' as const, lines, requests }
+  const gemini = { apiKey: 'k', model: 'm' }
+  const ok = (x: unknown) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(x) }] } }] }), { status: 200 })
+  const run = (responses: Response[]) => {
+    const f = vi.fn(async () => responses.shift() ?? new Response('{}', { status: 500 }))
+    const deps = { fetch: f as unknown as typeof fetch, sleep: async () => {} }
+    return { f, go: () => requestAnswers(input, gemini, deps) }
+  }
+  const bodyOf = (f: ReturnType<typeof vi.fn>, n: number) => String((f.mock.calls[n] as unknown[])[1] && ((f.mock.calls[n] as unknown[])[1] as { body: string }).body)
+
+  it('one call when everything is answered', async () => {
+    const { f, go } = run([ok({ answers: [wAnswer(), vAnswer()] })])
+    const r = await go()
+    expect(f).toHaveBeenCalledTimes(1)
+    expect(r.unanswered).toEqual([])
+    expect(r.answers).toHaveLength(2)
+  })
+  it('asks once more for the missing ones only, result ordered like the requests', async () => {
+    const { f, go } = run([ok({ answers: [wAnswer()] }), ok({ answers: [vAnswer()] })])
+    const r = await go()
+    expect(f).toHaveBeenCalledTimes(2)
+    expect(bodyOf(f, 1)).toContain('v1 · riga 2')
+    expect(bodyOf(f, 1)).not.toContain('w1 ·')
+    expect(r.answers.map((a) => a.key)).toEqual(['w:0:gave up', 'v:2'])
+    expect(r.unanswered).toEqual([])
+  })
+  it('still missing after the second call: unanswered, no third call', async () => {
+    const { f, go } = run([ok({ answers: [wAnswer()] }), ok({ answers: [] })])
+    const r = await go()
+    expect(f).toHaveBeenCalledTimes(2)
+    expect(r.unanswered).toEqual([{ id: 'v1', lineIndex: 2 }])
+  })
+  it('second call failing with 400 keeps the first answers', async () => {
+    const { go } = run([ok({ answers: [wAnswer()] }), new Response('{}', { status: 400 })])
+    const r = await go()
+    expect(r.unanswered.map((q) => q.id)).toEqual(['v1'])
+    expect(r.answers.map((a) => a.key)).toEqual(['w:0:gave up'])
+  })
+  it('first call failing with 400 rejects', async () => {
+    const { go } = run([new Response('{}', { status: 400 })])
+    await expect(go()).rejects.toBeInstanceOf(GeminiError)
   })
 })

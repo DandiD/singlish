@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { GeminiError } from './gemini/client'
+import { callGemini, GeminiError, type GeminiDeps } from './gemini/client'
 import type { Level } from '../db/types'
 import type { AskRequest } from './askSelection'
 import { normalizeKey } from './text'
@@ -181,4 +181,28 @@ export function checkAnswers(raw: unknown, requests: AskRequest[]): { answers: A
     answers.push({ key: answerKey(req), lineIndex: req.lineIndex, ...(req.text !== undefined && { text: req.text }), translationIt: p.translationIt, item: p.item, verse })
   }
   return { answers, missing }
+}
+
+/**
+ * Chiede a Gemini tutte le richieste; per le mancanti fa una sola seconda chiamata.
+ * Un errore della prima si propaga; se la seconda fallisce le mancanti restano `unanswered`.
+ */
+export async function requestAnswers(
+  input: Parameters<typeof buildAskMessage>[0],
+  gemini: { apiKey: string; model: string },
+  deps: GeminiDeps,
+): Promise<{ answers: AskAnswer[]; unanswered: AskRequest[] }> {
+  const call = async (requests: AskRequest[]) =>
+    checkAnswers(await callGemini({ ...gemini, system: ASK_SYSTEM_PROMPT, user: buildAskMessage({ ...input, requests }), schema: ASK_SCHEMA }, deps), requests)
+  const first = await call(input.requests)
+  if (first.missing.length === 0) return { answers: first.answers, unanswered: [] }
+  let second = { answers: [] as AskAnswer[], missing: first.missing }
+  try {
+    second = await call(first.missing)
+  } catch {
+    // la seconda chiamata è un recupero: se fallisce restano le risposte già avute
+  }
+  const order = new Map(input.requests.map((r, i) => [answerKey(r), i]))
+  const answers = [...first.answers, ...second.answers].sort((a, b) => order.get(a.key)! - order.get(b.key)!)
+  return { answers, unanswered: second.missing }
 }
