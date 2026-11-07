@@ -118,6 +118,79 @@ Testo (righe numerate):
 `line_translations`: solo le righe con almeno un chunk o una parola estratti; la scheda dell'elemento mostra la traduzione del suo verso.
 Se `difficulty_known_pct` < 60 l'app suggerisce di rimandare la canzone (non la blocca). Una canzone rimandata («Tienila per più avanti») non porta card nuove nel ripasso finché non se ne apre lo Studio.
 
+### Chiedi a Gemini
+Dallo Studio lo studente segna parole, espressioni (parole vicine unite da un giunto) e versi interi, poi li manda a Gemini in **una** chiamata (`callGemini`: stesso modello, `temperature: 0.2`, JSON con `responseSchema`, stessi ritentativi su 429/5xx). Massimo **12 richieste** per invio (un verso = 1, un'espressione = 1): oltre il limite il tocco non segna e la barra mostra «Massimo 12 per volta». Offline il pulsante è disabilitato.
+
+#### Messaggio utente
+```text
+Tipo: canzone | Tipo: testo libero (non una canzone)
+Titolo: {title} — {artist}          (riga omessa se entrambi vuoti)
+Livello: {level}
+Testo (righe numerate):
+{index}: {line}
+...
+Richieste:
+w1 · riga 4 · "gave up"
+w2 · riga 4 · "cold"
+v1 · riga 7
+```
+
+#### Prompt di sistema
+```text
+Sei un insegnante di inglese madrelingua che lavora con studenti italiani.
+Lo studente sta studiando il testo e ti manda delle richieste, ognuna con un id.
+Rispondi a ogni id esattamente una volta, senza saltarne nessuno e senza aggiungerne.
+Prima di rispondere leggi il verso e quelli vicini: il significato è quello che ha in quel verso,
+non quello del dizionario. Se è figurato, ironico, slang o un gioco di parole, dillo.
+Per ogni id scrivi translation_it: la traduzione di tutto il verso in italiano naturale,
+come la direbbe un italiano, non parola per parola. Non è mai vuota.
+Richieste w (parole o espressioni segnate):
+- decidi se è un chunk (phrasal verb, idioma, collocazione, frase fatta, slang: più parole da imparare
+  insieme) o una parola singola (lemma);
+- se ciò che è segnato fa parte di un'espressione più ampia nel verso, restituisci l'espressione intera
+  in surface_form e metti widened a true; altrimenti surface_form è esattamente il testo segnato;
+- forma base, tipo, livello, registro (usable | informal | song_only), tema, significato in italiano
+  nel contesto del verso, spiegazione di massimo 20 parole in italiano, un esempio d'uso quotidiano in
+  inglese; per i chunk anche una situazione in italiano per produrlo.
+Richieste v (versi interi):
+- sense_it: cosa dice davvero il verso, massimo 40 parole;
+- grammar_it: una costruzione utile o insolita del verso, massimo 30 parole; null se non c'è niente di utile;
+- culture_it: riferimento culturale, slang o citazione, massimo 30 parole; null se non c'è;
+- proposals: da 0 a 2 chunk del verso utili al livello dello studente, con gli stessi campi dei chunk.
+Non inventare: se non sei sicuro, dillo nella spiegazione.
+```
+Per i testi liberi il messaggio dice «testo libero»; nessuna nota di pronuncia.
+
+#### Schema della risposta
+```json
+{
+  "answers": [{
+    "id": "w1",
+    "translation_it": "",
+    "item": { "item_type": "chunk | word", "base_form": "", "surface_form": "", "widened": false,
+      "type": "phrasal_verb | idiom | collocation | fixed_phrase | slang | noun | verb | adjective | adverb",
+      "cefr": "B1", "register": "usable", "topic": "emotions",
+      "meaning_it": "", "explanation_it": "", "extra_example_en": "", "production_prompt_it": "" },
+    "verse": { "sense_it": "", "grammar_it": null, "culture_it": null, "proposals": [ /* chunk come sopra */ ] }
+  }]
+}
+```
+`item` e `verse` sono `nullable`: per `w*` c'è solo `item`, per `v*` solo `verse`. Per `item_type: "word"` `base_form` è il lemma e `type` la parte del discorso.
+
+#### Controllo della risposta
+- Si scartano id sconosciuti, ripetuti (vale il primo) o con il campo sbagliato (`item` su un `v*` e viceversa).
+- La riga si ricava dall'id richiesto, mai da Gemini.
+- Una risposta è **completa** se ha `translation_it` non vuota e il suo campo (`item` o `verse`) valido.
+- Se mancano risposte complete: **una** chiamata di recupero, con lo stesso prompt e solo le richieste mancanti (stessi id). Le risposte complete si uniscono.
+- Ciò che resta senza risposta va nella bozza come «senza risposta».
+- Proposte con `base_form` uguale (per `normalizeKey`) a una voce `w*` della stessa risposta si scartano.
+
+#### Recupero, bozza e note
+- Se mancano risposte complete parte **una** sola chiamata di recupero, con lo stesso prompt e solo le richieste mancanti (stessi id); ciò che resta senza risposta va nella bozza come «senza risposta» e si rimanda con «Riprova».
+- Traduzioni (solo quelle mancanti) e note dei versi (`Song.lineNotes`, una nuova nota sostituisce la precedente) si salvano subito; le risposte vanno in `Song.askDraft`, bozza pendente che si unisce alle richieste successive.
+- Il foglio «Risposte di Gemini» fa scegliere cosa entra nel ripasso: «Aggiungi N card al ripasso» crea le voci spuntate (chunk o parola nuova = 2 card, voce esistente = riceve il verso, nessun duplicato) e cancella la bozza; «Chiudi senza aggiungere» cancella solo la bozza.
+- In Studio un verso con nota mostra un segno che apre un foglio con verso, traduzione, Senso, Grammatica e Cultura (queste ultime se presenti). Con una bozza pendente Studio mostra «Hai risposte da rivedere».
+
 ## 9. Spotify
 Solo link. Titolo dal endpoint oEmbed `https://open.spotify.com/oembed?url={trackUrl}` (campo `title`). Se la chiamata fallisce (CORS o rete), campi vuoti da compilare a mano. Nessuna API Spotify autenticata. Link accettati: `https://open.spotify.com/track/{id}` con eventuale `?si=…` e prefisso `intl-xx/`.
 

@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { askGemini } from '../../src/domain/ask'
+import { askGemini, defaultKeep, keepAnswers } from '../../src/domain/askDraft'
 import { getSettings, saveSettings } from '../../src/domain/settings'
 import { newFsrsCard, recordReview } from '../../src/domain/scheduler'
 import type { Chunk, Song, Word } from '../../src/db/types'
@@ -18,9 +18,10 @@ test('Chiedi a Gemini: una voce che c\'era già, segnata in due versi, conta una
   const glide: Word = { id: 'g', lemma: 'glide', surfaceForm: 'glide', pos: 'verb', freqRank: 9000, songId: 's1', lineIndex: 0, contexts: [{ songId: 's1', lineIndex: 0 }, { songId: 's1', lineIndex: 1 }],
     cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'scivolare', explanationIt: '', extraExampleEn: '', triage: 'known', userEdited: false, suspended: false }
   await db.words.add(glide)
-  const w = (line: number) => ({ lemma: 'glide', surface_form: 'glide', line_index: line, pos: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'scivolare', explanation_it: '', extra_example_en: '' })
-  const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ chunks: [], words: [w(0), w(1)], line_translations: [] }) }] } }] })))
-  expect(await askGemini(db, 's1', [{ lineIndex: 0, text: 'glide' }, { lineIndex: 1, text: 'glide' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })).toEqual({ added: 0, existing: 1 })
+  const w = (id: string) => ({ id, translation_it: 'scivoliamo', verse: null, item: { item_type: 'word', base_form: 'glide', surface_form: 'glide', widened: false, type: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'scivolare', explanation_it: '', extra_example_en: '', production_prompt_it: '' } })
+  const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ answers: [w('w1'), w('w2')] }) }] } }] })))
+  const draft = await askGemini(db, 's1', [{ id: 'w1', lineIndex: 0, text: 'glide' }, { id: 'w2', lineIndex: 1, text: 'glide' }], { fetch: f as unknown as typeof fetch, sleep: async () => {} })
+  expect(await keepAnswers(db, 's1', defaultKeep(draft), now)).toEqual({ added: 0, existing: 1 })
 })
 
 test('la fascia ricorda se viene dal test di vocabolario; cambiare livello la riporta al livello', async () => {
@@ -55,12 +56,12 @@ test('la fascia dal test sopravvive a esportazione e importazione del backup', a
 test('Chiedi a Gemini su una canzone eliminata durante la chiamata: nessuna voce orfana', async () => {
   await saveSettings(db, { apiKey: 'k' })
   await db.songs.add(song('s1'))
-  const w = { lemma: 'glide', surface_form: 'glide', line_index: 0, pos: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'scivolare', explanation_it: '', extra_example_en: '' }
+  const w = { id: 'w1', translation_it: 'scivoliamo', verse: null, item: { item_type: 'word', base_form: 'glide', surface_form: 'glide', widened: false, type: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'scivolare', explanation_it: '', extra_example_en: '', production_prompt_it: '' } }
   const f = vi.fn(async () => {
     await db.songs.delete('s1') // eliminata mentre Gemini risponde
-    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ chunks: [], words: [w], line_translations: [] }) }] } }] }))
+    return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify({ answers: [w] }) }] } }] }))
   })
-  await expect(askGemini(db, 's1', [{ lineIndex: 0, text: 'glide' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })).rejects.toThrow()
+  await expect(askGemini(db, 's1', [{ id: 'w1', lineIndex: 0, text: 'glide' }], { fetch: f as unknown as typeof fetch, sleep: async () => {} })).rejects.toThrow()
   expect(await db.words.count()).toBe(0)
   expect(await db.cards.count()).toBe(0)
 })

@@ -583,3 +583,22 @@ describe('Songs covers', () => {
     expect(container.querySelectorAll('li.shelf-item .cover.cover-lg')).toHaveLength(3)
   })
 })
+
+describe('AddSong · cerca il testo', () => {
+  test('link a Google con titolo e artista, in una scheda nuova', () => {
+    mount(<AddSong />)
+    expect(screen.queryByRole('link', { name: /Cerca il testo su Google/ })).toBeNull()
+    fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: 'Midnight Harbor' } })
+    fireEvent.input(screen.getByLabelText('Artista'), { target: { value: 'The Paper Owls' } })
+    const a = screen.getByRole('link', { name: 'Cerca il testo su Google ↗' })
+    expect(a.getAttribute('href')).toBe('https://www.google.com/search?q=Midnight+Harbor+The+Paper+Owls+lyrics')
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
+  test('niente link in Aggiungi testo', () => {
+    mount(<AddSong kind="text" />)
+    fireEvent.input(screen.getByLabelText('Titolo'), { target: { value: 'Pilot' } })
+    expect(screen.queryByRole('link', { name: /Cerca il testo su Google/ })).toBeNull()
+  })
+})

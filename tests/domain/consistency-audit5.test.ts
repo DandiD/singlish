@@ -3,7 +3,7 @@ import { State } from 'ts-fsrs'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { buildSessionQueue } from '../../src/domain/queue'
 import { expansionPlan } from '../../src/domain/expand'
-import { askGemini } from '../../src/domain/ask'
+import { askGemini, defaultKeep, keepAnswers } from '../../src/domain/askDraft'
 import { saveProduction, confirmProductions } from '../../src/domain/production'
 import { saveSettings } from '../../src/domain/settings'
 import { newCardPair, newFsrsCard } from '../../src/domain/scheduler'
@@ -35,9 +35,10 @@ test('due collocazioni uguali a meno di maiuscole diventano un solo chunk', () =
 test('chiedere a Gemini una voce sospesa la riattiva: l\'hai scelta tu', async () => {
   await db.songs.add(song('A', 'studying'))
   await db.words.add(word('rely', { suspended: true }))
-  const answer = { chunks: [], words: [{ lemma: 'rely', surface_form: 'rely', line_index: 0, pos: 'verb', cefr: 'B1', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '' }], line_translations: [] }
+  const answer = { answers: [{ id: 'w1', translation_it: 'ci affidiamo', verse: null, item: { item_type: 'word', base_form: 'rely', surface_form: 'rely', widened: false, type: 'verb', cefr: 'B1', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '', production_prompt_it: '' } }] }
   const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] })))
-  await askGemini(db, 'A', [{ lineIndex: 0, text: 'rely' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })
+  const draft = await askGemini(db, 'A', [{ id: 'w1', lineIndex: 0, text: 'rely' }], { fetch: f as unknown as typeof fetch, sleep: async () => {} })
+  await keepAnswers(db, 'A', defaultKeep(draft), now)
   expect((await db.words.get('rely'))!.suspended).toBe(false)
 })
 

@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { createSong, excludeItem, saveAnalysis } from '../../src/domain/ingest'
-import { askGemini } from '../../src/domain/ask'
+import { askGemini, defaultKeep, keepAnswers } from '../../src/domain/askDraft'
 import { newCardPair } from '../../src/domain/scheduler'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
@@ -36,11 +36,12 @@ test('Chiedi a Gemini: una voce restituita due volte nella stessa risposta non c
   const song: Song = { id: 's1', kind: 'text', source: 'serie', title: 'T', artist: '', spotifyUrl: null, lines: ['we drop the ball', 'they drop the ball again'], status: 'studying', level: 'B2',
     difficultyKnownPct: 70, comprehensionBefore: null, grammarPoint: null, connectedSpeech: [], addedAt: now, analyzedAt: now }
   await db.songs.add(song)
-  const c = (line: number) => ({ base_form: 'drop the ball', surface_form: 'drop the ball', line_index: line, type: 'idiom', cefr: 'B2', register: 'informal', topic: 'work',
-    meaning_it: 'sbagliare', explanation_it: '', extra_example_en: '', production_prompt_it: '', pronunciation_note_it: 'suona dropthe' })
-  const answer = { chunks: [c(0), c(1)], words: [], line_translations: [] }
+  const c = (id: string) => ({ id, translation_it: 'sbagliamo', verse: null, item: { item_type: 'chunk', base_form: 'drop the ball', surface_form: 'drop the ball', widened: false, type: 'idiom', cefr: 'B2', register: 'informal', topic: 'work',
+    meaning_it: 'sbagliare', explanation_it: '', extra_example_en: '', production_prompt_it: '' } })
+  const answer = { answers: [c('w1'), c('w2')] }
   const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] })))
-  const r = await askGemini(db, 's1', [{ lineIndex: 0, text: 'drop the ball' }, { lineIndex: 1, text: 'drop the ball' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })
+  const draft = await askGemini(db, 's1', [{ id: 'w1', lineIndex: 0, text: 'drop the ball' }, { id: 'w2', lineIndex: 1, text: 'drop the ball' }], { fetch: f as unknown as typeof fetch, sleep: async () => {} })
+  const r = await keepAnswers(db, 's1', defaultKeep(draft), now)
   expect(r).toEqual({ added: 1, existing: 0 })
   const [chunk] = await db.chunks.toArray()
   expect(chunk.contexts).toHaveLength(2)

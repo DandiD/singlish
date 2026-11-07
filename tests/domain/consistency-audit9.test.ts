@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { createSong, saveAnalysis, deleteSong } from '../../src/domain/ingest'
-import { askGemini } from '../../src/domain/ask'
+import { askGemini, defaultKeep, keepAnswers } from '../../src/domain/askDraft'
 import { saveSettings } from '../../src/domain/settings'
 import type { Analysis } from '../../src/domain/gemini/parse'
 import type { Word } from '../../src/db/types'
@@ -28,9 +28,10 @@ test('una parola nota passata in studio e mai ripassata, eliminata la canzone, t
   const b = await createSong(db, { title: 'B', artist: '', spotifyUrl: null, rawText: 'we wander home', comprehensionBefore: null }, now)
   await db.songs.update(b.id, { status: 'studying' })
   await db.words.add(profile('wander'))
-  const answer = { chunks: [], words: [{ lemma: 'wander', surface_form: 'wander', line_index: 0, pos: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '' }], line_translations: [] }
+  const answer = { answers: [{ id: 'w1', translation_it: 'vagare a casa', verse: null, item: { item_type: 'word', base_form: 'wander', surface_form: 'wander', widened: false, type: 'verb', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '', production_prompt_it: '' } }] }
   const f = vi.fn().mockResolvedValue(new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(answer) }] } }] })))
-  await askGemini(db, b.id, [{ lineIndex: 0, text: 'wander' }], { fetch: f as unknown as typeof fetch, sleep: async () => {}, now })
+  const draft = await askGemini(db, b.id, [{ id: 'w1', lineIndex: 0, text: 'wander' }], { fetch: f as unknown as typeof fetch, sleep: async () => {} })
+  await keepAnswers(db, b.id, defaultKeep(draft), now)
   expect((await db.words.get('wander'))!).toMatchObject({ triage: 'learn', songId: b.id })
   await deleteSong(db, b.id)
   expect((await db.words.get('wander'))?.triage).toBe('known')

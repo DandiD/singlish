@@ -5,6 +5,7 @@ import { failedMessage } from '../errors'
 import { href, goReplace, onBack } from '../../router'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
 import { splitLines } from '../../domain/text'
+import { lyricsSearchUrl } from '../../domain/lyricsSearch'
 import { createSong, activeSongCount, LIMIT_NOTE, MAX_OPEN_SONGS } from '../../domain/ingest'
 import { Icon } from '../components/Icon'
 import { ensureCover } from '../../domain/cover'
@@ -69,6 +70,7 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
   const full = (open ?? 0) >= MAX_OPEN_SONGS
   const canSubmit = splitLines(text).length > 0 && !full && !busy
   const canonical = parseSpotifyTrackUrl(link)
+  const lyricsUrl = isText ? null : lyricsSearchUrl(title, artist)
   // Si segnala solo dopo aver lasciato il campo: mentre si incolla o si scrive non disturba.
   const badLink = linkLeft && link.trim() !== '' && !canonical
 
@@ -267,6 +269,9 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
               onInput={(e) => setText((e.currentTarget as HTMLTextAreaElement).value)}
             />
           </label>
+          {lyricsUrl && (
+            <a href={lyricsUrl} target="_blank" rel="noopener noreferrer">Cerca il testo su Google ↗</a>
+          )}
         </section>
 
         {isText && (

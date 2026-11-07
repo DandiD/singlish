@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
 import { createSong, saveAnalysis } from '../../src/domain/ingest'
 import { requestExpansion, addExpansion, expansionPlan } from '../../src/domain/expand'
-import { askGemini } from '../../src/domain/ask'
+import { askGemini, defaultKeep, keepAnswers } from '../../src/domain/askDraft'
 import { saveSettings } from '../../src/domain/settings'
 import { newCardPair } from '../../src/domain/scheduler'
 import type { Analysis } from '../../src/domain/gemini/parse'
@@ -33,8 +33,9 @@ test('la voce di Espandi che riceve un verso passa alla canzone, alla riga e all
 test('una parola che passa in studio riceve R e C anche se aveva già un\'altra card', async () => {
   await db.words.add(word('scramble', { triage: 'known' }))
   await db.cards.add({ ...newCardPair('word', 'scramble', now)[0], id: 's1', kind: 'S' })
-  const answer = { chunks: [], words: [{ lemma: 'scramble', surface_form: 'rely', line_index: 0, pos: 'verb', cefr: 'B1', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '' }], line_translations: [] }
-  await askGemini(db, 'A', [{ lineIndex: 0, text: 'rely' }], { fetch: reply(answer) as unknown as typeof fetch, sleep: async () => {}, now })
+  const answer = { answers: [{ id: 'w1', translation_it: 'ci affidiamo', verse: null, item: { item_type: 'word', base_form: 'scramble', surface_form: 'rely', widened: false, type: 'verb', cefr: 'B1', register: 'usable', topic: 'other', meaning_it: 'x', explanation_it: '', extra_example_en: '', production_prompt_it: '' } }] }
+  const draft = await askGemini(db, 'A', [{ id: 'w1', lineIndex: 0, text: 'rely' }], { fetch: reply(answer) as unknown as typeof fetch, sleep: async () => {} })
+  await keepAnswers(db, 'A', defaultKeep(draft), now)
   const kinds = (await db.cards.where('itemId').equals('scramble').toArray()).map((c) => c.kind).sort()
   expect(kinds).toEqual(['C', 'R', 'S'])
 })
