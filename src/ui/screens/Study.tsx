@@ -23,6 +23,7 @@ import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
 import { ItemSheet, SpeechSheet } from './ItemSheet'
 import { AnswersSheet } from './AnswersSheet'
+import { VerseSheet } from './VerseSheet'
 import { rCardStates, unlockedLines } from '../../domain/unlocked'
 import { unlockedText } from '../todayText'
 
@@ -181,6 +182,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     }
   }
 
+  const noted = new Set((song.lineNotes ?? []).map((n) => n.lineIndex))
   const lineStates = new Map((unlock?.lines ?? []).map((l) => [l.lineIndex, l]))
   const chunkCount = placed.chunks.size
   const wordCount = placed.words.size
@@ -323,7 +325,12 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
                 onVerse={(n) => change(toggleVerse(sel, n))}
               />
             ) : (
-              <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
+              <>
+                <Highlighted line={l} spans={placed.spansByLine[i]} hrefFor={hrefAt(i)} />
+                {noted.has(i) && (
+                  <a class="verse-note" href={href({ name: 'study', songId, itemId: `ln:${i}` })} aria-label={`Note sul verso ${i + 1}`}><Icon name="lexicon" size={18} /></a>
+                )}
+              </>
             )}
           </p>
           )
@@ -367,7 +374,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       )}
 
       {/* Una scheda nuova per ogni voce: lo stato di chiusura di quella prima non deve bloccare questa. */}
-      {itemId && (itemId === 'ask' ? <AnswersSheet key={itemId} song={song} /> : itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}
+      {itemId && (itemId === 'ask' ? <AnswersSheet key={itemId} song={song} /> : itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : itemId.startsWith('ln:') ? <VerseSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}
     </main>
   )
 }
