@@ -3,6 +3,7 @@ import { useLive } from '../useLive'
 import { reportError } from '../report'
 import { useAddGate } from '../components/UnlockSheet'
 import { fetchTrackTitle, parseSpotifyTrackUrl } from '../../domain/spotify'
+import { lyricsSearchUrl } from '../../domain/lyricsSearch'
 import { LINK_ERROR } from './AddSong'
 import { useDeps } from '../deps'
 import { href } from '../../router'
@@ -71,8 +72,10 @@ export function Songs() {
     const ring = u && u.total > 0 ? u.unlocked / u.total : null
     const toAnalyze = s.status === 'queued' || s.status === 'draft'
     const gain = s.status === 'done' ? gainText(s) : null
+    const lyricsUrl = s.kind === 'text' ? null : lyricsSearchUrl(s.title, s.artist)
     const actions: MoreMenuItem[] = [
       ...(s.spotifyUrl ? [{ text: 'Apri in Spotify ↗', onSelect: () => { window.open(s.spotifyUrl!, '_blank', 'noopener,noreferrer') } }] : []),
+      ...(lyricsUrl ? [{ text: 'Cerca il testo su Google ↗', onSelect: () => { window.open(lyricsUrl, '_blank', 'noopener,noreferrer') } }] : []),
       { text: 'Modifica', onSelect: () => { setDeleting(null); setEditing(s.id) } },
       { text: 'Elimina', danger: true, onSelect: () => { setEditing(null); setDeleting(s.id) } },
     ]
