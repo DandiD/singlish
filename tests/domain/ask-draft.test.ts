@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createDb, type SinglishDB } from '../../src/db/db'
-import { askGemini, saveAnswers } from '../../src/domain/askDraft'
+import { askGemini, defaultKeep, dropDraft, keepAnswers, keepPlan, proposalKey, saveAnswers } from '../../src/domain/askDraft'
 import type { AskAnswer } from '../../src/domain/askRequest'
 import type { AskRequest } from '../../src/domain/askSelection'
 import { GeminiError } from '../../src/domain/gemini/client'
 import { saveSettings } from '../../src/domain/settings'
-import type { Song } from '../../src/db/types'
+import type { Song, Word } from '../../src/db/types'
 
 const now = new Date('2026-11-04T10:00:00Z')
 const lines = ['I gave up on you, babe', "don't, you know", 'paper lanterns drift']
@@ -117,5 +117,90 @@ describe('askGemini', () => {
     const f = vi.fn()
     await expect(askGemini(db, 's1', requests, { fetch: f as unknown as typeof fetch, sleep: async () => {} })).rejects.toMatchObject({ code: 'no_key' })
     await expect(askGemini(db, 's1', requests, { fetch: f as unknown as typeof fetch, sleep: async () => {} })).rejects.toBeInstanceOf(GeminiError)
+  })
+})
+
+describe('keepAnswers', () => {
+  let db: SinglishDB
+  beforeEach(async () => {
+    db = createDb(`ask-draft-${Math.random()}`)
+    await db.songs.add(song)
+  })
+  const proposal = { type: 'idiom', base_form: 'paper lantern', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'lanterna', explanation_it: '', extra_example_en: 'x', production_prompt_it: 'y' } as const
+  const withProposal = (): AskAnswer => ({ ...vAns(), verse: { ...vAns().verse!, proposals: [proposal] } })
+  const wordAns = (key: string, lineIndex: number, base = 'glide'): AskAnswer => ({
+    key, lineIndex, text: base, translationIt: 't',
+    item: { item_type: 'word', base_form: base, surface_form: base, widened: false, ...fields, type: 'verb' } as AskAnswer['item'], verse: null,
+  })
+  const put = (answers: AskAnswer[]) => saveAnswers(db, 's1', { answers, unanswered: [] })
+  const oldWord = (over: Partial<Word> = {}): Word => ({
+    id: 'g', lemma: 'glide', surfaceForm: 'glide', pos: 'verb', freqRank: 9000, songId: 's1', lineIndex: 1, contexts: [{ songId: 's1', lineIndex: 1 }],
+    cefr: 'B2', register: 'usable', topic: 'other', meaningIt: 'x', explanationIt: '', extraExampleEn: '', triage: 'learn', userEdited: false, suspended: false, ...over,
+  })
+
+  it('defaultKeep ticks every item and no proposal', async () => {
+    const draft = await put([wAns(), withProposal()])
+    const keep = defaultKeep(draft)
+    expect([...keep]).toEqual(['w:0:gave up'])
+    expect([...keep].some((k) => k.includes('>'))).toBe(false)
+    expect(proposalKey(withProposal(), proposal)).toBe('v:2>paper lantern')
+  })
+
+  it('adds the ticked chunk with 2 cards, skips the unticked proposal, drops the draft', async () => {
+    const draft = await put([wAns(), withProposal()])
+    expect(await keepAnswers(db, 's1', defaultKeep(draft), now)).toEqual({ added: 1, existing: 0 })
+    expect(await db.chunks.count()).toBe(1)
+    expect(await db.cards.count()).toBe(2)
+    expect((await db.songs.get('s1'))!.askDraft).toBeUndefined()
+  })
+
+  it('adds a ticked proposal as a chunk with surface = base form', async () => {
+    const draft = await put([withProposal()])
+    await keepAnswers(db, 's1', new Set([proposalKey(draft.answers[0], proposal)]), now)
+    expect(await db.chunks.toArray()).toMatchObject([{ baseForm: 'paper lantern', surfaceForm: 'paper lantern', lineIndex: 2, pronunciationNoteIt: '' }])
+    expect(await db.cards.count()).toBe(2)
+  })
+
+  it('the same base form on two lines: one chunk, two contexts, 2 cards, plan agrees', async () => {
+    const a1 = { ...wAns(), key: 'w:0:gave up', lineIndex: 0 }
+    const a2 = { ...wAns(), key: 'w:1:gave up', lineIndex: 1 }
+    const draft = await put([a1, a2])
+    const keep = defaultKeep(draft)
+    expect(keepPlan([], [], [], draft, keep)).toEqual({ cards: 2, existing: 0 })
+    expect(await keepAnswers(db, 's1', keep, now)).toEqual({ added: 1, existing: 0 })
+    const [chunk] = await db.chunks.toArray()
+    expect(chunk.contexts).toHaveLength(2)
+    expect(await db.cards.count()).toBe(2)
+  })
+
+  it('a known word ticked goes to learn with wasKnown and 2 cards', async () => {
+    await db.words.add(oldWord({ triage: 'known' }))
+    const draft = await put([wordAns('w:0:glide', 0)])
+    const keep = defaultKeep(draft)
+    expect(keepPlan(await db.words.toArray(), [], [], draft, keep)).toEqual({ cards: 2, existing: 1 })
+    expect(await keepAnswers(db, 's1', keep, now)).toEqual({ added: 0, existing: 1 })
+    expect(await db.words.get('g')).toMatchObject({ triage: 'learn', wasKnown: true })
+    expect(await db.cards.count()).toBe(2)
+  })
+
+  it('nothing ticked: no cards, draft dropped', async () => {
+    await put([wAns()])
+    expect(await keepAnswers(db, 's1', new Set(), now)).toEqual({ added: 0, existing: 0 })
+    expect(await db.cards.count()).toBe(0)
+    expect((await db.songs.get('s1'))!.askDraft).toBeUndefined()
+  })
+
+  it('rejects when the song is gone', async () => {
+    await db.songs.delete('s1')
+    await expect(keepAnswers(db, 's1', new Set(), now)).rejects.toThrow()
+  })
+
+  it('dropDraft removes only the draft', async () => {
+    await put([vAns()])
+    await dropDraft(db, 's1')
+    const s = (await db.songs.get('s1'))!
+    expect(s.askDraft).toBeUndefined()
+    expect(s.lineNotes).toHaveLength(1)
+    expect(s.lineTranslations).toHaveLength(1)
   })
 })

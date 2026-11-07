@@ -1,8 +1,12 @@
 import type { SinglishDB } from '../db/db'
-import type { AskDraft, LineNote } from '../db/types'
-import { answerKey, requestAnswers, type AskAnswer } from './askRequest'
+import type { AskDraft, Chunk, LineNote, Word } from '../db/types'
+import { answerKey, requestAnswers, type AskAnswer, type AskItem, type AskProposal } from './askRequest'
 import type { AskRequest } from './askSelection'
+import { newId } from './id'
+import { addContext, contextOf, graduate } from './ingest'
+import { newCardPair } from './scheduler'
 import { getSettings } from './settings'
+import { normalizeKey } from './text'
 
 const byLineThenWord = (a: AskAnswer, b: AskAnswer) =>
   a.lineIndex - b.lineIndex || Number(a.text === undefined) - Number(b.text === undefined)
@@ -63,4 +67,148 @@ export async function askGemini(
     deps,
   )
   return saveAnswers(db, songId, result)
+}
+
+/** Chiave di una proposta di un verso nell'insieme delle voci spuntate. */
+export const proposalKey = (a: AskAnswer, p: AskProposal): string => `${a.key}>${normalizeKey(p.base_form)}`
+
+/** Di partenza sono spuntate le voci chieste dallo studente; le proposte restano da scegliere. */
+export function defaultKeep(draft: AskDraft): Set<string> {
+  return new Set(draft.answers.filter((a) => a.item).map((a) => a.key))
+}
+
+type Kept = { kind: 'chunk' | 'word'; lineIndex: number; surface: string; fields: AskItem | AskProposal }
+
+/** Le voci spuntate, nell'ordine della bozza: item `w*` e proposte dei versi. */
+function keptEntries(draft: AskDraft, keep: ReadonlySet<string>): Kept[] {
+  const out: Kept[] = []
+  for (const a of draft.answers) {
+    if (a.item && keep.has(a.key)) {
+      out.push({ kind: a.item.item_type, lineIndex: a.lineIndex, surface: a.item.surface_form, fields: a.item })
+    }
+    for (const p of a.verse?.proposals ?? []) {
+      if (keep.has(proposalKey(a, p))) out.push({ kind: 'chunk', lineIndex: a.lineIndex, surface: p.base_form, fields: p })
+    }
+  }
+  return out
+}
+
+const lemmaOf = (k: Kept) => k.fields.base_form.trim().toLowerCase()
+
+/** Quante card nascono e quante voci c'erano già, per l'annuncio prima di «Aggiungi». */
+export function keepPlan(
+  words: Word[],
+  chunks: Chunk[],
+  cards: { itemId: string; kind: string }[],
+  draft: AskDraft,
+  keep: ReadonlySet<string>,
+): { cards: number; existing: number } {
+  const chunkKeys = new Set(chunks.map((c) => c.key))
+  const wordByLemma = new Map(words.map((w) => [w.lemma, w]))
+  const hasR = new Set(cards.filter((c) => c.kind === 'R').map((c) => c.itemId))
+  // Una voce ripetuta in più versi conta una volta sola.
+  const seen = new Set<string>()
+  let newCards = 0
+  let existing = 0
+  for (const k of keptEntries(draft, keep)) {
+    const id = `${k.kind}:${k.kind === 'chunk' ? normalizeKey(k.fields.base_form) : lemmaOf(k)}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    if (k.kind === 'chunk') {
+      if (chunkKeys.has(normalizeKey(k.fields.base_form))) existing++
+      else newCards += 2
+      continue
+    }
+    const found = wordByLemma.get(lemmaOf(k))
+    if (!found) newCards += 2
+    else {
+      existing++
+      if (found.triage !== 'learn' && !hasR.has(found.id)) newCards += 2
+    }
+  }
+  return { cards: newCards, existing }
+}
+
+/**
+ * Aggiunge al ripasso le voci spuntate: chunk e parole entrano subito (le ha scelte lo studente).
+ * Una voce già presente non si duplica: riceve il verso e, se era una parola da smistare o nota, passa in studio.
+ * La bozza si toglie.
+ */
+export async function keepAnswers(
+  db: SinglishDB,
+  songId: string,
+  keep: ReadonlySet<string>,
+  now: Date,
+): Promise<{ added: number; existing: number }> {
+  return db.transaction('rw', db.songs, db.chunks, db.words, db.cards, async () => {
+    const song = await db.songs.get(songId)
+    if (!song) throw new Error(`Song not found: ${songId}`)
+    let added = 0
+    let existing = 0
+    // Le voci create in questa chiamata: se si ripetono, prendono il verso ma non contano come «c'era già».
+    const created = new Set<string>()
+    // Una voce che c'era già conta una volta sola, anche se segnata in più versi.
+    const counted = new Set<string>()
+    const count = (id: string) => {
+      if (!created.has(id) && !counted.has(id)) { counted.add(id); existing++ }
+    }
+    for (const k of keptEntries(song.askDraft ?? { answers: [], unanswered: [] }, keep)) {
+      const f = k.fields
+      if (k.kind === 'chunk') {
+        const key = normalizeKey(f.base_form)
+        const found = await db.chunks.where('key').equals(key).first()
+        if (found) {
+          addContext(found.contexts, contextOf(songId, k.lineIndex, k.surface, found.surfaceForm))
+          graduate(found)
+          found.suspended = false // chiesta dallo studente: torna nel ripasso
+          await db.chunks.put(found)
+          count(found.id)
+          continue
+        }
+        const chunk: Chunk = {
+          id: newId(), songId, key, baseForm: f.base_form, surfaceForm: k.surface, lineIndex: k.lineIndex,
+          contexts: [{ songId, lineIndex: k.lineIndex }], type: f.type as Chunk['type'], cefr: f.cefr, register: f.register, topic: f.topic,
+          meaningIt: f.meaning_it, explanationIt: f.explanation_it, extraExampleEn: f.extra_example_en,
+          productionPromptIt: f.production_prompt_it, pronunciationNoteIt: '', userEdited: false, suspended: false,
+        }
+        await db.chunks.add(chunk)
+        created.add(chunk.id)
+        await db.cards.bulkAdd(newCardPair('chunk', chunk.id, now))
+        added++
+        continue
+      }
+      const lemma = lemmaOf(k)
+      const found = await db.words.where('lemma').equals(lemma).first()
+      if (found) {
+        if (addContext(found.contexts, contextOf(songId, k.lineIndex, k.surface, found.surfaceForm))) graduate(found)
+        found.suspended = false // chiesta dallo studente: torna nel ripasso
+        if (found.triage !== 'learn') {
+          if (found.triage === 'known') found.wasKnown = true
+          found.triage = 'learn'
+          // Riconosci e Completa servono anche se la parola ha già un'altra card (es. Sfumature).
+          if ((await db.cards.where('itemId').equals(found.id).filter((c) => c.kind === 'R').count()) === 0) await db.cards.bulkAdd(newCardPair('word', found.id, now))
+        }
+        await db.words.put(found)
+        count(found.id)
+        continue
+      }
+      const word: Word = {
+        id: newId(), lemma, surfaceForm: k.surface, pos: f.type as Word['pos'], freqRank: 0, songId, lineIndex: k.lineIndex,
+        contexts: [{ songId, lineIndex: k.lineIndex }], cefr: f.cefr, register: f.register, topic: f.topic,
+        meaningIt: f.meaning_it, explanationIt: f.explanation_it, extraExampleEn: f.extra_example_en,
+        triage: 'learn', userEdited: false, suspended: false,
+      }
+      await db.words.add(word)
+      created.add(word.id)
+      await db.cards.bulkAdd(newCardPair('word', word.id, now))
+      added++
+    }
+    await db.songs.update(songId, { askDraft: undefined })
+    return { added, existing }
+  })
+}
+
+/** «Chiudi senza aggiungere»: toglie la bozza, traduzioni e note dei versi restano. */
+export async function dropDraft(db: SinglishDB, songId: string): Promise<void> {
+  await db.songs.update(songId, { askDraft: undefined })
 }
