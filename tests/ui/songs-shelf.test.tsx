@@ -142,11 +142,24 @@ describe('Canzoni come scaffale', () => {
     const noLink = await item('Paper Lanterns')
     fireEvent.click(within(noLink).getByRole('button', { name: /^Azioni per/ }))
     expect(within(noLink).queryByRole('menuitem', { name: 'Apri in Spotify ↗' })).toBeNull()
-    expect(within(noLink).getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Modifica', 'Elimina'])
+    expect(within(noLink).getAllByRole('menuitem').map((m) => m.textContent)).toEqual(['Cerca il testo su Google ↗', 'Modifica', 'Elimina'])
     fireEvent.keyDown(within(noLink).getByRole('menu'), { key: 'Escape' })
     const withLink = await item('Old Tide')
     fromMenu(withLink, 'Apri in Spotify ↗')
     expect(open).toHaveBeenCalledWith(URL_OK, '_blank', 'noopener,noreferrer')
+  })
+
+  test('«Cerca il testo su Google ↗» nel menu delle canzoni, non dei testi', async () => {
+    await seedShelf()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    mount()
+    const card = await item('Paper Lanterns')
+    fromMenu(card, 'Cerca il testo su Google ↗')
+    expect(open).toHaveBeenCalledWith(expect.stringMatching(/^https:\/\/www\.google\.com\/search\?q=Paper\+Lanterns.*lyrics$/), '_blank', 'noopener,noreferrer')
+    await db.songs.update('s1', { kind: 'text', source: 'podcast' })
+    await waitFor(() => expect(within(card).queryByText('Podcast')).toBeTruthy())
+    fireEvent.click(within(card).getByRole('button', { name: /^Azioni per/ }))
+    expect(within(card).queryByRole('menuitem', { name: /Cerca il testo/ })).toBeNull()
   })
 
   test('il menu ha un nome che dice di quale canzone è', async () => {

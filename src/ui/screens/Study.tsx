@@ -34,6 +34,7 @@ import { ensureCover } from '../../domain/cover'
 import { Cover } from '../components/Cover'
 import { songLook } from '../cover'
 import { LEGEND } from '../../domain/legend'
+import { lyricsSearchUrl } from '../../domain/lyricsSearch'
 
 
 export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
@@ -193,6 +194,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const wordCount = placed.words.size
   const gp = song.grammarPoint
   const isText = song.kind === 'text'
+  const lyricsUrl = isText ? null : lyricsSearchUrl(song.title, song.artist)
   const stages = songPath({
     song, toTriage: pending, unlocked: unlock?.unlocked ?? 0, lines: unlock?.total ?? 0,
     finalReady: finalListenDue([song], now()).length > 0, now: now(),
@@ -213,6 +215,9 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
           <p class="note">{`Studio · ${chunkCount} chunk · ${plural(wordCount, 'parola', 'parole')}${unlock && unlock.total > 0 ? ` · ${unlockedText(unlock.unlocked, unlock.total)}` : ''}`}</p>
           {!isText && song.spotifyUrl && (
             <a class="btn outline pill study-spotify" href={song.spotifyUrl} target="_blank" rel="noopener noreferrer">Apri in Spotify ↗</a>
+          )}
+          {lyricsUrl && (
+            <a class="btn outline pill study-spotify" href={lyricsUrl} target="_blank" rel="noopener noreferrer">Cerca il testo su Google ↗</a>
           )}
         </div>
         <div class="study-tools">

@@ -451,6 +451,15 @@ describe('percorso e testata', () => {
     expect(container.querySelector('.study-artist')!.textContent).toBe('A')
   })
 
+  test('«Cerca il testo su Google ↗» nella testata, per controllare il testo incollato', async () => {
+    const { container } = mount()
+    await screen.findByRole('heading', { name: 'Night Song' })
+    const head = container.querySelector<HTMLElement>('.study-head')!
+    const a = within(head).getByRole('link', { name: 'Cerca il testo su Google ↗' })
+    expect(a.getAttribute('href')).toBe('https://www.google.com/search?q=Night+Song+A+lyrics')
+    expect(a.getAttribute('target')).toBe('_blank')
+  })
+
   test('«Chiedi a Gemini» è un pulsante fluttuante che sparisce mentre si sceglie', async () => {
     const { container } = mount()
     const btn = await screen.findByRole('button', { name: 'Chiedi a Gemini' })
@@ -480,5 +489,6 @@ describe('percorso e testata', () => {
     expect(items[0].textContent).toBe('Lettura, da fare')
     expect(list.textContent).not.toContain('Riascolto')
     expect(screen.queryByRole('link', { name: /Apri in Spotify/ })).toBeNull()
+    expect(screen.queryByRole('link', { name: /Cerca il testo/ })).toBeNull()
   })
 })
