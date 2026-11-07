@@ -34,16 +34,17 @@ const enter = async () => {
 const tap = (root: HTMLElement, name: string) => fireEvent.click(within(root).getByRole('button', { name }))
 const bar = () => screen.getByRole('region', { name: 'Da chiedere a Gemini' })
 
-test('due parole vicine si uniscono con ↔ e contano come una voce', async () => {
+test('due parole vicine si uniscono con + e contano come una voce', async () => {
   mount(ok() as unknown as typeof fetch)
   const lyrics = await enter()
-  expect(screen.getByText(/Il simbolo ↔ unisce/)).toBeTruthy()
+  expect(screen.getByText(/Il simbolo \+ unisce/)).toBeTruthy()
   expect(bar().textContent).toContain('Niente da chiedere')
   tap(lyrics, 'gave'); tap(lyrics, 'up')
   expect(bar().textContent).toContain('2 voci')
   tap(lyrics, 'Unisci «gave» e «up»')
   const joint = within(lyrics).getByRole('button', { name: 'Separa «gave» e «up»' })
   expect(joint.getAttribute('aria-pressed')).toBe('true')
+  expect(joint.textContent).toBe('+')
   expect(bar().textContent).toContain('1 voce')
   expect(bar().textContent).not.toContain('2 voci')
 })
