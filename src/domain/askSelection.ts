@@ -61,11 +61,21 @@ export function toggleWord(sel: Selection, key: string): Selection {
   return { ...sel, words, joins }
 }
 
-/** Unisce o separa due parole vicine; vale solo se sono entrambe segnate. */
-export function toggleJoin(sel: Selection, key: string): Selection {
-  const [l, t] = parse(key)
-  if (!sel.words.has(`${l}:${t}`) || !sel.words.has(`${l}:${t + 1}`)) return sel
-  return { ...sel, joins: flip(sel.joins, key) }
+/**
+ * Il trascinamento sul verso `l` dalla parola `from` alla `to` (in un senso o nell'altro): le parole in mezzo
+ * diventano un'unica espressione, che assorbe quelle già segnate e resta separata dalle vicine.
+ */
+export function selectRange(sel: Selection, l: number, from: number, to: number): Selection {
+  const [a, b] = from <= to ? [from, to] : [to, from]
+  const words = new Set(sel.words)
+  const joins = new Set(sel.joins)
+  joins.delete(`${l}:${a - 1}`)
+  for (let t = a; t <= b; t++) {
+    words.add(`${l}:${t}`)
+    if (t < b) joins.add(`${l}:${t}`)
+    else joins.delete(`${l}:${t}`)
+  }
+  return { ...sel, words, joins }
 }
 
 export function toggleVerse(sel: Selection, lineIndex: number): Selection {

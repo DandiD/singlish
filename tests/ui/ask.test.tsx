@@ -33,20 +33,59 @@ const enter = async () => {
 }
 const tap = (root: HTMLElement, name: string) => fireEvent.click(within(root).getByRole('button', { name }))
 const bar = () => screen.getByRole('region', { name: 'Da chiedere a Gemini' })
+/** Appoggia il dito sulla prima parola, lo porta sulle altre e lo solleva (il dito sopra: `elementFromPoint`). */
+const drag = (root: HTMLElement, names: string[]) => {
+  const el = (n: string) => within(root).getByRole('button', { name: n })
+  const under = vi.spyOn(document, 'elementFromPoint')
+  const first = el(names[0])
+  under.mockReturnValue(first)
+  fireEvent.pointerDown(first, { pointerId: 1, clientX: 0, clientY: 0 })
+  for (const n of names.slice(1)) {
+    under.mockReturnValue(el(n))
+    fireEvent.pointerMove(document, { pointerId: 1, clientX: 1, clientY: 0 })
+  }
+  fireEvent.pointerUp(document, { pointerId: 1 })
+  // Il browser può mandare anche il click sulla parola di partenza: non deve toglierla.
+  fireEvent.click(first)
+  under.mockRestore()
+}
 
-test('due parole vicine si uniscono con + e contano come una voce', async () => {
+test("trascinando il dito sulle parole vicine si segna un'espressione: una voce", async () => {
   mount(ok() as unknown as typeof fetch)
   const lyrics = await enter()
-  expect(screen.getByText(/Il simbolo \+ unisce/)).toBeTruthy()
+  expect(screen.getByText(/trascina il dito sulle parole vicine/)).toBeTruthy()
   expect(bar().textContent).toContain('Niente da chiedere')
+  drag(lyrics, ['gave', 'up', 'on'])
+  for (const w of ['gave', 'up', 'on']) expect(within(lyrics).getByRole('button', { name: w }).getAttribute('aria-pressed')).toBe('true')
+  expect(bar().textContent).toContain('1 voce')
+  expect(lyrics.querySelector('.tok-run')?.textContent).toBe('gave up on')
+  expect(within(lyrics).queryByRole('button', { name: /Unisci|Separa/ })).toBeNull()
+})
+
+test("tornando indietro col dito l'espressione si accorcia", async () => {
+  mount(ok() as unknown as typeof fetch)
+  const lyrics = await enter()
+  drag(lyrics, ['gave', 'up', 'on', 'up'])
+  expect(within(lyrics).getByRole('button', { name: 'on' }).getAttribute('aria-pressed')).toBe('false')
+  expect(lyrics.querySelector('.tok-run')?.textContent).toBe('gave up')
+})
+
+test('due tocchi segnano due voci separate; Maiusc+clic estende dalla parola toccata', async () => {
+  mount(ok() as unknown as typeof fetch)
+  const lyrics = await enter()
   tap(lyrics, 'gave'); tap(lyrics, 'up')
   expect(bar().textContent).toContain('2 voci')
-  tap(lyrics, 'Unisci «gave» e «up»')
-  const joint = within(lyrics).getByRole('button', { name: 'Separa «gave» e «up»' })
-  expect(joint.getAttribute('aria-pressed')).toBe('true')
-  expect(joint.textContent).toBe('+')
-  expect(bar().textContent).toContain('1 voce')
-  expect(bar().textContent).not.toContain('2 voci')
+  fireEvent.click(within(lyrics).getByRole('button', { name: 'you' }), { shiftKey: true })
+  expect(bar().textContent).toContain('2 voci')
+  expect(lyrics.querySelector('.tok-run')?.textContent).toBe('up on you')
+})
+
+test('il dito su un altro verso non estende l\'espressione', async () => {
+  mount(ok() as unknown as typeof fetch)
+  const lyrics = await enter()
+  drag(lyrics, ['you', 'babe', 'paper'])
+  expect(within(lyrics).getByRole('button', { name: 'paper' }).getAttribute('aria-pressed')).toBe('false')
+  expect(lyrics.querySelector('.tok-run')?.textContent).toBe('you, babe')
 })
 
 test('il numero del verso lo chiede intero', async () => {
@@ -85,7 +124,7 @@ test('l\'invio fa una sola chiamata, svuota la selezione e apre il foglio delle 
   const f = ok()
   mount(f as unknown as typeof fetch)
   const lyrics = await enter()
-  tap(lyrics, 'gave'); tap(lyrics, 'up'); tap(lyrics, 'Unisci «gave» e «up»')
+  drag(lyrics, ['gave', 'up'])
   tap(lyrics, 'Verso intero 2')
   fireEvent.click(within(bar()).getByRole('button', { name: 'Chiedi a Gemini' }))
   await waitFor(() => expect(window.location.hash.endsWith('item=ask')).toBe(true))
@@ -136,7 +175,5 @@ test('se lo studente è già altrove, la risposta non lo riporta al foglio', asy
 test('le etichette italiane dentro i versi inglesi hanno lang="it"', async () => {
   mount(ok() as unknown as typeof fetch)
   const lyrics = await enter()
-  tap(lyrics, 'gave'); tap(lyrics, 'up')
   expect(within(lyrics).getByRole('button', { name: 'Verso intero 1' }).getAttribute('lang')).toBe('it')
-  expect(within(lyrics).getByRole('button', { name: 'Unisci «gave» e «up»' }).getAttribute('lang')).toBe('it')
 })

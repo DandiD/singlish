@@ -8,7 +8,7 @@ import { finalListenDue, startStudying } from '../../domain/finalListen'
 import { songPath } from '../../domain/path'
 import { SongPath } from '../components/SongPath'
 import { MoreMenu } from '../components/MoreMenu'
-import { MAX_REQUESTS, emptySelection, requestsOf, toggleJoin, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
+import { MAX_REQUESTS, emptySelection, requestsOf, selectRange, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
 import { askGemini } from '../../domain/askDraft'
 import { PickLine } from '../components/PickLine'
 import { geminiProblem } from '../errors'
@@ -43,6 +43,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
   const [confirming, setConfirming] = useState<false | 'done' | 'delete'>(false)
   const acting = useRef(false)
   const askLock = useRef(false)
+  // L'ultima parola toccata: Maiusc+tocco estende da qui.
+  const lastTap = useRef<string | null>(null)
   // Chiedere a Gemini le parole segnate nel testo, tutte insieme.
   const [asking, setAsking] = useState(false)
   const [sel, setSel] = useState<Selection>(emptySelection)
@@ -166,6 +168,12 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
     if (!withinLimit(song.lines, sel, next)) return setLimitMsg(true)
     setLimitMsg(false)
     setSel(next)
+  }
+  // Maiusc+tocco (anche da tastiera) estende dall'ultima parola toccata sullo stesso verso; altrimenti è un tocco.
+  const extendFrom = (key: string): Selection => {
+    const [l, t] = key.split(':').map(Number)
+    const [al, at] = (lastTap.current ?? '').split(':').map(Number)
+    return al === l ? selectRange(sel, l, at, t) : toggleWord(sel, key)
   }
   const ask = async () => {
     if (askLock.current) return
@@ -317,7 +325,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       {!asking ? (
         askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>
       ) : (
-        <p class="note info-box">Tocca le parole che non ti sono chiare, o il numero di un verso per chiederlo tutto. Il simbolo + unisce due parole vicine in un'espressione.</p>
+        <p class="note info-box">Tocca le parole che non ti sono chiare, o trascina il dito sulle parole vicine per segnare un'espressione. Tocca il numero di un verso per chiederlo tutto.</p>
       )}
 
       <div class={asking ? 'lyrics picking' : 'lyrics'} lang="en">
@@ -330,8 +338,8 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
             {asking ? (
               <PickLine
                 line={l} lineIndex={i} sel={sel} disabled={askBusy}
-                onWord={(k) => change(toggleWord(sel, k))}
-                onJoin={(k) => change(toggleJoin(sel, k))}
+                onWord={(k, extend) => { change(extend ? extendFrom(k) : toggleWord(sel, k)); lastTap.current = k }}
+                onRange={(base, from, to) => change(selectRange(base, i, from, to))}
                 onVerse={(n) => change(toggleVerse(sel, n))}
               />
             ) : (

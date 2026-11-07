@@ -23,7 +23,7 @@ Fuori: domanda libera scritta dallo studente; espressioni a cavallo di due versi
 
 ## 1. Segnare nel testo (Studio, modalità «Chiedi a Gemini»)
 - **Parola**: un tocco la segna, un altro la toglie. Ogni parola segnata nasce separata.
-- **Giunto**: fra due parole segnate e adiacenti sullo stesso verso compare un giunto `+` (bersaglio ≥ 44 px, `aria-pressed`, etichetta «Unisci» / «Separa»). Un tocco le unisce in un'unica espressione, un secondo le separa. Le catene si uniscono un giunto alla volta. Togliere una parola dentro un'espressione la spezza in quel punto (i giunti che toccavano quella parola spariscono).
+- **Espressione**: col dito appoggiato su una parola e trascinato sulle vicine dello stesso verso, le parole fra la partenza e quella sotto il dito diventano un'unica espressione; tornando indietro si accorcia. L'intervallo assorbe le parole già segnate e resta separato dalle vicine; su un altro verso il dito non lo estende. Le parole di un'espressione stanno in un'unica fascia. Da tastiera: Maiusc+tocco estende dall'ultima parola toccata sullo stesso verso. In modalità selezione il dito su una parola non fa scorrere la pagina (`touch-action: none` sulle parole); si scorre appoggiando fuori dalle parole. Togliere una parola dentro un'espressione la spezza in quel punto.
 - **Verso intero**: un tocco sul numero del verso (≥ 44 px, `aria-pressed`) lo segna; un altro lo toglie. Sullo stesso verso si possono segnare anche parole: il verso porta senso, grammatica e cultura; le parole il significato.
 - **Barra in basso**: conteggio («2 versi · 3 voci»), Annulla, Chiedi a Gemini. Massimo **12 richieste** per invio (un verso = 1, un'espressione = 1). Oltre il limite il tocco non segna e la barra mostra «Massimo 12 per volta».
 - Offline: Chiedi a Gemini disabilitato, come oggi. Durante la richiesta il testo non si tocca.
@@ -138,13 +138,13 @@ Canzone eliminata durante la richiesta: non si salva niente (come oggi). Il back
 - Chiamata di recupero fallita: si salva ciò che è arrivato, il resto va in «senza risposta».
 
 ## 7. Test (TDD, nessuna rete)
-- Dominio selezione: segna/togli, giunto unisci/separa, catene, rottura togliendo una parola centrale, verso intero, limite 12, ordine degli id.
+- Dominio selezione: segna/togli, intervallo trascinato (avanti, indietro, assorbe, si spezza ai bordi), rottura togliendo una parola centrale, verso intero, limite 12, ordine degli id.
 - Messaggio: tipo, titolo omesso se vuoto, righe numerate, richieste con id.
 - Controllo risposta: id sconosciuti/ripetuti/campo sbagliato, traduzione vuota → incompleta, riga dall'id, proposte duplicate scartate.
 - Recupero: `fetch` finto con risposta parziale → seconda chiamata con sole mancanti; seconda fallita → «senza risposta».
 - Salvataggio: traduzioni solo mancanti, note sostituite, bozza unita, canzone eliminata → niente.
 - Aggiungi: solo spuntate, esistenti non duplicate e passate in studio, conteggio card uguale al piano.
-- UI: giunto e numero del verso (ruoli, `aria-pressed`), barra con conteggio e limite, foglio Risposte, segno sul verso, bozza pendente.
+- UI: trascinamento, Maiusc+tocco e numero del verso (ruoli, `aria-pressed`), barra con conteggio e limite, foglio Risposte, segno sul verso, bozza pendente.
 - E2E: un giro con testo inventato e `fetch` finto.
 
 ## 8. Documenti

@@ -63,11 +63,26 @@ test('Chiedi a Gemini: espressione unita e verso intero entrano nello Studio', a
 
   await page.getByRole('button', { name: 'Chiedi a Gemini' }).click()
   const line = page.locator('.lyrics p', { hasText: 'Maybe I was wrong' })
-  await line.getByRole('button', { name: 'let', exact: true }).click()
-  await line.getByRole('button', { name: 'you', exact: true }).click()
-  await line.getByRole('button', { name: 'go', exact: true }).click()
-  await line.getByRole('button', { name: /Unisci «let» e «you»/ }).click()
-  await line.getByRole('button', { name: /Unisci «you» e «go»/ }).click()
+  // Un dito vero (eventi touch di Chrome): si appoggia su «let», si passa su «you» e «go», si solleva.
+  const center = async (name: string) => {
+    const b = (await line.getByRole('button', { name, exact: true }).boundingBox())!
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 }
+  }
+  const cdp = await page.context().newCDPSession(page)
+  const touch = (type: string, p?: { x: number; y: number }) =>
+    cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [{ ...p, id: 1 }] : [] })
+  // Il verso al centro: in basso lo coprirebbe la barra fissa, e un dito lì toccherebbe quella.
+  await line.evaluate((el) => el.scrollIntoView({ block: 'center' }))
+  const [a, b, c] = [await center('let'), await center('you'), await center('go')]
+  const scrollBefore = await page.evaluate(() => window.scrollY)
+  await touch('touchStart', a)
+  for (const [from, to] of [[a, b], [b, c]]) {
+    for (let i = 1; i <= 4; i++) await touch('touchMove', { x: from.x + ((to.x - from.x) * i) / 4, y: from.y + ((to.y - from.y) * i) / 4 })
+  }
+  await touch('touchEnd')
+  // Il dito sulle parole seleziona: la pagina non scorre.
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore)
+  await expect(line.locator('.tok-run')).toHaveText('let you go')
   await page.getByRole('button', { name: 'Verso intero 9' }).click()
   await expect(page.getByRole('region', { name: 'Da chiedere a Gemini' })).toContainText('1 verso · 1 voce')
   await page.getByRole('region', { name: 'Da chiedere a Gemini' }).getByRole('button', { name: 'Chiedi a Gemini' }).click()
