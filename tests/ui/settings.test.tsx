@@ -55,6 +55,16 @@ describe('Settings', () => {
     })
   })
 
+  test('sotto la chiave, il link a Google AI Studio per crearne una', async () => {
+    mount(vi.fn() as unknown as typeof fetch)
+    const field = (await screen.findByLabelText('Chiave API')).closest('label')!
+    const a = screen.getByRole('link', { name: 'Crea una chiave in Google AI Studio ↗' })
+    expect(field.nextElementSibling).toBe(a)
+    expect(a.getAttribute('href')).toBe('https://aistudio.google.com/app/apikey')
+    expect(a.getAttribute('target')).toBe('_blank')
+    expect(a.getAttribute('rel')).toBe('noopener noreferrer')
+  })
+
   test('Prova with 200 saves key and shows Chiave valida', async () => {
     const f = vi.fn(async () => okBody()) as unknown as typeof fetch
     mount(f)
