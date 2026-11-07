@@ -8,6 +8,12 @@ export type Rating = 1 | 2 | 3 | 4
 export type TextSource = 'serie' | 'podcast' | 'articolo' | 'altro'
 export type Context = { songId: string; lineIndex: number; surfaceForm?: string }
 
+export type LineNote = { lineIndex: number; senseIt: string; grammarIt: string | null; cultureIt: string | null }
+export type AskDraft = {
+  answers: import('../domain/askRequest').AskAnswer[]
+  unanswered: import('../domain/askSelection').AskRequest[]
+}
+
 export interface Song {
   id: string
   /** Canzone, o testo libero (serie, podcast, articolo…): stessa analisi, senza parlato connesso né riascolto. */
@@ -27,6 +33,10 @@ export interface Song {
   connectedSpeech: { lineIndex: number; written: string; sung: string; noteIt: string }[]
   /** Traduzione italiana dei versi con un elemento da studiare. Assente nelle canzoni analizzate prima. */
   lineTranslations?: { lineIndex: number; textIt: string }[]
+  /** Note dei versi chiesti interi a Gemini. */
+  lineNotes?: LineNote[]
+  /** Risposte di «Chiedi a Gemini» in attesa della scelta dello studente. */
+  askDraft?: AskDraft
   addedAt: Date
   analyzedAt: Date | null
   /** Quando la canzone è passata «in studio» (aperto lo Studio). Assente nelle canzoni di prima: vale `analyzedAt`. */
