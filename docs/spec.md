@@ -119,7 +119,7 @@ Testo (righe numerate):
 Se `difficulty_known_pct` < 60 l'app suggerisce di rimandare la canzone (non la blocca). Una canzone rimandata («Tienila per più avanti») non porta card nuove nel ripasso finché non se ne apre lo Studio.
 
 ### Chiedi a Gemini
-Dallo Studio lo studente segna parole, espressioni (il dito trascinato sulle parole vicine dello stesso verso) e versi interi, poi li manda a Gemini in **una** chiamata (`callGemini`: stesso modello, `temperature: 0.2`, JSON con `responseSchema`, stessi ritentativi su 429/5xx). Massimo **12 richieste** per invio (un verso = 1, un'espressione = 1): oltre il limite il tocco non segna e la barra mostra «Massimo 12 per volta». Offline il pulsante è disabilitato.
+Dallo Studio lo studente segna parole, espressioni (il dito trascinato sulle parole vicine dello stesso verso; partito da una parola segnata, cancella) e versi interi, poi li manda a Gemini in **una** chiamata (`callGemini`: stesso modello, `temperature: 0.2`, JSON con `responseSchema`, stessi ritentativi su 429/5xx). Massimo **12 richieste** per invio (un verso = 1, un'espressione = 1): oltre il limite il tocco non segna e la barra mostra «Massimo 12 per volta». Offline il pulsante è disabilitato.
 
 #### Messaggio utente
 ```text

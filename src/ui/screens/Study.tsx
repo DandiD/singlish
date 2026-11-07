@@ -8,7 +8,7 @@ import { finalListenDue, startStudying } from '../../domain/finalListen'
 import { songPath } from '../../domain/path'
 import { SongPath } from '../components/SongPath'
 import { MoreMenu } from '../components/MoreMenu'
-import { MAX_REQUESTS, emptySelection, requestsOf, selectRange, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
+import { MAX_REQUESTS, clearRange, emptySelection, requestsOf, selectRange, toggleVerse, toggleWord, withinLimit, type Selection } from '../../domain/askSelection'
 import { askGemini } from '../../domain/askDraft'
 import { PickLine } from '../components/PickLine'
 import { geminiProblem } from '../errors'
@@ -339,7 +339,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
               <PickLine
                 line={l} lineIndex={i} sel={sel} disabled={askBusy}
                 onWord={(k, extend) => { change(extend ? extendFrom(k) : toggleWord(sel, k)); lastTap.current = k }}
-                onRange={(base, from, to) => change(selectRange(base, i, from, to))}
+                onRange={(base, from, to, erase) => change((erase ? clearRange : selectRange)(base, i, from, to))}
                 onVerse={(n) => change(toggleVerse(sel, n))}
               />
             ) : (
