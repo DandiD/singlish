@@ -7,20 +7,24 @@ type Props = {
   sel: Selection
   /** Un tocco su una parola; `extend` con Maiusc: estende dalla parola toccata prima. */
   onWord(key: string, extend: boolean): void
-  /** Il dito trascinato dalla parola `from` alla `to`: si applica sempre alla selezione di quando è partito. */
-  onRange(base: Selection, from: number, to: number): void
+  /**
+   * Il dito trascinato dalla parola `from` alla `to`: si applica sempre alla selezione di quando è partito.
+   * `erase` se è partito da una parola segnata: allora le parole su cui passa si tolgono.
+   */
+  onRange(base: Selection, from: number, to: number, erase: boolean): void
   onVerse(lineIndex: number): void
   disabled?: boolean
 }
 
 /**
  * Un verso in modalità selezione: il numero lo chiede intero, un tocco segna o toglie una parola,
- * il dito trascinato sulle parole vicine segna un'espressione (tornando indietro si accorcia).
+ * il dito trascinato sulle parole vicine segna un'espressione (tornando indietro si accorcia);
+ * partito da una parola segnata, invece, le parole su cui passa si tolgono.
  * Le parole di un'espressione stanno in un'unica fascia. Durante la richiesta niente si tocca.
  */
 export function PickLine({ line, lineIndex, sel, onWord, onRange, onVerse, disabled }: Props) {
   const toks = tokenize(line)
-  const drag = useRef<{ base: Selection; from: number; to: number } | null>(null)
+  const drag = useRef<{ base: Selection; from: number; to: number; erase: boolean } | null>(null)
   // Dopo un trascinamento il browser può mandare un click sulla parola di partenza: non deve toglierla.
   const quietUntil = useRef(0)
   const range = useRef(onRange)
@@ -31,7 +35,7 @@ export function PickLine({ line, lineIndex, sel, onWord, onRange, onVerse, disab
   const start = (e: PointerEvent, ti: number) => {
     if (disabled || (e.pointerType === 'mouse' && e.button !== 0)) return
     stop.current()
-    drag.current = { base: sel, from: ti, to: ti }
+    drag.current = { base: sel, from: ti, to: ti, erase: sel.words.has(`${lineIndex}:${ti}`) }
     const move = (ev: PointerEvent) => {
       const d = drag.current
       const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>('[data-tok]')
@@ -41,7 +45,7 @@ export function PickLine({ line, lineIndex, sel, onWord, onRange, onVerse, disab
       if (l !== lineIndex || t === d.to) return
       d.to = t
       quietUntil.current = performance.now() + 500
-      range.current(d.base, d.from, t)
+      range.current(d.base, d.from, t, d.erase)
     }
     const end = () => stop.current()
     stop.current = () => {

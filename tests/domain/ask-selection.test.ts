@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { emptySelection, MAX_REQUESTS, requestsOf, selectRange, tokenize, toggleVerse, toggleWord, withinLimit, type Selection } from '../../src/domain/askSelection'
+import { emptySelection, MAX_REQUESTS, clearRange, requestsOf, selectRange, tokenize, toggleVerse, toggleWord, withinLimit, type Selection } from '../../src/domain/askSelection'
 
 const lines = ['I gave up on you, babe', "don't, you know", 'paper lanterns drift']
 const words = (...keys: string[]) => keys.reduce<Selection>((s, k) => toggleWord(s, k), emptySelection())
@@ -40,6 +40,14 @@ describe('selezione nel testo', () => {
 
   test("l'intervallo passa sopra la punteggiatura", () => {
     expect(requestsOf(lines, selectRange(emptySelection(), 1, 0, 1))).toEqual([{ id: 'w1', lineIndex: 1, text: "don't, you" }])
+  })
+
+  test("cancellare un intervallo toglie le parole e spezza l'espressione ai bordi", () => {
+    const s = selectRange(emptySelection(), 0, 0, 4)
+    expect(requestsOf(lines, clearRange(s, 0, 1, 2)).map((r) => r.text)).toEqual(['I', 'on you'])
+    // anche all'indietro, e su parole già libere non fa nulla
+    expect(requestsOf(lines, clearRange(s, 0, 4, 3)).map((r) => r.text)).toEqual(['I gave up'])
+    expect(requestsOf(lines, clearRange(words('0:0'), 0, 2, 3)).map((r) => r.text)).toEqual(['I'])
   })
 
   test("l'intervallo non modifica la selezione di partenza", () => {

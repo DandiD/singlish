@@ -73,15 +73,27 @@ test('Chiedi a Gemini: espressione unita e verso intero entrano nello Studio', a
     cdp.send('Input.dispatchTouchEvent', { type, touchPoints: p ? [{ ...p, id: 1 }] : [] })
   // Il verso al centro: in basso lo coprirebbe la barra fissa, e un dito lì toccherebbe quella.
   await line.evaluate((el) => el.scrollIntoView({ block: 'center' }))
-  const [a, b, c] = [await center('let'), await center('you'), await center('go')]
-  const scrollBefore = await page.evaluate(() => window.scrollY)
-  await touch('touchStart', a)
-  for (const [from, to] of [[a, b], [b, c]]) {
-    for (let i = 1; i <= 4; i++) await touch('touchMove', { x: from.x + ((to.x - from.x) * i) / 4, y: from.y + ((to.y - from.y) * i) / 4 })
+  const finger = async (names: string[]) => {
+    const points = await Promise.all(names.map(center))
+    await touch('touchStart', points[0])
+    for (let k = 1; k < points.length; k++) {
+      const [from, to] = [points[k - 1], points[k]]
+      for (let i = 1; i <= 4; i++) await touch('touchMove', { x: from.x + ((to.x - from.x) * i) / 4, y: from.y + ((to.y - from.y) * i) / 4 })
+    }
+    await touch('touchEnd')
   }
-  await touch('touchEnd')
+  const scrollBefore = await page.evaluate(() => window.scrollY)
+  await finger(['let', 'you', 'go'])
   // Il dito sulle parole seleziona: la pagina non scorre.
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore)
+  await expect(line.locator('.tok-run')).toHaveText('let you go')
+  // Sollevato il dito, ripartire da parole segnate le toglie.
+  await finger(['you', 'go'])
+  await expect(line.getByRole('button', { name: 'go', exact: true })).toHaveAttribute('aria-pressed', 'false')
+  await expect(line.getByRole('button', { name: 'let', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await expect(line.locator('.tok-run')).toHaveCount(0)
+  // Per riformarla si parte da una parola libera: «let», già segnata, viene assorbita.
+  await finger(['go', 'you', 'let'])
   await expect(line.locator('.tok-run')).toHaveText('let you go')
   await page.getByRole('button', { name: 'Verso intero 9' }).click()
   await expect(page.getByRole('region', { name: 'Da chiedere a Gemini' })).toContainText('1 verso · 1 voce')

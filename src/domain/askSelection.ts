@@ -78,6 +78,19 @@ export function selectRange(sel: Selection, l: number, from: number, to: number)
   return { ...sel, words, joins }
 }
 
+/** Il trascinamento partito da una parola segnata: le parole in mezzo si tolgono, e con loro i giunti che le toccano. */
+export function clearRange(sel: Selection, l: number, from: number, to: number): Selection {
+  const [a, b] = from <= to ? [from, to] : [to, from]
+  const words = new Set(sel.words)
+  const joins = new Set(sel.joins)
+  joins.delete(`${l}:${a - 1}`)
+  for (let t = a; t <= b; t++) {
+    words.delete(`${l}:${t}`)
+    joins.delete(`${l}:${t}`)
+  }
+  return { ...sel, words, joins }
+}
+
 export function toggleVerse(sel: Selection, lineIndex: number): Selection {
   return { ...sel, verses: flip(sel.verses, lineIndex) }
 }

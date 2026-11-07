@@ -70,6 +70,19 @@ test("tornando indietro col dito l'espressione si accorcia", async () => {
   expect(lyrics.querySelector('.tok-run')?.textContent).toBe('gave up')
 })
 
+test('sollevato il dito, un trascinamento che parte da parole segnate le toglie', async () => {
+  mount(ok() as unknown as typeof fetch)
+  const lyrics = await enter()
+  drag(lyrics, ['gave', 'up', 'on', 'you'])
+  drag(lyrics, ['on', 'you'])
+  for (const w of ['on', 'you']) expect(within(lyrics).getByRole('button', { name: w }).getAttribute('aria-pressed')).toBe('false')
+  expect(lyrics.querySelector('.tok-run')?.textContent).toBe('gave up')
+  // tornando indietro durante la cancellazione la parola riprende com'era
+  drag(lyrics, ['gave', 'up', 'gave'])
+  expect(within(lyrics).getByRole('button', { name: 'up' }).getAttribute('aria-pressed')).toBe('true')
+  expect(within(lyrics).getByRole('button', { name: 'gave' }).getAttribute('aria-pressed')).toBe('false')
+})
+
 test('due tocchi segnano due voci separate; Maiusc+clic estende dalla parola toccata', async () => {
   mount(ok() as unknown as typeof fetch)
   const lyrics = await enter()
