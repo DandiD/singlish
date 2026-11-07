@@ -93,7 +93,7 @@ describe('traduzione dei versi nel prompt', () => {
     expect(RESPONSE_SCHEMA.properties.line_translations.items.required).toEqual(['line_index', 'translation_it'])
   })
   test('il prompt chiede di tradurre solo le righe con un elemento estratto', () => {
-    expect(SYSTEM_PROMPT).toContain('Traduci in italiano solo le righe che contengono un chunk o una parola estratti')
+    expect(SYSTEM_PROMPT).toContain('Traduci in italiano solo le righe che contengono un chunk, una parola o un fenomeno di parlato connesso')
     expect(SYSTEM_PROMPT).not.toContain('Non tradurre il testo intero.')
   })
 })

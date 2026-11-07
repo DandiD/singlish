@@ -14,7 +14,7 @@ Solo per i chunk: una situazione in italiano per produrlo, nota di pronuncia se 
 si fonde o si accorcia.
 Aggiungi: un solo punto di grammatica, fino a 3 fenomeni di parlato connesso (solo canzoni),
 una stima della percentuale di testo che lo studente capisce già.
-Traduci in italiano solo le righe che contengono un chunk o una parola estratti,
+Traduci in italiano solo le righe che contengono un chunk, una parola o un fenomeno di parlato connesso estratti,
 una volta per riga; non tradurre le altre righe. Non inventare: se un significato dipende dal contesto, dillo.`
 
 export function buildUserMessage(input: {

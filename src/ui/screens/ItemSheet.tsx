@@ -233,6 +233,7 @@ export function useSheet(songId: string, itemId: string, loaded: boolean, before
 export function SpeechSheet({ song, itemId }: { song: Song; itemId: string }) {
   const cs = song.connectedSpeech[Number(itemId.slice(3))]
   const { ref, closing, close } = useSheet(song.id, itemId, !!cs)
+  const translation = cs ? song.lineTranslations?.find((t) => t.lineIndex === cs.lineIndex)?.textIt : undefined
   useEffect(() => { if (!cs) void close() }, [cs])
   if (!cs) return null
   return (
@@ -250,6 +251,12 @@ export function SpeechSheet({ song, itemId }: { song: Song; itemId: string }) {
               <div class="section-label">{`NELLA CANZONE · RIGA ${cs.lineIndex + 1}`}</div>
               <p lang="en"><Highlighted line={song.lines[cs.lineIndex]} spans={[{ text: cs.written, id: itemId, className: 'cs' }]} /></p>
             </div>
+            {translation && (
+              <div>
+                <div class="section-label">TRADUZIONE DEL VERSO</div>
+                <p>{translation}</p>
+              </div>
+            )}
           </div>
         )}
       </section>
