@@ -71,7 +71,8 @@ Richieste v (versi interi):
 - sense_it: cosa dice davvero il verso, massimo 40 parole;
 - grammar_it: una costruzione utile o insolita del verso, massimo 30 parole; null se non c'è niente di utile;
 - culture_it: riferimento culturale, slang o citazione, massimo 30 parole; null se non c'è;
-- proposals: da 0 a 2 chunk del verso utili al livello dello studente, con gli stessi campi dei chunk.
+- proposals: da 0 a 2 chunk del verso utili al livello dello studente, con gli stessi campi dei chunk
+  e surface_form esattamente come compare nel verso.
 Non inventare: se non sei sicuro, dillo nella spiegazione.
 ```
 Per i testi liberi il messaggio dice «testo libero»; nessuna nota di pronuncia.

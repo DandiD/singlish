@@ -6,6 +6,7 @@ import type { AskRequest } from '../../src/domain/askSelection'
 import { GeminiError } from '../../src/domain/gemini/client'
 import { saveSettings } from '../../src/domain/settings'
 import type { Song, Word } from '../../src/db/types'
+import { itemsInSong } from '../../src/domain/songItems'
 
 const now = new Date('2026-11-04T10:00:00Z')
 const lines = ['I gave up on you, babe', "don't, you know", 'paper lanterns drift']
@@ -225,5 +226,40 @@ describe('keepAnswers', () => {
     expect(s.askDraft).toBeUndefined()
     expect(s.lineNotes).toHaveLength(1)
     expect(s.lineTranslations).toHaveLength(1)
+  })
+})
+
+describe('voci aggiunte evidenziate nel testo', () => {
+  const picked = 'we picked up the pieces and walked on'
+  let db: SinglishDB
+  beforeEach(async () => {
+    db = createDb(`ask-draft-${Math.random()}`)
+    await db.songs.add({ ...song, lines: [picked] })
+  })
+  const shown = async () => {
+    const s = (await db.songs.get('s1'))!
+    return itemsInSong(s, await db.chunks.toArray(), await db.words.toArray())
+  }
+
+  it("un'espressione segnata compare nel verso anche se Gemini restituisce la forma base", async () => {
+    const a: AskAnswer = {
+      key: 'w:0:picked up', lineIndex: 0, text: 'picked up', translationIt: 'abbiamo raccolto i pezzi',
+      item: { item_type: 'chunk', base_form: 'pick up', surface_form: 'pick up', widened: false, ...fields } as AskAnswer['item'], verse: null,
+    }
+    const draft = await saveAnswers(db, 's1', { answers: [a], unanswered: [] })
+    await keepAnswers(db, 's1', defaultKeep(draft), now)
+    const r = await shown()
+    expect(r.unshown).toEqual([])
+    expect(r.spansByLine[0].map((x) => x.text)).toEqual(['picked up'])
+  })
+
+  it('una proposta del verso compare nel verso anche se il verbo è coniugato', async () => {
+    const p = { type: 'phrasal_verb', base_form: 'walk on', surface_form: 'walked on', cefr: 'B2', register: 'usable', topic: 'other', meaning_it: 'andare avanti', explanation_it: '', extra_example_en: 'x', production_prompt_it: 'y' } as const
+    const a: AskAnswer = { key: 'v:0', lineIndex: 0, translationIt: 't', item: null, verse: { sense_it: 's', grammar_it: null, culture_it: null, proposals: [p] } }
+    await saveAnswers(db, 's1', { answers: [a], unanswered: [] })
+    await keepAnswers(db, 's1', new Set([proposalKey(a, p)]), now)
+    const r = await shown()
+    expect(r.unshown).toEqual([])
+    expect(r.spansByLine[0].map((x) => x.text)).toEqual(['walked on'])
   })
 })

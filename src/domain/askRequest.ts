@@ -23,7 +23,8 @@ Richieste v (versi interi):
 - sense_it: cosa dice davvero il verso, massimo 40 parole;
 - grammar_it: una costruzione utile o insolita del verso, massimo 30 parole; null se non c'è niente di utile;
 - culture_it: riferimento culturale, slang o citazione, massimo 30 parole; null se non c'è;
-- proposals: da 0 a 2 chunk del verso utili al livello dello studente, con gli stessi campi dei chunk.
+- proposals: da 0 a 2 chunk del verso utili al livello dello studente, con gli stessi campi dei chunk
+  e surface_form esattamente come compare nel verso.
 Non inventare: se non sei sicuro, dillo nella spiegazione.`
 
 /** Il messaggio per Gemini: testo numerato e richieste (`w*` parole o espressioni, `v*` versi interi). */
@@ -70,7 +71,7 @@ const itemProps = {
   type: enumOf([...CHUNK_TYPES, ...WORD_TYPES]),
   ...sharedProps,
 }
-const proposalProps = { type: enumOf(CHUNK_TYPES), ...sharedProps }
+const proposalProps = { type: enumOf(CHUNK_TYPES), surface_form: str, ...sharedProps }
 const keys = (o: object) => Object.keys(o)
 
 export const ASK_SCHEMA = {
@@ -118,7 +119,8 @@ export const AskItemSchema = z.discriminatedUnion('item_type', [
   z.object({ item_type: z.literal('chunk'), surface_form: text, widened: z.boolean().default(false), type: z.enum(CHUNK_TYPES), ...shared }),
   z.object({ item_type: z.literal('word'), surface_form: text, widened: z.boolean().default(false), type: z.enum(WORD_TYPES), ...shared }),
 ])
-export const AskProposalSchema = z.object({ type: z.enum(CHUNK_TYPES), ...shared })
+// La forma nel verso manca nelle bozze salvate prima che la si chiedesse.
+export const AskProposalSchema = z.object({ type: z.enum(CHUNK_TYPES), surface_form: z.string().optional(), ...shared })
 export const AskVerseSchema = z.object({
   sense_it: text,
   grammar_it: z.string().nullish().transform((s) => s?.trim() || null),
