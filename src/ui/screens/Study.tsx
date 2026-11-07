@@ -22,6 +22,7 @@ import { TimerPill } from '../components/TimerPill'
 import { Highlighted } from '../components/Highlighted'
 import { CHUNK_CLASS, itemsInSong } from '../../domain/songItems'
 import { ItemSheet, SpeechSheet } from './ItemSheet'
+import { AnswersSheet } from './AnswersSheet'
 import { rCardStates, unlockedLines } from '../../domain/unlocked'
 import { unlockedText } from '../todayText'
 
@@ -298,6 +299,9 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
         ))}
       </ul>
 
+      {!asking && song.askDraft && (
+        <p class="note info-box">Hai risposte da rivedere <a class="ask-review" href={href({ name: 'study', songId, itemId: 'ask' })}>Rivedi</a></p>
+      )}
       {!asking ? (
         askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>
       ) : (
@@ -363,7 +367,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       )}
 
       {/* Una scheda nuova per ogni voce: lo stato di chiusura di quella prima non deve bloccare questa. */}
-      {itemId && (itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}
+      {itemId && (itemId === 'ask' ? <AnswersSheet key={itemId} song={song} /> : itemId.startsWith('cs:') ? <SpeechSheet key={itemId} song={song} itemId={itemId} /> : <ItemSheet key={itemId} song={song} itemId={itemId} />)}
     </main>
   )
 }
