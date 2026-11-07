@@ -23,7 +23,7 @@ Fuori: domanda libera scritta dallo studente; espressioni a cavallo di due versi
 
 ## 1. Segnare nel testo (Studio, modalità «Chiedi a Gemini»)
 - **Parola**: un tocco la segna, un altro la toglie. Ogni parola segnata nasce separata.
-- **Giunto**: fra due parole segnate e adiacenti sullo stesso verso compare un giunto `↔` (bersaglio ≥ 44 px, `aria-pressed`, etichetta «Unisci» / «Separa»). Un tocco le unisce in un'unica espressione, un secondo le separa. Le catene si uniscono un giunto alla volta. Togliere una parola dentro un'espressione la spezza in quel punto (i giunti che toccavano quella parola spariscono).
+- **Giunto**: fra due parole segnate e adiacenti sullo stesso verso compare un giunto `+` (bersaglio ≥ 44 px, `aria-pressed`, etichetta «Unisci» / «Separa»). Un tocco le unisce in un'unica espressione, un secondo le separa. Le catene si uniscono un giunto alla volta. Togliere una parola dentro un'espressione la spezza in quel punto (i giunti che toccavano quella parola spariscono).
 - **Verso intero**: un tocco sul numero del verso (≥ 44 px, `aria-pressed`) lo segna; un altro lo toglie. Sullo stesso verso si possono segnare anche parole: il verso porta senso, grammatica e cultura; le parole il significato.
 - **Barra in basso**: conteggio («2 versi · 3 voci»), Annulla, Chiedi a Gemini. Massimo **12 richieste** per invio (un verso = 1, un'espressione = 1). Oltre il limite il tocco non segna e la barra mostra «Massimo 12 per volta».
 - Offline: Chiedi a Gemini disabilitato, come oggi. Durante la richiesta il testo non si tocca.

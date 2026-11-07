@@ -317,7 +317,7 @@ export function Study({ songId, itemId }: { songId: string; itemId?: string }) {
       {!asking ? (
         askMsg && <p class={askMsg.tone === 'error' ? 'note danger' : 'note'} role="status">{askMsg.text}</p>
       ) : (
-        <p class="note info-box">Tocca le parole che non ti sono chiare, o il numero di un verso per chiederlo tutto. Il simbolo ↔ unisce due parole vicine in un'espressione.</p>
+        <p class="note info-box">Tocca le parole che non ti sono chiare, o il numero di un verso per chiederlo tutto. Il simbolo + unisce due parole vicine in un'espressione.</p>
       )}
 
       <div class={asking ? 'lyrics picking' : 'lyrics'} lang="en">

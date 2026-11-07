@@ -12,7 +12,7 @@ type Props = {
 
 /**
  * Un verso in modalità selezione: il numero lo chiede intero, ogni parola si segna e si toglie,
- * e fra due parole vicine segnate compare il giunto ↔ che le unisce in un'espressione.
+ * e fra due parole vicine segnate compare il giunto + che le unisce in un'espressione.
  * Durante la richiesta niente si tocca: ciò che si segnasse adesso non partirebbe.
  */
 export function PickLine({ line, lineIndex, sel, onWord, onJoin, onVerse, disabled }: Props) {
@@ -38,7 +38,7 @@ export function PickLine({ line, lineIndex, sel, onWord, onJoin, onVerse, disabl
           aria-label={joined ? `Separa «${prev.text}» e «${t.text}»` : `Unisci «${prev.text}» e «${t.text}»`}
           disabled={disabled}
           onClick={() => onJoin(joinKey)}
-        >↔</button>,
+        >+</button>,
       )
     } else if (gap) out.push(gap)
     const key = `${lineIndex}:${ti}`
