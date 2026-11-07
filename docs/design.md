@@ -267,6 +267,7 @@ Cronologia dell'app in `src/nav-history.ts`, usata dal router (`goBack`, `goBack
 ## Errori
 Testi in `src/ui/errors.ts` (`geminiProblem`, `storageProblem`, `failedMessage`, `actionMessage`), uno per causa: cosa è successo (titolo, senza punto), perché e cosa fare (frasi complete). Mai codici tecnici a schermo, salvo lo status HTTP dove aiuta («errore 503»).
 - Gemini: chiave mancante o rifiutata e modello inesistente portano a Impostazioni; testo bloccato dai filtri, risposta incompleta, servizio occupato o irraggiungibile offrono «Riprova». In coda si dice il motivo (offline o Gemini occupato).
+- Sotto il campo della chiave, «Crea una chiave in Google AI Studio ↗» apre `https://aistudio.google.com/app/apikey` in una scheda nuova.
 - Prova della chiave: un solo tentativo; offline o rete assente non diventano mai «chiave non valida»; con 429 la chiave è buona e si salva.
 - Azioni non riuscite (voto, smistamento, modifica, completamento, impostazioni): avviso in basso (`reportError`, `ErrorToast`), il pulsante torna usabile. Anche le promesse rifiutate senza gestione arrivano all'avviso.
 - Pagine: `ErrorBoundary` al posto dello schermo bianco; `DbGate`, `useLive` e `useFailure` portano lì anche il database che non si apre e i caricamenti falliti, con un testo dedicato per spazio esaurito e dati del browser bloccati.

@@ -291,6 +291,8 @@ textarea.lyrics { min-height: 200px; padding: 12px; border-radius: 12px; font: i
 html:has(.today-cta) { scroll-padding-bottom: calc(var(--nav-h) + 12px + 56px + 12px + env(safe-area-inset-bottom)); }
 .today-songs-head { display: flex; align-items: baseline; justify-content: space-between; margin-top: 8px; }
 .today-songs-head h2 { margin: 0; font-size: 18px; }
+/* Link verso un altro sito sotto un campo: 44 px di tocco, non tutta la riga. */
+.out-link { align-self: flex-start; min-height: 44px; display: inline-flex; align-items: center; color: var(--accent-text); }
 .link-add { min-height: 44px; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 500; color: var(--accent-text); text-decoration: none; }
 .today .song-card { text-decoration: none; color: var(--text); }
 .today .song-card h3 { margin: 0; font-size: 16px; overflow-wrap: anywhere; }

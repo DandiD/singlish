@@ -270,7 +270,7 @@ export function AddSong({ kind = 'song' }: { kind?: 'song' | 'text' }) {
             />
           </label>
           {lyricsUrl && (
-            <a href={lyricsUrl} target="_blank" rel="noopener noreferrer">Cerca il testo su Google ↗</a>
+            <a class="out-link" href={lyricsUrl} target="_blank" rel="noopener noreferrer">Cerca il testo su Google ↗</a>
           )}
         </section>
 

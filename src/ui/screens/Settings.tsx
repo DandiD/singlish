@@ -298,6 +298,7 @@ export function Settings() {
             }}
           />
         </label>
+        <a class="out-link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Crea una chiave in Google AI Studio ↗</a>
         <div class="row">
           <label class="field grow">
             <span>Modello</span>
