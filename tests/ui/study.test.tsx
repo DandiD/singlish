@@ -214,6 +214,31 @@ test('parlato connesso: toccandolo si apre la scheda con forma scritta, cantata 
   expect(dialog.textContent).toContain('RIGA 1')
 })
 
+test('la scheda «Pronuncia» mostra la traduzione del verso, se c\'è', async () => {
+  await db.songs.update('s1', {
+    connectedSpeech: [{ lineIndex: 0, written: 'let it', sung: 'leddit', noteIt: 'La t tra vocali diventa una d leggera.' }],
+    lineTranslations: [{ lineIndex: 0, textIt: 'Lascia correre, va bene così' }],
+  })
+  window.location.hash = '#/songs/s1?item=cs%3A0'
+  const { unmount } = render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" itemId="cs:0" />
+    </AppDepsProvider>,
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'Pronuncia' })
+  expect(dialog.textContent).toContain('TRADUZIONE DEL VERSO')
+  expect(dialog.textContent).toContain('Lascia correre, va bene così')
+  unmount()
+  await db.songs.update('s1', { lineTranslations: [{ lineIndex: 3, textIt: 'Un altro verso' }] })
+  render(
+    <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>
+      <Study songId="s1" itemId="cs:0" />
+    </AppDepsProvider>,
+  )
+  const again = await screen.findByRole('dialog', { name: 'Pronuncia' })
+  expect(again.textContent).not.toContain('TRADUZIONE DEL VERSO')
+})
+
 test('legenda: ogni tipo di evidenziazione ha la sua voce, espressione fissa compresa', async () => {
   render(
     <AppDepsProvider value={{ db, fetch: (async () => new Response('')) as unknown as typeof fetch, sleep: async () => {}, now: () => now }}>

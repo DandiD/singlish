@@ -437,7 +437,7 @@ Niente di ciò che l'utente inserisce si perde in silenzio.
 
 ## Contenuti e interazioni
 - Forme nel verso: `findForm` cerca la parola intera, poi il pezzo di parola («end» non diventa «fri*end*s»); Studio, scheda e card R/C della sessione usano la stessa forma (`formIn`), e la card C chiede quella.
-- Parlato connesso: le parole con sottolineatura puntinata aprono la scheda «Pronuncia» (scritto, cantato, spiegazione, verso).
+- Parlato connesso: le parole con sottolineatura puntinata aprono la scheda «Pronuncia» (scritto, cantato, spiegazione, verso e, se c'è, la sua traduzione). Gemini traduce anche i versi con solo parlato connesso; le canzoni analizzate prima possono non averla.
 - Avvisi: nella sessione stanno in alto, sotto l'intestazione, per non coprire i voti; altrove in basso.
 - Installazione: accettata dal pulsante o dal menu (`appinstalled`), la scheda dice «App installata».
 
